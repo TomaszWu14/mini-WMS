@@ -1,8 +1,15 @@
+# mini-WMS — prosty system zarządzania magazynem
+
+![Lista HU w trybie demo](docs/img/hu-list.png)
+
+Lekki WMS w Django dla małego magazynu (jeden magazyn, kilku operatorów), który
+nie ma jeszcze systemu WMS: przyjęcia z etykietami HU, lokalizacje, picking FEFO/FIFO
+z terminalem skanera i pełna historia ruchów.
+
 > **Projekt portfolio.** Nazwy firm są zamienione na fikcyjne, a dane demo i testowe są syntetyczne.
 >
 > Kod udostępniony do wglądu (portfolio), wszelkie prawa zastrzeżone — patrz [`LICENSE`](LICENSE).
-
-# mini-WMS — prosty system zarządzania magazynem
+> Historia commitów została zgnieciona przy publikacji wersji portfolio.
 
 [![ci](https://github.com/TomaszWu14/mini-WMS/actions/workflows/ci.yml/badge.svg)](https://github.com/TomaszWu14/mini-WMS/actions/workflows/ci.yml)
 
@@ -13,13 +20,75 @@
 | **Problem** | Mały magazyn bez systemu WMS: palety (HU) bez etykiet, brak historii ruchów, picking „z pamięci”. |
 | **Rozwiązanie** | Lekki WMS: przyjęcia z generowaniem HU, etykiety PDF z kodem QR, lokalizacje, picking FEFO → FIFO, pełny rejestr ruchów z audytem. |
 | **Stack** | Python 3.11+, Django 5.1, PostgreSQL 16, ReportLab + qrcode (PDF/QR), openpyxl, Gunicorn + WhiteNoise, Docker Compose + Caddy (auto-HTTPS). |
-| **Jakość** | 109 testów (`manage.py test`), ruff, CI w GitHub Actions: `check`, `check --deploy`, `makemigrations --check`. |
+| **Jakość** | 119 testów (`manage.py test`), ruff, CI w GitHub Actions: `check`, `check --deploy`, `makemigrations --check`. |
 | **Wdrożenie** | Jedno polecenie `docker compose up -d --build` albo Coolify (`docker-compose.coolify.yml`). |
 
 Lekki WMS w Django do zarządzania materiałem w magazynie: przyjęcia z generowaniem
 HU (palet), alokacja w miejscach składowania, picking (wydania) oraz pełna historia
 ruchów. Materiał bez master daty — opcjonalnie z partią i datą ważności oraz sztywnym
 limitem ilości na palecie.
+
+## Demo
+
+Publiczne demo: **wkrótce: wms-demo.twapp.pl** (jeszcze niewdrożone).
+
+| Login | Rola | Hasło |
+|---|---|---|
+| `demo_operator` | Operator (przyjęcia, alokacje, picking, skaner) | `demo1234` |
+| `demo_podglad` | Podgląd (tylko odczyt) | `demo1234` |
+
+Dane demo są **fikcyjne** (15 materiałów, ~30 HU z różnymi datami ważności,
+3 dokumenty WZ w różnych stanach, otwarty spis z natury) i są **przywracane
+codziennie** o 03:00 (`seed_demo --reset` jako *Scheduled Task* w Coolify — patrz
+[COOLIFY.md](COOLIFY.md#11-instancja-demo-opcjonalnie)). Lokalnie:
+
+```bash
+export DEMO_MODE=1                 # Windows PowerShell: $env:DEMO_MODE=1
+python manage.py migrate
+python manage.py seed_demo         # --reset: wyczyść i zasiej od nowa (tylko przy DEMO_MODE)
+python manage.py runserver
+```
+
+`DEMO_MODE=1` włącza baner „DEMO” na każdej stronie (także w skanerze), loginy demo
+na stronie logowania, blokadę edycji kont demo (403), limit 10 prób logowania na
+5 min na IP (429) i maile wyłącznie do konsoli. Bez tej zmiennej aplikacja działa
+jak dotąd.
+
+| Wydanie (WZ) po realizacji FEFO | Skaner — wybór zlecenia pickingu |
+|---|---|
+| ![Szczegóły wydania](docs/img/issue-detail.png) | ![Skaner — picking](docs/img/scanner-picking.png) |
+
+## Przepływ danych
+
+```
+przyjęcie ──► HU (Do ułożenia) ──► alokacja w lokalizacji (Zmagazynowany)
+                                        │
+dokument WZ ──► picking: dobór HU FEFO → FIFO, najpierw PICKING, potem ZAPAS
+                                        │
+                     każda operacja ──► StockMovement (kto, kiedy, ile, skąd/dokąd)
+```
+
+Stan HU zmieniają wyłącznie funkcje z `warehouse/services.py`; każda zapisuje ruch
+w `StockMovement` w tej samej transakcji, więc historia zawsze zgadza się ze stanem.
+
+## Dlaczego ten stack
+
+Django daje gotowe logowanie, panel admina i formularze, a logika magazynowa
+mieści się w transakcjach (`transaction.atomic`) z blokadą wierszy
+`select_for_update` — dwa równoległe pickingi nie zdejmą tej samej palety ponad
+stan. PostgreSQL pilnuje reguł także na poziomie bazy (`CHECK` na ilości ≥ 0,
+unikalne numery HU/WZ). Wdrożenie ma dwa warianty: samodzielny `docker compose`
+z Caddy (automatyczny HTTPS bez panelu) albo Coolify, gdy serwer ma już
+reverse-proxy i chcemy auto-deploy oraz harmonogram zadań z panelu.
+
+## Ograniczenia i co dalej
+
+- Jeden magazyn, bez wielu oddziałów i bez stref/ścieżek kompletacji.
+- Brak integracji z ERP — materiały i zlecenia wydań wchodzą ręcznie albo z CSV/XLSX.
+- Django 5.1 → migracja na 5.2 LTS do zrobienia.
+- Limit logowań w demo używa cache w pamięci procesu (per worker gunicorna);
+  przy większym ruchu — wspólny cache (np. Redis).
+- Brak rezerwacji stanu pod otwarte WZ — dostępność liczona jest w chwili realizacji.
 
 ## Funkcje
 

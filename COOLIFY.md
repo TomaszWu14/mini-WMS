@@ -172,6 +172,32 @@ docker exec "$B" sh -c 'gunzip -c /backups/wms-XXXX.sql.gz' \
 
 ---
 
+## 11. Instancja demo (opcjonalnie)
+
+Publiczne demo to osobny zasób z tym samym `docker-compose.coolify.yml` —
+z własną bazą, nigdy na danych produkcyjnych.
+
+1. Domena, np. `https://wms-demo.twapp.pl` (przykład), oraz zmienne jak w kroku 6
+   plus **`DEMO_MODE=1`**. Tryb demo włącza baner „DEMO — dane przykładowe…”,
+   pokazuje loginy kont demo na stronie logowania, blokuje edycję kont demo,
+   ogranicza logowania (10 prób / 5 min / IP) i wysyła maile tylko do konsoli.
+2. Po pierwszym deployu zasiej dane (terminal kontenera `web` w Coolify):
+   `python manage.py seed_demo`
+3. **Reset co 24 h** — zakładka zasobu **Scheduled Tasks → + Add**:
+   - Name: `reset-demo`
+   - Command: `python manage.py seed_demo --reset`
+   - Frequency: `0 3 * * *` (codziennie 03:00)
+   - Container: `web`
+
+   `--reset` czyści wszystkie dane magazynowe i konta demo, po czym zasiewa
+   je od nowa (deterministycznie). Bez `DEMO_MODE=1` komenda odmawia resetu.
+   Cron nie jest częścią obrazu — harmonogram trzyma Coolify.
+
+Konta demo: `demo_operator` (Operator) i `demo_podglad` (Podgląd), hasło
+`demo1234`. Konto administratora z `DJANGO_SUPERUSER_*` zostaje prywatne.
+
+---
+
 ## Najczęstsze problemy
 
 - **Brak certyfikatu / błąd SSL** → sprawdź, czy rekord DNS `A` wskazuje na IP
