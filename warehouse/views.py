@@ -5,11 +5,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from . import services
+from .demo import is_demo_account
 from .documents import issue_document_pdf
 from .exports import rows_to_csv_response, rows_to_xlsx_response
 from .forms import (
@@ -1066,6 +1067,11 @@ def user_create(request):
 @admin_required
 def user_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
+    if is_demo_account(user):
+        return HttpResponseForbidden(
+            "Konta demo są chronione — w trybie demo nie można zmieniać ich "
+            "hasła, roli ani statusu."
+        )
     profile, _ = Profile.objects.get_or_create(user=user)
     if request.method == "POST":
         form = UserEditForm(request.POST, edited_user=user)

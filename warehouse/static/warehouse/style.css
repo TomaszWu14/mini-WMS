@@ -314,3 +314,24 @@ ul.radio label { display: inline; font-weight: 500; }
   .content { padding: 16px; }
   .btn, .sidebar a { min-height: 44px; }
 }
+
+/* Tryb demo — baner (ciemny tekst na żółtym: kontrast ~13:1, WCAG AA). */
+.demo-banner {
+  background: #ffd451;
+  color: #1a1a1a;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-bottom: 2px solid #1a1a1a;
+}
+.demo-logins {
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+.demo-logins ul { margin: 6px 0 0; padding-left: 18px; }

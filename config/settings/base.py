@@ -39,6 +39,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
+# Tryb demo (publiczna instancja z danymi fikcyjnymi): baner, loginy demo na
+# stronie logowania, limit prób logowania, maile tylko do konsoli.
+DEMO_MODE = env_bool("DEMO_MODE", False)
+if DEMO_MODE:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -78,6 +85,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "warehouse.context_processors.role_flags",
+                "warehouse.demo.demo_context",
             ],
         },
     },

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{% static 'warehouse/scanner.css' %}">
 </head>
 <body class="scn">
+{% if demo_mode %}<div class="demo-banner" role="note">DEMO — dane przykładowe, nie są to dane rzeczywiste. Dane są przywracane codziennie.</div>{% endif %}
   {% include "warehouse/_icons.html" %}
   <header class="scn-top">
     <a class="scn-back" href="{% block back %}{% url 'scanner_home' %}{% endblock %}">‹</a>

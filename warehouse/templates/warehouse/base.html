@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{% static 'warehouse/style.css' %}">
 </head>
 <body>
+{% if demo_mode %}<div class="demo-banner" role="note">DEMO — dane przykładowe, nie są to dane rzeczywiste. Dane są przywracane codziennie.</div>{% endif %}
 {% if user.is_authenticated %}
 {% include "warehouse/_icons.html" %}
 <header class="topbar">

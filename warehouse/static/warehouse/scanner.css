@@ -333,3 +333,14 @@ body.scn {
   font-weight: 800;
   cursor: pointer;
 }
+
+/* Tryb demo — baner (ciemny tekst na żółtym: kontrast ~13:1, WCAG AA). */
+.demo-banner {
+  background: #ffd451;
+  color: #1a1a1a;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-bottom: 2px solid #1a1a1a;
+}

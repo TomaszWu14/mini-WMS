@@ -24,6 +24,8 @@ services:
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-1}
       DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Europe/Warsaw}
+      # Publiczna instancja demo: DEMO_MODE=1 (baner, loginy demo, limit logowań).
+      DEMO_MODE: ${DEMO_MODE:-0}
       DATABASE_URL: postgres://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-wms}
       # Konto administratora tworzone automatycznie przy pierwszym starcie:
       DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
