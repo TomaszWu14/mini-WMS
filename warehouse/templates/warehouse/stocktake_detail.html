@@ -1,0 +1,76 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Spis {{ sheet.number }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>Spis {{ sheet.number }}
+  <span class="badge badge-{{ sheet.status }}">{{ sheet.get_status_display }}</span>
+</h1>
+<p class="muted">
+  Zakres: <strong>{{ sheet.location.code|default:"cały magazyn" }}</strong> ·
+  Utworzono: {{ sheet.created_at|date:"Y-m-d H:i" }} · {{ sheet.created_by.username|default:"—" }}
+  {% if sheet.closed_at %} · Zamknięto: {{ sheet.closed_at|date:"Y-m-d H:i" }}{% endif %}
+</p>
+
+<form method="post" action="{% url 'stocktake_save' sheet.pk %}">
+  {% csrf_token %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Lokalizacja</th><th>HU</th><th>Materiał</th><th class="text-right">Stan ewid.</th><th class="text-right">Policzono</th><th class="text-right">Różnica</th></tr></thead>
+    <tbody>
+      {% for line in lines %}
+        <tr>
+          <td>{{ line.location_code|default:"—" }}</td>
+          <td>{% if line.handling_unit %}{{ line.handling_unit.number }}{% else %}—{% endif %}</td>
+          <td>{{ line.material.index }}</td>
+          <td class="text-right">{{ line.expected_qty }} {{ line.material.unit.code }}</td>
+          <td class="text-right">
+            {% if sheet.status == "OTWARTY" and is_operator_role %}
+              <input type="number" min="0" name="counted_{{ line.id }}"
+                     value="{{ line.counted_qty|default_if_none:'' }}"
+                     data-expected="{{ line.expected_qty }}"
+                     class="cnt" style="width:90px; text-align:right"
+                     oninput="diff(this)">
+            {% else %}
+              {{ line.counted_qty|default_if_none:"—" }}
+            {% endif %}
+          </td>
+          <td class="text-right diffcell" id="diff_{{ line.id }}">
+            {% if line.variance is not None %}{{ line.variance }}{% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="muted">Arkusz nie ma pozycji.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if sheet.status == "OTWARTY" and is_operator_role %}
+  <div class="toolbar" style="margin-top:14px">
+    <button class="btn" type="submit">💾 Zapisz policzone</button>
+  </div>
+  {% endif %}
+</form>
+
+{% if sheet.status == "OTWARTY" and is_operator_role %}
+<div class="panel" style="margin-top:8px">
+  <p class="muted">Zamknięcie nanosi różnice jako korekty stanu (powód: spis z natury).
+  Najpierw zapisz policzone ilości.</p>
+  <form method="post" action="{% url 'stocktake_close' sheet.pk %}"
+        onsubmit="return confirm('Zamknąć spis i nanieść różnice na stany?')">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">✅ Zamknij i zatwierdź różnice</button>
+  </form>
+</div>
+{% endif %}
+
+<script>
+function diff(input) {
+  var exp = parseInt(input.getAttribute("data-expected"), 10);
+  var cell = document.getElementById("diff_" + input.name.split("_")[1]);
+  if (input.value === "") { cell.textContent = "—"; cell.style.color = ""; return; }
+  var d = parseInt(input.value, 10) - exp;
+  cell.textContent = (d > 0 ? "+" + d : d);
+  cell.style.color = d === 0 ? "" : (d > 0 ? "#15803d" : "#b91c1c");
+}
+</script>
+{% endblock %}

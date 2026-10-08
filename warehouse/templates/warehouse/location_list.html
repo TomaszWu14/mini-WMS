@@ -1,0 +1,32 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Lokalizacje — mini-WMS{% endblock %}
+{% block content %}
+<h1>Lokalizacje</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'location_labels' %}" target="_blank">🏷 Drukuj etykiety</a>
+  <div class="spacer"></div>
+  {% if is_operator_role %}
+    <a class="btn btn-secondary" href="{% url 'location_import' %}">⬆ Import CSV/XLSX</a>
+    <a class="btn" href="{% url 'location_create' %}">+ Nowa lokalizacja</a>
+  {% endif %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kod</th><th>Typ</th><th class="text-right">Pojemność</th><th class="text-right">Zajęte HU</th><th></th></tr></thead>
+  <tbody>
+    {% for loc in locations %}
+      <tr>
+        <td>{{ loc.code }}</td>
+        <td><span class="badge badge-{{ loc.type }}">{{ loc.get_type_display }}</span></td>
+        <td class="text-right">{{ loc.capacity }}</td>
+        <td class="text-right">{{ loc.active_hus }}</td>
+        <td class="text-right nowrap"><a class="btn btn-sm btn-secondary" href="{% url 'location_label' loc.pk %}" target="_blank">🏷 Etykieta</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">Brak lokalizacji. Zaimportuj plik z miejscami składowania.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

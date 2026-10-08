@@ -1,0 +1,32 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Zajętość lokalizacji — mini-WMS{% endblock %}
+{% block content %}
+<h1>Zajętość lokalizacji</h1>
+
+<div class="cards">
+  <div class="card"><div class="kpi">{{ summary.total }}</div><div class="kpi-label">Lokalizacje</div></div>
+  <div class="card"><div class="kpi">{{ summary.occupied }}</div><div class="kpi-label">Zajęte</div></div>
+  <div class="card"><div class="kpi">{{ summary.empty }}</div><div class="kpi-label">Wolne miejsca</div></div>
+  <div class="card"><div class="kpi">{{ summary.free_slots }}</div><div class="kpi-label">Wolne sloty (HU)</div></div>
+</div>
+
+<div class="table-wrap" style="margin-top:16px">
+<table>
+  <thead><tr><th>Kod</th><th>Typ</th><th class="text-right">Pojemność</th><th class="text-right">Zajęte HU</th><th class="text-right">Wolne</th><th>Zapełnienie</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{% url 'stock_by_location' %}?q={{ r.loc.code }}">{{ r.loc.code }}</a></td>
+        <td><span class="badge badge-{{ r.loc.type }}">{{ r.loc.get_type_display }}</span></td>
+        <td class="text-right">{{ r.loc.capacity }}</td>
+        <td class="text-right">{{ r.active }}</td>
+        <td class="text-right">{{ r.free }}</td>
+        <td>{% if r.active >= r.loc.capacity %}<span style="color:var(--err)">pełna</span>{% elif r.active > 0 %}częściowo{% else %}<span class="muted">pusta</span>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak lokalizacji.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

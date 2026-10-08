@@ -1,0 +1,88 @@
+# mini-WMS — uruchomienie produkcyjne z automatycznym HTTPS (Caddy).
+# Jedno polecenie:
+#   docker compose up -d --build
+#
+# Aplikacja: https://TWOJA_DOMENA/   (Caddy sam pobiera certyfikat Let's Encrypt)
+# Panel admina: https://TWOJA_DOMENA/admin/
+#
+# Wymagania: domena (DOMAIN) skierowana na publiczne IP serwera oraz otwarte
+# porty 80 i 443. Konfigurację zmień w pliku .env (skopiuj z .env.docker.example).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wms}
+      POSTGRES_USER: ${POSTGRES_USER:-wms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wms}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wms}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Automatyczny backup bazy (pg_dump -> gzip) z retencją.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-wms}
+      POSTGRES_USER: ${POSTGRES_USER:-wms}
+      POSTGRES_DB: ${POSTGRES_DB:-wms}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL:-86400}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+    volumes:
+      - ./scripts/pg_backup.sh:/pg_backup.sh:ro
+      - db_backups:/backups
+    entrypoint: ["sh", "/pg_backup.sh"]
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-zmien-mnie-w-produkcji}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-${DOMAIN:-localhost}}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-1}
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Europe/Warsaw}
+      DATABASE_URL: postgres://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:-wms}@db:5432/${POSTGRES_DB:-wms}
+      # Konto administratora tworzone automatycznie przy pierwszym starcie:
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-admin}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-}
+    # Brak publikacji portów na host — ruch wchodzi wyłącznie przez Caddy.
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  db_backups:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,32 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Import stanów — mini-WMS{% endblock %}
+{% block content %}
+<h1>Import stanów początkowych</h1>
+<div class="panel form-narrow">
+  <p class="muted">
+    Wgraj plik <strong>CSV</strong> lub <strong>XLSX</strong>. Każdy wiersz =
+    jedna paleta (HU). Obsługiwane kolumny:
+  </p>
+  <ul class="muted">
+    <li><code>HU</code> — numer palety (jeśli pusty, zostanie wygenerowany)</li>
+    <li><code>REF</code> — indeks materiału (wymagany; materiał powstanie automatycznie)</li>
+    <li><code>nazwa</code> — nazwa materiału</li>
+    <li><code>ilosc</code> — opcjonalna; <strong>puste = 0</strong> (uzupełnisz ręcznie przez „Korekta ilości”)</li>
+    <li><code>lokalizacja</code> — kod miejsca; <code>Przyjęcia</code>/<code>-</code>/puste = strefa przyjęć</li>
+    <li><code>partia</code>, <code>data ważności</code> — opcjonalne (<code>-</code> = brak)</li>
+  </ul>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="helptext">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Importuj stany</button>
+    <a class="btn btn-secondary" href="{% url 'stock_list' %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Inwentaryzacja — Skaner{% endblock %}
+{% block heading %}🧮 Inwentaryzacja{% endblock %}
+{% block content %}
+<div id="banner" class="scn-banner"></div>
+
+<div class="scn-step"><span class="num" id="stepNum">1</span><span id="stepHint">Zeskanuj paletę (HU)</span></div>
+<div class="scn-prompt" id="prompt">Zeskanuj HU</div>
+
+<form id="scanForm" autocomplete="off">
+  <div class="scn-scan" id="scanWrap">
+    <input id="scan" inputmode="text" autocomplete="off" placeholder="Zeskanuj HU…" autofocus>
+    <button type="button" class="scn-cam"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Skanuj aparatem</button>
+  </div>
+</form>
+
+<div id="huCard" class="scn-card hl hidden">
+  <div class="big" id="huNumber">—</div>
+  <div class="scn-row"><span class="k">Materiał</span><span class="v" id="huMat">—</span></div>
+  <div class="scn-row"><span class="k">Lokalizacja</span><span class="v" id="huLoc">—</span></div>
+  <div class="scn-row"><span class="k">Stan obecny</span><span class="v" id="huQty">—</span></div>
+</div>
+
+<div id="adjPanel" class="hidden">
+  <div class="scn-seg" id="seg">
+    <button type="button" data-mode="plus" class="active plus" id="btnPlus">＋ Dodaj</button>
+    <button type="button" data-mode="minus" id="btnMinus">－ Odejmij</button>
+  </div>
+  <div class="scn-card"><div class="scn-hint" id="adjHint">Ilość do dodania</div><div class="scn-qty" id="qtyDisplay">0</div></div>
+  <div class="scn-card"><div class="scn-row"><span class="k">Stan po zmianie</span><span class="v" id="previewQty">—</span></div></div>
+  <div class="scn-numpad" id="numpad">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button data-k="C">C</button><button data-k="0">0</button><button data-k="back">⌫</button>
+  </div>
+  <button type="button" class="scn-btn ok" id="confirmBtn">✓ Potwierdź</button>
+</div>
+
+<button type="button" class="scn-reset-mini" id="resetBtn">Reset</button>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  var S = window.Scanner;
+  var scan = document.getElementById("scan");
+  var banner = document.getElementById("banner");
+  var qtyDisplay = document.getElementById("qtyDisplay");
+  var state = { step: "hu", hu: null, current: 0, unit: "", qty: "", mode: "plus" };
+
+  S.keepFocus(scan);
+  function showBanner(kind, text) { banner.className = "scn-banner show " + kind; banner.textContent = text; }
+  function clearBanner() { banner.className = "scn-banner"; }
+
+  function delta() {
+    var q = parseInt(state.qty || "0", 10) || 0;
+    return state.mode === "minus" ? -q : q;
+  }
+  function renderQty() {
+    qtyDisplay.textContent = (state.qty === "" ? "0" : state.qty);
+    var nq = state.current + delta();
+    var el = document.getElementById("previewQty");
+    el.textContent = nq + " " + state.unit;
+    el.style.color = nq < 0 ? "#fca5a5" : "";
+  }
+
+  function resetAll(keepBanner) {
+    state = { step: "hu", hu: null, current: 0, unit: "", qty: "", mode: "plus" };
+    document.getElementById("huCard").classList.add("hidden");
+    document.getElementById("adjPanel").classList.add("hidden");
+    document.getElementById("scanWrap").classList.remove("hidden");
+    setMode("plus");
+    if (!keepBanner) clearBanner();
+    scan.value = ""; scan.focus();
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    document.getElementById("btnPlus").className = (mode === "plus" ? "active plus" : "");
+    document.getElementById("btnMinus").className = (mode === "minus" ? "active minus" : "");
+    document.getElementById("adjHint").textContent = (mode === "minus" ? "Ilość do odjęcia" : "Ilość do dodania");
+    renderQty();
+  }
+
+  function handleHU(code) {
+    S.getJSON("{% url 'scanner_api_hu' %}", { code: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Nie znaleziono HU."); return; }
+      clearBanner(); S.beepOk();
+      var hu = j.hu;
+      state.hu = hu.number; state.current = hu.quantity; state.unit = hu.unit; state.qty = "";
+      document.getElementById("huNumber").textContent = hu.number;
+      document.getElementById("huMat").textContent = hu.material_index + " — " + hu.material_name;
+      document.getElementById("huLoc").textContent = hu.location || "— (strefa przyjęć)";
+      document.getElementById("huQty").textContent = hu.quantity + " " + hu.unit;
+      document.getElementById("huCard").classList.remove("hidden");
+      document.getElementById("adjPanel").classList.remove("hidden");
+      document.getElementById("scanWrap").classList.add("hidden");
+      state.step = "adj";
+      setMode("plus");
+    });
+  }
+
+  function doAdjust() {
+    var d = delta();
+    if (d === 0) { S.beepErr(); showBanner("err", "Podaj ilość."); return; }
+    if (state.current + d < 0) { S.beepErr(); showBanner("err", "Stan nie może być ujemny (jest " + state.current + ")."); return; }
+    var btn = document.getElementById("confirmBtn"); btn.disabled = true;
+    S.postForm("{% url 'scanner_api_inventory' %}", { hu: state.hu, delta: d }).then(function (j) {
+      btn.disabled = false;
+      if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Błąd."); return; }
+      S.beepOk();
+      showBanner("ok", "✓ " + j.message);
+      setTimeout(function () { resetAll(true); }, 900);
+    });
+  }
+
+  document.getElementById("seg").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    setMode(b.getAttribute("data-mode"));
+  });
+  document.getElementById("numpad").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var k = b.getAttribute("data-k");
+    if (k === "C") state.qty = "";
+    else if (k === "back") state.qty = state.qty.slice(0, -1);
+    else state.qty = (state.qty === "0" ? "" : state.qty) + k;
+    if (state.qty.length > 6) state.qty = state.qty.slice(0, 6);
+    renderQty();
+  });
+  document.getElementById("confirmBtn").addEventListener("click", doAdjust);
+
+  document.getElementById("scanForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = scan.value.trim(); scan.value = "";
+    if (!code) return;
+    if (state.step === "hu") handleHU(code);
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () { resetAll(false); });
+})();
+</script>
+{% endblock %}

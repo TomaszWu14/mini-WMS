@@ -1,0 +1,30 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Wydania — mini-WMS{% endblock %}
+{% block content %}
+<h1>Dokumenty wydania</h1>
+<div class="toolbar">
+  <div class="spacer"></div>
+  {% if is_operator_role %}<a class="btn btn-secondary" href="{% url 'issue_import' %}">⬆ Import zleceń</a>{% endif %}
+  {% if is_operator_role %}<a class="btn" href="{% url 'issue_create' %}">+ Nowe wydanie</a>{% endif %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Numer</th><th>Referencja</th><th>Status</th><th class="text-right">Pozycje</th><th>Utworzono</th><th>Kto</th></tr></thead>
+  <tbody>
+    {% for d in documents %}
+      <tr>
+        <td><a href="{% url 'issue_detail' d.pk %}">{{ d.number }}</a></td>
+        <td>{{ d.reference|default:"—" }}</td>
+        <td><span class="badge badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+        <td class="text-right">{{ d.line_count }}</td>
+        <td class="nowrap">{{ d.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ d.created_by.username|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak dokumentów wydania.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

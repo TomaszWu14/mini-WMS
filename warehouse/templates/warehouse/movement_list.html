@@ -1,0 +1,41 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Ruchy — mini-WMS{% endblock %}
+{% block content %}
+<h1>Ruchy magazynowe</h1>
+<div class="toolbar">
+  <form method="get" class="inline">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">— wszystkie typy —</option>
+      {% for value, label in types %}
+        <option value="{{ value }}" {% if value == type %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="spacer"></div>
+  <a class="btn btn-secondary" href="{% url 'movement_export' 'csv' %}{% if type %}?type={{ type }}{% endif %}">⬇ CSV</a>
+  <a class="btn btn-secondary" href="{% url 'movement_export' 'xlsx' %}{% if type %}?type={{ type }}{% endif %}">⬇ Excel</a>
+</div>
+
+<p class="muted">Wyświetlono ostatnie {{ movements|length }} ruchów. Pełny zestaw dostępny w eksporcie.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>Typ</th><th>Materiał</th><th>HU</th><th class="text-right">Zmiana</th><th>Z → Do</th><th>Kto</th></tr></thead>
+  <tbody>
+    {% for m in movements %}
+      <tr>
+        <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ m.get_type_display }}</td>
+        <td>{{ m.material.index }}</td>
+        <td>{{ m.handling_unit.number|default:"—" }}</td>
+        <td class="text-right">{{ m.quantity_delta }}</td>
+        <td>{{ m.location_from.code|default:"—" }} → {{ m.location_to.code|default:"—" }}</td>
+        <td>{{ m.created_by.username|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="muted">Brak ruchów.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

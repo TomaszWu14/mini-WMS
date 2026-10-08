@@ -1,0 +1,47 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Kartoteka materiału — mini-WMS{% endblock %}
+{% block content %}
+<h1>Kartoteka materiału</h1>
+
+<div class="toolbar">
+  <form method="get" class="inline" style="display:flex;gap:8px;flex-wrap:wrap">
+    <select name="material" onchange="this.form.submit()" style="min-width:280px">
+      <option value="">— wybierz materiał —</option>
+      {% for m in materials %}
+        <option value="{{ m.index }}" {% if m.index == selected %}selected{% endif %}>{{ m.index }} — {{ m.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Pokaż</button>
+  </form>
+</div>
+
+{% if material %}
+  <div class="panel">
+    <strong>{{ material.index }} — {{ material.name }}</strong> ·
+    Stan bieżący: <strong>{{ current }} {{ material.unit.code }}</strong>
+  </div>
+  <h2>Historia ruchów</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Kiedy</th><th>Typ</th><th>HU</th><th class="text-right">Zmiana</th><th>Z → Do</th><th>Kto</th><th>Uwagi</th></tr></thead>
+    <tbody>
+      {% for m in movements %}
+        <tr>
+          <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ m.get_type_display }}</td>
+          <td>{% if m.handling_unit %}<a href="{% url 'hu_detail' m.handling_unit.pk %}">{{ m.handling_unit.number }}</a>{% else %}—{% endif %}</td>
+          <td class="text-right">{{ m.quantity_delta }}</td>
+          <td>{{ m.location_from.code|default:"—" }} → {{ m.location_to.code|default:"—" }}</td>
+          <td>{{ m.created_by.username|default:"—" }}</td>
+          <td>{{ m.note }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="muted">Brak ruchów dla tego materiału.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% elif selected %}
+  <p class="msg msg-error">Nie znaleziono materiału „{{ selected }}”.</p>
+{% endif %}
+{% endblock %}

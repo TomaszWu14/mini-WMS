@@ -1,0 +1,3 @@
+# Fałszywe alarmy gitleaks: hasła testowe w testach walidacji kont (nie są sekretami)
+warehouse/tests.py:generic-api-key:925
+warehouse/tests.py:generic-api-key:939

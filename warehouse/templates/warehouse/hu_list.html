@@ -1,0 +1,45 @@
+{% extends "warehouse/base.html" %}
+{% block title %}HU — mini-WMS{% endblock %}
+{% block content %}
+<h1>HU (palety)</h1>
+<div class="toolbar">
+  <form method="get" class="inline" style="display:flex; gap:8px; flex-wrap:wrap">
+    <input type="text" name="q" value="{{ query }}" placeholder="Numer / materiał / lokalizacja…" style="width:240px">
+    <select name="status">
+      <option value="">— wszystkie statusy —</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if value == status %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Filtruj</button>
+  </form>
+  <div class="spacer"></div>
+  <a class="btn btn-secondary" href="{% url 'hu_labels' %}?{{ request.GET.urlencode }}" target="_blank">🏷 Drukuj etykiety</a>
+  {% if is_operator_role %}<a class="btn" href="{% url 'receive' %}">+ Przyjęcie</a>{% endif %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Numer HU</th><th>Materiał</th><th class="text-right">Ilość</th><th>Status</th><th>Lokalizacja</th><th>Przyjęto</th><th></th></tr></thead>
+  <tbody>
+    {% for hu in handling_units %}
+      <tr>
+        <td><a href="{% url 'hu_detail' hu.pk %}">{{ hu.number }}</a></td>
+        <td>{{ hu.material.index }}</td>
+        <td class="text-right">{{ hu.quantity }} {{ hu.material.unit.code }}</td>
+        <td><span class="badge badge-{{ hu.status }}">{{ hu.get_status_display }}</span></td>
+        <td>{{ hu.location.code|default:"—" }}</td>
+        <td class="nowrap">{{ hu.created_at|date:"Y-m-d H:i" }}</td>
+        <td class="nowrap">
+          {% if is_operator_role and hu.status == "DO_ULOZENIA" %}
+            <a class="btn btn-sm" href="{% url 'hu_allocate' hu.pk %}">Ulokuj</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="muted">Brak HU.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

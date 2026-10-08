@@ -1,0 +1,19 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Dostawa {{ hu.number }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>Termin dostawy — HU {{ hu.number }}</h1>
+<div class="panel form-narrow">
+  <p class="muted">Edycja dostępna tylko dla Administratora.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}{{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Zapisz</button>
+    <a class="btn btn-secondary" href="{% url 'hu_detail' hu.pk %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

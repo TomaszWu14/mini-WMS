@@ -1,0 +1,59 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Podgląd HU — Skaner{% endblock %}
+{% block heading %}🔍 Podgląd HU{% endblock %}
+{% block content %}
+<div id="banner" class="scn-banner"></div>
+
+<div class="scn-prompt">Zeskanuj HU</div>
+<form id="scanForm" autocomplete="off">
+  <div class="scn-scan">
+    <input id="scan" inputmode="text" autocomplete="off" placeholder="Zeskanuj HU…" autofocus>
+    <button type="button" class="scn-cam"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Skanuj aparatem</button>
+  </div>
+</form>
+
+<div id="huCard" class="scn-card hl hidden">
+  <div class="big" id="huNumber">—</div>
+  <div class="scn-row"><span class="k">Status</span><span class="v" id="huStatus">—</span></div>
+  <div class="scn-row"><span class="k">Materiał</span><span class="v" id="huMat">—</span></div>
+  <div class="scn-row"><span class="k">Ilość</span><span class="v" id="huQty">—</span></div>
+  <div class="scn-row"><span class="k">Lokalizacja</span><span class="v" id="huLoc">—</span></div>
+  <div class="scn-row"><span class="k">Partia</span><span class="v" id="huLot">—</span></div>
+</div>
+
+<button type="button" class="scn-reset-mini" id="resetBtn">Reset</button>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  var S = window.Scanner;
+  var scan = document.getElementById("scan");
+  var banner = document.getElementById("banner");
+  S.keepFocus(scan);
+  function set(id, v) { document.getElementById(id).textContent = v; }
+
+  document.getElementById("scanForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = scan.value.trim(); scan.value = "";
+    if (!code) return;
+    S.getJSON("{% url 'scanner_api_hu' %}", { code: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); banner.className = "scn-banner show err"; banner.textContent = j.error; document.getElementById("huCard").classList.add("hidden"); return; }
+      S.beepOk(); banner.className = "scn-banner";
+      var hu = j.hu;
+      set("huNumber", hu.number);
+      set("huStatus", hu.status_label);
+      set("huMat", hu.material_index + " — " + hu.material_name);
+      set("huQty", hu.quantity + " " + hu.unit);
+      set("huLoc", hu.location || "— (strefa przyjęć)");
+      set("huLot", hu.lot || "—");
+      document.getElementById("huCard").classList.remove("hidden");
+    });
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    document.getElementById("huCard").classList.add("hidden");
+    banner.className = "scn-banner"; scan.value = ""; scan.focus();
+  });
+})();
+</script>
+{% endblock %}

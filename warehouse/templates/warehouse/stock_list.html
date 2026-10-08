@@ -1,0 +1,29 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Stany — mini-WMS{% endblock %}
+{% block content %}
+<h1>Stany magazynowe</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'stock_by_location' %}">📍 Wg lokalizacji</a>
+  {% if is_operator_role %}<a class="btn" href="{% url 'stock_import' %}">⬆ Import stanów</a>{% endif %}
+  <div class="spacer"></div>
+  <a class="btn btn-secondary" href="{% url 'stock_export' 'csv' %}">⬇ CSV</a>
+  <a class="btn btn-secondary" href="{% url 'stock_export' 'xlsx' %}">⬇ Excel</a>
+</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Indeks</th><th>Nazwa</th><th class="text-right">Ilość</th><th class="text-right">Liczba HU</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.material__index }}</td>
+        <td>{{ r.material__name }}</td>
+        <td class="text-right">{{ r.qty }} {{ r.material__unit__code }}</td>
+        <td class="text-right">{{ r.hus }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">Brak stanów.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Import przyjęć — mini-WMS{% endblock %}
+{% block content %}
+<h1>Import przyjęć</h1>
+<div class="panel form-narrow">
+  <p class="muted">Wgraj plik <strong>CSV</strong> lub <strong>XLSX</strong>. Każdy wiersz = jedna pozycja przyjęcia (system dzieli ilość na palety i tworzy HU). Kolumny:</p>
+  <ul class="muted">
+    <li><code>indeks</code> — materiał (musi istnieć w słowniku)</li>
+    <li><code>ilosc</code> — ilość całkowita</li>
+    <li><code>palety</code> — liczba palet (domyślnie 1)</li>
+    <li><code>lot</code>, <code>data_waznosci</code>, <code>dostawa</code> — opcjonalne</li>
+  </ul>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="helptext">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Importuj przyjęcia</button>
+    <a class="btn btn-secondary" href="{% url 'receive' %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

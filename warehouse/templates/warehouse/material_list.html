@@ -1,0 +1,31 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Materiały — mini-WMS{% endblock %}
+{% block content %}
+<h1>Materiały</h1>
+<div class="toolbar">
+  <form method="get" class="inline">
+    <input type="text" name="q" value="{{ query }}" placeholder="Szukaj indeksu/nazwy…" style="width:260px">
+    <button class="btn btn-secondary" type="submit">Szukaj</button>
+  </form>
+  <div class="spacer"></div>
+  {% if is_operator_role %}<a class="btn" href="{% url 'material_create' %}">+ Nowy materiał</a>{% endif %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Indeks</th><th>Nazwa</th><th>Jednostka</th><th class="text-right">Maks./paletę</th></tr></thead>
+  <tbody>
+    {% for m in materials %}
+      <tr>
+        <td>{{ m.index }}</td>
+        <td>{{ m.name }}</td>
+        <td>{{ m.unit.code }}</td>
+        <td class="text-right">{{ m.max_per_pallet|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">Brak materiałów. Dodaj pierwszy materiał.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

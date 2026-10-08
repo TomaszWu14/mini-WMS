@@ -1,0 +1,134 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Rozmieszczanie — Skaner{% endblock %}
+{% block heading %}📍 Rozmieszczanie{% endblock %}
+{% block content %}
+<div id="banner" class="scn-banner"></div>
+
+<div class="scn-step"><span class="num" id="stepNum">1</span><span id="stepHint">Zeskanuj paletę (HU)</span></div>
+<div class="scn-prompt" id="prompt">Zeskanuj HU</div>
+
+<form id="scanForm" autocomplete="off">
+  <div class="scn-scan">
+    <input id="scan" name="scan" inputmode="text" autocomplete="off"
+           placeholder="Zeskanuj HU…" autofocus>
+    <button type="button" class="scn-cam"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Skanuj aparatem</button>
+  </div>
+</form>
+
+<div id="huCard" class="scn-card hl hidden">
+  <div class="big" id="huNumber">—</div>
+  <div class="scn-row"><span class="k">Materiał</span><span class="v" id="huMat">—</span></div>
+  <div class="scn-row"><span class="k">Ilość</span><span class="v" id="huQty">—</span></div>
+  <div class="scn-row"><span class="k">Obecna lokalizacja</span><span class="v" id="huLoc">—</span></div>
+</div>
+
+<div id="locCard" class="scn-card hidden">
+  <div class="scn-row"><span class="k">Miejsce docelowe</span><span class="v" id="locCode">—</span></div>
+  <div class="scn-row"><span class="k">Typ</span><span class="v" id="locType">—</span></div>
+</div>
+
+<button type="button" class="scn-btn ok hidden" id="confirmBtn">✓ Potwierdź</button>
+
+<button type="button" class="scn-reset-mini" id="resetBtn">Reset</button>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  var S = window.Scanner;
+  var scan = document.getElementById("scan");
+  var form = document.getElementById("scanForm");
+  var banner = document.getElementById("banner");
+  var confirmBtn = document.getElementById("confirmBtn");
+  var state = { step: "hu", hu: null, loc: null };
+
+  S.keepFocus(scan);
+
+  function showBanner(kind, text) { banner.className = "scn-banner show " + kind; banner.textContent = text; }
+  function clearBanner() { banner.className = "scn-banner"; }
+
+  function setStep(step) {
+    state.step = step;
+    if (step === "hu") {
+      document.getElementById("stepNum").textContent = "1";
+      document.getElementById("stepHint").textContent = "Zeskanuj paletę (HU)";
+      document.getElementById("prompt").textContent = "Zeskanuj HU";
+      scan.placeholder = "Zeskanuj HU…";
+    } else {
+      document.getElementById("stepNum").textContent = "2";
+      document.getElementById("stepHint").textContent = "Zeskanuj miejsce składowania";
+      document.getElementById("prompt").textContent = "Zeskanuj LOKALIZACJĘ";
+      scan.placeholder = "Zeskanuj lokalizację…";
+    }
+  }
+
+  function renderHU(hu) {
+    document.getElementById("huNumber").textContent = hu.number;
+    document.getElementById("huMat").textContent = hu.material_index + " — " + hu.material_name;
+    document.getElementById("huQty").textContent = hu.quantity + " " + hu.unit;
+    document.getElementById("huLoc").textContent = hu.location || "— (strefa przyjęć)";
+    document.getElementById("huCard").classList.remove("hidden");
+  }
+
+  function resetAll(keepBanner) {
+    state = { step: "hu", hu: null, loc: null };
+    document.getElementById("huCard").classList.add("hidden");
+    document.getElementById("locCard").classList.add("hidden");
+    confirmBtn.classList.add("hidden");
+    if (!keepBanner) clearBanner();
+    setStep("hu");
+    scan.value = "";
+    scan.focus();
+  }
+
+  function handleHU(code) {
+    S.getJSON("{% url 'scanner_api_hu' %}", { code: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Nie znaleziono HU."); return; }
+      if (j.hu.status === "PUSTY") { S.beepErr(); showBanner("err", "HU jest pusty."); return; }
+      clearBanner(); S.beepOk();
+      state.hu = j.hu.number;
+      renderHU(j.hu);
+      setStep("location");
+    });
+  }
+
+  function handleLocation(code) {
+    S.getJSON("{% url 'scanner_api_location' %}", { code: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Nie znaleziono lokalizacji."); return; }
+      S.beepOk();
+      state.loc = j.location.code;
+      document.getElementById("locCode").textContent = j.location.code;
+      document.getElementById("locType").textContent = j.location.type_label;
+      document.getElementById("locCard").classList.remove("hidden");
+      confirmBtn.classList.remove("hidden");   // wymaga potwierdzenia
+    });
+  }
+
+  function confirmPutaway() {
+    if (!state.hu || !state.loc) return;
+    confirmBtn.disabled = true;
+    S.postForm("{% url 'scanner_api_allocate' %}", { hu: state.hu, location: state.loc })
+      .then(function (j) {
+        confirmBtn.disabled = false;
+        if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Błąd."); return; }
+        S.beepOk();
+        showBanner("ok", "✓ " + j.message);
+        setTimeout(function () { resetAll(true); }, 800);
+      });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = scan.value.trim();
+    scan.value = "";
+    if (!code) return;
+    if (state.step === "hu") handleHU(code);
+    else handleLocation(code);
+  });
+
+  confirmBtn.addEventListener("click", confirmPutaway);
+  document.getElementById("resetBtn").addEventListener("click", function () { resetAll(false); });
+  setStep("hu");
+})();
+</script>
+{% endblock %}
