@@ -1,8 +1,10 @@
-> **Kopia do przygotowania wersji publicznej.** Dane w tym repozytorium
-> są syntetyczne/przykładowe i nie pochodzą z żadnego środowiska
-> produkcyjnego.
+> **Projekt portfolio.** Nazwy firm są zamienione na fikcyjne, a dane demo i testowe są syntetyczne.
+>
+> Kod udostępniony do wglądu (portfolio), wszelkie prawa zastrzeżone — patrz [`LICENSE`](LICENSE).
 
 # mini-WMS — prosty system zarządzania magazynem
+
+[![ci](https://github.com/TomaszWu14/mini-WMS/actions/workflows/ci.yml/badge.svg)](https://github.com/TomaszWu14/mini-WMS/actions/workflows/ci.yml)
 
 ## W skrócie
 
