@@ -21,6 +21,12 @@
       <input type="hidden" name="next" value="{{ next }}">
       <button class="btn" type="submit" style="width:100%">Zaloguj</button>
     </form>
+    {% if demo_mode %}
+      <div class="demo-logins">
+        <strong>Konta demo</strong> (hasło: <code>{{ demo_password }}</code>)
+        <ul>{% for login in demo_accounts %}<li><code>{{ login }}</code></li>{% endfor %}</ul>
+      </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
