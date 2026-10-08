@@ -1,0 +1,75 @@
+[project]
+name = "mini-wms"
+version = "0.1.0"
+description = "Mini-WMS (magazyn) dla cobaltSPORT — Django."
+requires-python = ">=3.11"
+# Zależności produkcyjne (źródło prawdy). requirements.txt jest ich odbiciem
+# na potrzeby budowy obrazu Docker (pip install -r requirements.txt).
+dependencies = [
+    "Django>=5.1,<5.2",
+    "reportlab==5.0.0",
+    "qrcode[pil]==8.2",
+    "openpyxl==3.1.5",
+    "gunicorn==23.0.0",
+    "whitenoise==6.8.2",
+    "psycopg[binary]>=3.2,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.15.20",
+    "mypy==1.13.0",
+    "django-stubs==5.1.1",
+    "coverage==7.6.9",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["warehouse", "config"]
+
+# --- Ruff: lint + format (zastępuje flake8/black/isort) ---------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+extend-exclude = ["warehouse/migrations", "warehouse/static/warehouse/vendor"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, UP pyupgrade, B bugbear, C4 comprehensions.
+select = ["E", "W", "F", "I", "UP", "B", "C4", "DJ"]
+ignore = [
+    "E501",   # długość linii pilnuje formatter
+    "DJ001",  # null=True na polach tekstowych — świadomie używane
+]
+
+[tool.ruff.lint.per-file-ignores]
+"warehouse/tests.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["warehouse", "config"]
+
+# --- mypy (opcjonalnie, warstwa serwisów) -----------------------------------
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+# Migracje generowane maszynowo; settings korzystają z gwiazdkowego importu
+# (base→dev/prod), którego mypy nie śledzi — sprawdzamy logikę, nie konfigurację.
+exclude = ["warehouse/migrations/", "config/settings/"]
+
+# Settings korzystają z gwiazdkowego importu (base→dev/prod) — mypy nie śledzi
+# nazw wprowadzonych przez `import *`, więc pomijamy błędy w tym module.
+[[tool.mypy.overrides]]
+module = "config.settings.*"
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+# --- Coverage ---------------------------------------------------------------
+[tool.coverage.run]
+source = ["warehouse", "config"]
+omit = ["*/migrations/*", "*/tests.py"]

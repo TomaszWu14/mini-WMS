@@ -1,0 +1,72 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Przyjęcie — mini-WMS{% endblock %}
+{% block content %}
+<h1>Przyjęcie materiału</h1>
+<div class="toolbar">
+  <div class="spacer"></div>
+  <a class="btn btn-secondary" href="{% url 'receive_import' %}">⬆ Import przyjęć z pliku</a>
+</div>
+<div class="panel form-narrow">
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="msg msg-error">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="field">
+      <label for="{{ form.material.id_for_label }}">{{ form.material.label }}</label>
+      {{ form.material }}{{ form.material.errors }}
+    </div>
+
+    <div class="field">
+      <label>{{ form.mode.label }}</label>
+      <ul class="radio">
+        {% for radio in form.mode %}<li>{{ radio.tag }} {{ radio.choice_label }}</li>{% endfor %}
+      </ul>
+    </div>
+
+    <div class="field" id="row-total">
+      <label for="{{ form.total_quantity.id_for_label }}">{{ form.total_quantity.label }}</label>
+      {{ form.total_quantity }}{{ form.total_quantity.errors }}
+    </div>
+
+    <div class="field" id="row-per" style="display:none">
+      <label for="{{ form.qty_per_pallet.id_for_label }}">{{ form.qty_per_pallet.label }}</label>
+      {{ form.qty_per_pallet }}{{ form.qty_per_pallet.errors }}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.pallets.id_for_label }}">{{ form.pallets.label }}</label>
+      {{ form.pallets }}{{ form.pallets.errors }}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.lot.id_for_label }}">{{ form.lot.label }}</label>
+      {{ form.lot }}{{ form.lot.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.expiry_date.id_for_label }}">{{ form.expiry_date.label }}</label>
+      {{ form.expiry_date }}{{ form.expiry_date.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.delivery_ref.id_for_label }}">{{ form.delivery_ref.label }}</label>
+      {{ form.delivery_ref }}{{ form.delivery_ref.errors }}
+    </div>
+
+    <button class="btn" type="submit">Przyjmij i wygeneruj HU</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  function refresh() {
+    var mode = document.querySelector('input[name="mode"]:checked');
+    var perPallet = mode && mode.value === "per_pallet";
+    document.getElementById("row-total").style.display = perPallet ? "none" : "";
+    document.getElementById("row-per").style.display = perPallet ? "" : "none";
+  }
+  document.querySelectorAll('input[name="mode"]').forEach(function (el) {
+    el.addEventListener("change", refresh);
+  });
+  refresh();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends "warehouse/base.html" %}
+{% block title %}{{ doc.number }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>Wydanie {{ doc.number }}
+  <span class="badge badge-{{ doc.status }}">{{ doc.get_status_display }}</span>
+</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'issue_pdf' doc.pk %}" target="_blank">🖨 Drukuj WZ (PDF)</a>
+</div>
+<p class="muted">
+  Referencja: <strong>{{ doc.reference|default:"—" }}</strong> ·
+  Utworzono: {{ doc.created_at|date:"Y-m-d H:i" }} · {{ doc.created_by.username|default:"—" }}
+  {% if doc.completed_at %} · Zrealizowano: {{ doc.completed_at|date:"Y-m-d H:i" }}{% endif %}
+  {% if doc.packed_at %} · Spakowano: {{ doc.packed_at|date:"Y-m-d H:i" }}{% endif %}
+  {% if doc.shipped_at %} · Wysłano: {{ doc.shipped_at|date:"Y-m-d H:i" }}
+    {% if doc.carrier %}({{ doc.carrier }}{% if doc.tracking_number %} · {{ doc.tracking_number }}{% endif %}){% endif %}
+  {% endif %}
+</p>
+
+<h2>Pozycje</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Materiał</th><th>Tryb</th><th class="text-right">Żądane</th><th class="text-right">Wydane</th><th class="text-right">Brak</th><th>Skąd pobrać (FEFO)</th><th></th></tr></thead>
+  <tbody>
+    {% for line in lines %}
+      <tr>
+        <td>{{ line.material.index }} — {{ line.material.name }}</td>
+        <td>{% if line.specific_hu %}HU {{ line.specific_hu.number }}{% else %}Po materiale (FEFO){% endif %}</td>
+        <td class="text-right">{{ line.requested_qty }}</td>
+        <td class="text-right">{{ line.picked_qty }}</td>
+        <td class="text-right">{% if line.shortage %}<strong style="color:var(--err)">{{ line.shortage }}</strong>{% else %}—{% endif %}</td>
+        <td>
+          {% if line.suggestion %}
+            {% for p in line.suggestion.plan %}
+              <span class="badge-loc">{{ p.location|default:"strefa przyjęć" }} · {{ p.hu }} ({{ p.take }})</span>
+            {% endfor %}
+            {% if line.suggestion.shortage %}<span style="color:var(--err)">brak {{ line.suggestion.shortage }}</span>{% endif %}
+            {% if not line.suggestion.plan %}<span class="muted">brak stanu</span>{% endif %}
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td class="text-right">
+          {% if is_operator_role and doc.status == "OTWARTY" %}
+            <form method="post" action="{% url 'issue_line_delete' doc.pk line.pk %}" class="inline"
+                  onsubmit="return confirm('Usunąć pozycję?')">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-danger" type="submit">Usuń</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="muted">Brak pozycji.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if is_operator_role and doc.status == "OTWARTY" %}
+<div class="panel form-narrow" style="margin-top:18px">
+  <h2 style="margin-top:0">Dodaj pozycję</h2>
+  <form method="post" action="{% url 'issue_add_line' doc.pk %}">
+    {% csrf_token %}
+    <div class="field">
+      <label>{{ line_form.mode.label }}</label>
+      <ul class="radio">
+        {% for radio in line_form.mode %}<li>{{ radio.tag }} {{ radio.choice_label }}</li>{% endfor %}
+      </ul>
+    </div>
+    <div class="field" id="row-material">
+      <label for="{{ line_form.material.id_for_label }}">{{ line_form.material.label }}</label>
+      {{ line_form.material }}
+    </div>
+    <div class="field" id="row-hu" style="display:none">
+      <label for="{{ line_form.specific_hu.id_for_label }}">{{ line_form.specific_hu.label }}</label>
+      {{ line_form.specific_hu }}
+    </div>
+    <div class="field">
+      <label for="{{ line_form.requested_qty.id_for_label }}">{{ line_form.requested_qty.label }}</label>
+      {{ line_form.requested_qty }}
+    </div>
+    <button class="btn" type="submit">Dodaj pozycję</button>
+  </form>
+</div>
+
+<div class="toolbar" style="margin-top:18px">
+  <form method="post" action="{% url 'issue_execute' doc.pk %}"
+        onsubmit="return confirm('Zrealizować wydanie i zdjąć stany?')">
+    {% csrf_token %}
+    <button class="btn" type="submit">✅ Realizuj wydanie</button>
+  </form>
+  <form method="post" action="{% url 'issue_execute' doc.pk %}"
+        onsubmit="return confirm('Zamknąć zlecenie wydając tylko dostępny stan (z brakami)?')">
+    {% csrf_token %}
+    <input type="hidden" name="partial" value="1">
+    <button class="btn btn-secondary" type="submit">⚠ Zamknij z brakami</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  function refresh() {
+    var mode = document.querySelector('input[name="mode"]:checked');
+    var hu = mode && mode.value === "hu";
+    document.getElementById("row-material").style.display = hu ? "none" : "";
+    document.getElementById("row-hu").style.display = hu ? "" : "none";
+  }
+  document.querySelectorAll('input[name="mode"]').forEach(function (el) {
+    el.addEventListener("change", refresh);
+  });
+  refresh();
+})();
+</script>
+{% endif %}
+
+{% if is_operator_role and doc.status == "ZREALIZOWANY" or is_operator_role and doc.status == "SPAKOWANY" %}
+<div class="panel" style="margin-top:18px">
+  <h2 style="margin-top:0">Pakowanie i wysyłka</h2>
+  <div class="toolbar">
+    {% if doc.status == "ZREALIZOWANY" %}
+      <form method="post" action="{% url 'issue_pack' doc.pk %}">{% csrf_token %}
+        <button class="btn" type="submit">📦 Spakuj</button>
+      </form>
+    {% endif %}
+    {% if doc.status == "ZREALIZOWANY" or doc.status == "SPAKOWANY" %}
+      <form method="post" action="{% url 'issue_ship' doc.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        {% csrf_token %}
+        {{ ship_form.carrier }} {{ ship_form.tracking }}
+        <button class="btn" type="submit">🚚 Wyślij</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<h2>Ruchy dokumentu</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>HU</th><th class="text-right">Zmiana</th><th>Kto</th></tr></thead>
+  <tbody>
+    {% for m in movements %}
+      <tr>
+        <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ m.handling_unit.number|default:"—" }}</td>
+        <td class="text-right">{{ m.quantity_delta }}</td>
+        <td>{{ m.created_by.username|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">Brak ruchów.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

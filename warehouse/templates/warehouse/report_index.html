@@ -1,0 +1,23 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Raporty — mini-WMS{% endblock %}
+{% block content %}
+<h1>Raporty</h1>
+<div class="cards">
+  <a class="card" href="{% url 'report_locations' %}" style="text-decoration:none;color:inherit">
+    <div class="kpi">📍</div>
+    <div class="kpi-label">Zajętość lokalizacji</div>
+  </a>
+  <a class="card" href="{% url 'report_material' %}" style="text-decoration:none;color:inherit">
+    <div class="kpi">📦</div>
+    <div class="kpi-label">Historia materiału (kartoteka)</div>
+  </a>
+  <a class="card" href="{% url 'stock_by_location' %}" style="text-decoration:none;color:inherit">
+    <div class="kpi">🗺️</div>
+    <div class="kpi-label">Stan wg lokalizacji</div>
+  </a>
+  <a class="card" href="{% url 'movement_list' %}" style="text-decoration:none;color:inherit">
+    <div class="kpi">🧾</div>
+    <div class="kpi-label">Rejestr ruchów</div>
+  </a>
+</div>
+{% endblock %}

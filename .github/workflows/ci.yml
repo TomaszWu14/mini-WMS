@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff==0.15.20
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format (check)
+        run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Django system check
+        run: python manage.py check
+
+      - name: Type check (mypy — warstwa logiki)
+        run: |
+          pip install mypy==1.13.0 "django-stubs[compatible-mypy]==5.1.1"
+          mypy warehouse/services.py config/log.py config/urls.py
+
+      - name: Production deploy check
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: "ci-only-placeholder-key-not-used-in-production-0123456789"
+          DJANGO_ALLOWED_HOSTS: "miniwms.example.com"
+          DJANGO_SECURE_COOKIES: "1"
+        run: python manage.py check --deploy
+
+      - name: Verify migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: python manage.py test --verbosity=2
+
+  docker-build:
+    # Buduje obraz produkcyjny tak jak Coolify i URUCHAMIA go, sprawdzając, czy
+    # kontener staje się „healthy" — łapie błędy Dockerfile (collectstatic jako
+    # non-root) ORAZ runtime (np. healthcheck z 301 przez SSL redirect) zanim
+    # trafią na deploy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t miniwms:ci .
+      - name: Smoke test — kontener wstaje i jest healthy
+        run: |
+          docker run -d --name miniwms-ci \
+            -e DJANGO_SECRET_KEY=ci-smoke-key-not-for-production-0123456789 \
+            -e DJANGO_ALLOWED_HOSTS=localhost \
+            miniwms:ci
+          status=starting
+          for _ in $(seq 1 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' miniwms-ci 2>/dev/null || echo missing)
+            echo "health=$status"
+            case "$status" in healthy|unhealthy) break;; esac
+            sleep 3
+          done
+          echo "--- logi kontenera ---"; docker logs miniwms-ci | tail -30
+          test "$status" = "healthy"

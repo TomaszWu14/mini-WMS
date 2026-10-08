@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media/
+/staticfiles/
+
+# Środowisko
+.env
+
+# Edytory / OS
+.idea/
+.vscode/
+.DS_Store
+
+# --- kopia do przygotowania wersji publicznej (wymagane minimum) ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+.idea/
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+*.sql
+*.dump
+*.bak
+.DS_Store

@@ -1,0 +1,51 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Picking — wybór zlecenia{% endblock %}
+{% block heading %}📤 Wybierz zlecenie{% endblock %}
+{% block content %}
+<div id="banner" class="scn-banner"></div>
+
+<form id="scanForm" autocomplete="off">
+  <div class="scn-scan">
+    <input id="scan" inputmode="text" autocomplete="off"
+           placeholder="Zeskanuj numer zlecenia…" autofocus>
+    <button type="button" class="scn-cam"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Skanuj aparatem</button>
+  </div>
+</form>
+
+<div class="scn-tiles">
+  {% for d in docs %}
+    <a class="scn-tile" href="{% url 'scanner_picking_doc' d.id %}">
+      <svg class="ic"><use href="#i-file"/></svg>
+      <span>{{ d.number }}
+        <small>
+          {% if d.reference %}{{ d.reference }} · {% endif %}
+          {{ d.lines }} poz. · do pobrania: {{ d.remaining }}
+        </small>
+      </span>
+    </a>
+  {% empty %}
+    <p class="scn-hint">Brak otwartych zleceń. Utwórz dokument wydania w aplikacji webowej.</p>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  var S = window.Scanner;
+  var scan = document.getElementById("scan");
+  var banner = document.getElementById("banner");
+  S.keepFocus(scan);
+  document.getElementById("scanForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = scan.value.trim(); scan.value = "";
+    if (!code) return;
+    S.getJSON("{% url 'scanner_api_document' %}", { number: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); banner.className = "scn-banner show err"; banner.textContent = j.error; return; }
+      S.beepOk();
+      window.location.href = "/skaner/picking/" + j.document.id + "/";
+    });
+  });
+})();
+</script>
+{% endblock %}

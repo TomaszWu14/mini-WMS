@@ -1,0 +1,48 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Użytkownicy — mini-WMS{% endblock %}
+{% block content %}
+<h1>Użytkownicy</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'login_log' %}">📜 Dziennik logowań</a>
+  <div class="spacer"></div>
+  <a class="btn" href="{% url 'user_create' %}">+ Nowy użytkownik</a>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Login</th><th>E-mail</th><th>Rola</th><th>Status</th><th>Ostatnie logowanie</th><th></th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.user.username }}</strong>{% if r.user.is_superuser %} <span class="muted">(superuser)</span>{% endif %}</td>
+        <td>{{ r.user.email|default:"—" }}</td>
+        <td><span class="badge badge-{{ r.role }}">{{ r.role }}</span></td>
+        <td>{% if r.user.is_active %}<span class="badge badge-ZMAGAZYNOWANY">aktywny</span>{% else %}<span class="badge badge-PUSTY">nieaktywny</span>{% endif %}</td>
+        <td class="nowrap">{{ r.user.last_login|date:"Y-m-d H:i"|default:"—" }}</td>
+        <td class="text-right"><a class="btn btn-sm btn-secondary" href="{% url 'user_edit' r.user.pk %}">Edytuj</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak użytkowników.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Mapa uprawnień</h2>
+<p class="muted">Co może każda rola. Superużytkownik Django zawsze ma uprawnienia Administratora.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Możliwość</th><th class="text-right">Administrator</th><th class="text-right">Operator</th><th class="text-right">Podgląd</th></tr></thead>
+  <tbody>
+    {% for cap, a, o, v in matrix %}
+      <tr>
+        <td>{{ cap }}</td>
+        <td class="text-right">{% if a %}✅{% else %}—{% endif %}</td>
+        <td class="text-right">{% if o %}✅{% else %}—{% endif %}</td>
+        <td class="text-right">{% if v %}✅{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

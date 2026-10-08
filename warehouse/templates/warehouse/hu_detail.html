@@ -1,0 +1,54 @@
+{% extends "warehouse/base.html" %}
+{% block title %}{{ hu.number }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>HU {{ hu.number }}</h1>
+
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'hu_label' hu.pk %}" target="_blank">🏷 Etykieta PDF</a>
+  {% if is_operator_role %}
+    {% if hu.status != "PUSTY" %}
+      <a class="btn" href="{% url 'hu_allocate' hu.pk %}">📍 {% if hu.location %}Przesuń{% else %}Ulokuj{% endif %}</a>
+      <a class="btn btn-secondary" href="{% url 'hu_correct' hu.pk %}">✏ Korekta ilości</a>
+      <a class="btn btn-secondary" href="{% url 'repack' %}?source={{ hu.number }}">🔀 Przepakuj</a>
+    {% endif %}
+  {% endif %}
+  {% if is_admin_role %}
+    <a class="btn btn-secondary" href="{% url 'hu_delivery' hu.pk %}">📅 Termin dostawy</a>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <dl class="dl">
+    <dt>Status</dt><dd><span class="badge badge-{{ hu.status }}">{{ hu.get_status_display }}</span></dd>
+    <dt>Materiał</dt><dd>{{ hu.material.index }} — {{ hu.material.name }}</dd>
+    <dt>Ilość</dt><dd>{{ hu.quantity }} {{ hu.material.unit.code }}</dd>
+    <dt>Lokalizacja</dt><dd>{{ hu.location.code|default:"— (strefa przyjęć)" }}</dd>
+    <dt>Partia / LOT</dt><dd>{{ hu.lot|default:"—" }}</dd>
+    <dt>Data ważności</dt><dd>{{ hu.expiry_date|default:"—" }}</dd>
+    <dt>Numer dostawy</dt><dd>{{ hu.delivery_ref|default:"—" }}</dd>
+    <dt>Termin dostawy</dt><dd>{{ hu.delivery_date|default:"—" }}</dd>
+    <dt>Przyjęto</dt><dd>{{ hu.created_at|date:"Y-m-d H:i" }} · {{ hu.created_by.username|default:"—" }}</dd>
+  </dl>
+</div>
+
+<h2>Historia ruchów</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>Typ</th><th class="text-right">Zmiana</th><th>Z → Do</th><th>Kto</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    {% for m in movements %}
+      <tr>
+        <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ m.get_type_display }}</td>
+        <td class="text-right">{{ m.quantity_delta }}</td>
+        <td>{{ m.location_from.code|default:"—" }} → {{ m.location_to.code|default:"—" }}</td>
+        <td>{{ m.created_by.username|default:"—" }}</td>
+        <td>{{ m.note }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak ruchów.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

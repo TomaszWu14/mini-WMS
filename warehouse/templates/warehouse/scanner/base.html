@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Skaner — mini-WMS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'warehouse/scanner.css' %}">
+</head>
+<body class="scn">
+  {% include "warehouse/_icons.html" %}
+  <header class="scn-top">
+    <a class="scn-back" href="{% block back %}{% url 'scanner_home' %}{% endblock %}">‹</a>
+    <div class="scn-title">{% block heading %}Skaner{% endblock %}</div>
+    <div class="scn-user">{{ user.username }}</div>
+  </header>
+  <main class="scn-main">
+    {% block content %}{% endblock %}
+  </main>
+  <script>window.CSRF = "{{ csrf_token }}";</script>
+  <script src="{% static 'warehouse/scanner.js' %}"></script>
+  <script src="{% static 'warehouse/vendor/jsQR.js' %}"></script>
+  <script src="{% static 'warehouse/scanner_camera.js' %}"></script>
+  {% block script %}{% endblock %}
+</body>
+</html>

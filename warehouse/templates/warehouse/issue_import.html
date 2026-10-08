@@ -1,0 +1,26 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Import zleceń — mini-WMS{% endblock %}
+{% block content %}
+<h1>Import zleceń wydania</h1>
+<div class="panel form-narrow">
+  <p class="muted">Wgraj plik <strong>CSV</strong> lub <strong>XLSX</strong>. Kolumny:</p>
+  <ul class="muted">
+    <li><code>indeks</code> — indeks materiału (musi istnieć w słowniku)</li>
+    <li><code>ilosc</code> — ilość do wydania</li>
+    <li><code>referencja</code> (lub <code>dokument</code>) — opcjonalnie; wiersze z tą samą wartością trafią do jednego dokumentu</li>
+  </ul>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="helptext">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Importuj</button>
+    <a class="btn btn-secondary" href="{% url 'issue_list' %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

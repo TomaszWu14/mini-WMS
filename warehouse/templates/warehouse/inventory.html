@@ -1,0 +1,60 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Inwentaryzacja — mini-WMS{% endblock %}
+{% block content %}
+<h1>Inwentaryzacja</h1>
+
+<div class="panel form-narrow">
+  <p class="muted">
+    Wpisz numer palety (HU), wybierz operację i ilość. Zmiana zapisuje się
+    jako ruch korekty w historii. Stan nie może zejść poniżej zera.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.hu_number.id_for_label }}">{{ form.hu_number.label }}</label>
+      {{ form.hu_number }}{{ form.hu_number.errors }}
+    </div>
+    <div class="field">
+      <label>{{ form.mode.label }}</label>
+      <ul class="radio">
+        {% for radio in form.mode %}<li>{{ radio.tag }} {{ radio.choice_label }}</li>{% endfor %}
+      </ul>
+      {{ form.mode.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+      {{ form.quantity }}{{ form.quantity.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+      {{ form.reason }}{{ form.reason.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+      {{ form.note }}{{ form.note.errors }}
+    </div>
+    <button class="btn" type="submit">Zapisz zmianę</button>
+  </form>
+</div>
+
+<h2>Ostatnie korekty</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>HU</th><th>Materiał</th><th class="text-right">Zmiana</th><th>Kto</th><th>Uwaga</th></tr></thead>
+  <tbody>
+    {% for m in recent %}
+      <tr>
+        <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{% if m.handling_unit %}<a href="{% url 'hu_detail' m.handling_unit.pk %}">{{ m.handling_unit.number }}</a>{% else %}—{% endif %}</td>
+        <td>{{ m.material.index }}</td>
+        <td class="text-right">{{ m.quantity_delta }}</td>
+        <td>{{ m.created_by.username|default:"—" }}</td>
+        <td>{{ m.note }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak korekt.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

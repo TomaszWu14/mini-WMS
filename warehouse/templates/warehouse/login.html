@@ -1,0 +1,26 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Logowanie — mini-WMS{% endblock %}
+{% block anon %}
+<div class="login-wrap">
+  <div class="login-card">
+    <h1><span style="color:#0047ab">cobalt</span>SPORT</h1>
+    <p style="text-align:center;margin:-8px 0 18px;color:#647084;font-weight:600;letter-spacing:.08em">mini-WMS · MAGAZYN</p>
+    {% if form.errors %}
+      <div class="msg msg-error">Niepoprawny login lub hasło.</div>
+    {% endif %}
+    <form method="post" action="{% url 'login' %}">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_username">Użytkownik</label>
+        <input type="text" name="username" id="id_username" autofocus required>
+      </div>
+      <div class="field">
+        <label for="id_password">Hasło</label>
+        <input type="password" name="password" id="id_password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn" type="submit" style="width:100%">Zaloguj</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Edycja {{ edited_user.username }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>Użytkownik: {{ edited_user.username }}</h1>
+<div class="panel form-narrow">
+  {% if edited_user.is_superuser %}
+    <div class="msg msg-info">To konto jest superużytkownikiem — zawsze ma uprawnienia Administratora niezależnie od wybranej roli.</div>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="helptext">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Zapisz</button>
+    <a class="btn btn-secondary" href="{% url 'user_list' %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

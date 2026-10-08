@@ -1,0 +1,335 @@
+/* Profesjonalny interfejs skanerowy — pełnoekranowy, mobile-first. */
+:root {
+  --s-bg: #0b1220;
+  --s-panel: #131c2e;
+  --s-panel2: #1b2740;
+  --s-line: #25324d;
+  --s-ink: #eef2f9;
+  --s-muted: #8da2c4;
+  --s-accent: #2f7bf6;
+  --s-ok: #16a34a;
+  --s-ok-bg: #0f3d27;
+  --s-err: #ef4444;
+  --s-err-bg: #45161a;
+  --s-warn: #f59e0b;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* Ikony SVG (sprite, styl liniowy).
+   fill/stroke tutaj (właściwości dziedziczone) — wchodzą do shadow-DOM <use>,
+   więc ikony są ostrymi liniami, a nie wypełnionymi plamami. */
+svg.ic {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+html, body { margin: 0; height: 100%; }
+body.scn {
+  background: var(--s-bg);
+  color: var(--s-ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* Górny pasek */
+.scn-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #060b16;
+  border-bottom: 1px solid var(--s-line);
+  box-shadow: inset 0 3px 0 #0047ab;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.scn-back {
+  color: var(--s-ink);
+  text-decoration: none;
+  font-size: 30px;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--s-panel2);
+}
+.scn-title { font-weight: 700; font-size: 18px; flex: 1; }
+.scn-user { color: var(--s-muted); font-size: 13px; }
+
+.scn-main {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Menu kafelki — duża siatka dotykowa, inspiracja Shipedge */
+.scn-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+.scn-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 22px 12px;
+  min-height: 150px;
+  background: var(--s-panel);
+  border: 1px solid var(--s-line);
+  border-radius: 20px;
+  color: var(--s-ink);
+  text-decoration: none;
+  transition: transform .1s ease, border-color .12s ease;
+}
+.scn-tile:active { background: var(--s-panel2); transform: scale(.97); }
+.scn-tile-ic {
+  width: 64px;
+  height: 64px;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1c1400;
+  background: linear-gradient(150deg, #ffd451, #e0a800);
+  box-shadow: 0 3px 7px -2px rgba(84, 63, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+.scn-tile-ic svg.ic { width: 32px; height: 32px; stroke-width: 2.1; }
+.scn-tile-lab { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.scn-tile small { display: block; color: var(--s-muted); font-weight: 400; font-size: 12px; margin-top: 2px; }
+
+/* Krok / prompt */
+.scn-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--s-muted);
+}
+.scn-step .num {
+  background: var(--s-accent);
+  color: #fff;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+}
+.scn-prompt { font-size: 22px; font-weight: 700; margin: 2px 0 6px; }
+
+/* Pole skanowania — input na całą szerokość, ikona aparatu POD nim,
+   dzięki czemu nic się nie chowa na wąskich telefonach. */
+.scn-scan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scn-scan input {
+  width: 100%;
+  min-width: 0;
+  font-size: 22px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid var(--s-accent);
+  background: #fff;
+  color: #0b1220;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+.scn-scan input::placeholder { color: #94a3b8; font-weight: 400; letter-spacing: 0; }
+
+/* Karta z danymi */
+.scn-card {
+  background: var(--s-panel);
+  border: 1px solid var(--s-line);
+  border-radius: 14px;
+  padding: 16px;
+}
+.scn-card.hl { border-color: var(--s-accent); }
+.scn-card .big { font-size: 26px; font-weight: 800; }
+.scn-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--s-line); }
+.scn-row:last-child { border-bottom: none; }
+.scn-row .k { color: var(--s-muted); }
+.scn-row .v { font-weight: 700; text-align: right; }
+.scn-qty { font-size: 40px; font-weight: 800; text-align: center; padding: 6px 0; }
+
+/* Duże przyciski */
+.scn-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 14px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--s-accent);
+  cursor: pointer;
+}
+.scn-btn:active { filter: brightness(.92); }
+.scn-btn.ok { background: var(--s-ok); }
+.scn-btn.ghost { background: var(--s-panel2); color: var(--s-ink); border: 1px solid var(--s-line); }
+.scn-btn:disabled { opacity: .45; }
+.scn-btns { display: flex; gap: 10px; }
+.scn-btns .scn-btn { flex: 1; }
+
+/* Numpad do ilości */
+.scn-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.scn-numpad button {
+  padding: 18px;
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 1px solid var(--s-line);
+  background: var(--s-panel2);
+  color: var(--s-ink);
+  cursor: pointer;
+}
+.scn-numpad button:active { background: var(--s-line); }
+
+/* Banner statusu */
+.scn-banner {
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  display: none;
+}
+.scn-banner.show { display: block; }
+.scn-banner.ok { background: var(--s-ok-bg); color: #86efac; border: 1px solid var(--s-ok); }
+.scn-banner.err { background: var(--s-err-bg); color: #fca5a5; border: 1px solid var(--s-err); }
+
+.scn-hint { color: var(--s-muted); font-size: 13px; text-align: center; }
+.hidden { display: none !important; }
+.badge-loc { display:inline-block; padding:2px 8px; border-radius:6px; font-size:13px; background:var(--s-panel2); }
+
+/* Mały Reset w dolnym rogu */
+.scn-reset-mini {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: var(--s-panel2);
+  color: var(--s-muted);
+  border: 1px solid var(--s-line);
+  cursor: pointer;
+  z-index: 30;
+  opacity: .85;
+}
+.scn-reset-mini:active { background: var(--s-line); }
+
+/* Segment Dodaj / Odejmij (inwentaryzacja) */
+.scn-seg { display: flex; gap: 10px; }
+.scn-seg button {
+  flex: 1;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 800;
+  border-radius: 12px;
+  border: 2px solid var(--s-line);
+  background: var(--s-panel2);
+  color: var(--s-muted);
+  cursor: pointer;
+}
+.scn-seg button.active.plus { border-color: var(--s-ok); background: var(--s-ok-bg); color: #86efac; }
+.scn-seg button.active.minus { border-color: var(--s-err); background: var(--s-err-bg); color: #fca5a5; }
+
+/* Lista pozycji zlecenia */
+.scn-lines { display: flex; flex-direction: column; gap: 8px; }
+.scn-lineitem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--s-panel);
+  border: 1px solid var(--s-line);
+}
+.scn-lineitem.done { opacity: .55; border-color: var(--s-ok); }
+.scn-lineitem .prog { font-weight: 800; }
+.scn-lineitem.done .prog { color: #86efac; }
+
+/* Przycisk kamery QR — pełna szerokość pod polem, z czytelnym podpisem */
+.scn-cam {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: var(--s-panel2);
+  color: var(--s-ink);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.scn-cam svg.ic { width: 22px; height: 22px; }
+.scn-cam:active { background: var(--s-line); }
+
+/* Overlay kamery */
+.cam-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cam-box { position: relative; width: 100%; height: 100%; }
+.cam-video { width: 100%; height: 100%; object-fit: cover; }
+.cam-frame {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 65vw; height: 65vw;
+  max-width: 320px; max-height: 320px;
+  transform: translate(-50%, -50%);
+  border: 3px solid #2f7bf6;
+  border-radius: 18px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+}
+.cam-hint {
+  position: absolute;
+  top: 16px; left: 0; right: 0;
+  text-align: center;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 3px #000;
+}
+.cam-close {
+  position: absolute;
+  bottom: 28px; left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 28px;
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+  color: #0b1220;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+}

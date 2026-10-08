@@ -1,0 +1,21 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Alokacja {{ hu.number }} — mini-WMS{% endblock %}
+{% block content %}
+<h1>Alokacja HU {{ hu.number }}</h1>
+<div class="panel form-narrow">
+  <p class="muted">
+    Materiał: <strong>{{ hu.material.index }}</strong> ·
+    Ilość: <strong>{{ hu.quantity }} {{ hu.material.unit.code }}</strong> ·
+    Obecna lokalizacja: <strong>{{ hu.location.code|default:"— brak" }}</strong>
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+      {{ form.location }}{{ form.location.errors }}
+    </div>
+    <button class="btn" type="submit">Ulokuj</button>
+    <a class="btn btn-secondary" href="{% url 'hu_detail' hu.pk %}">Anuluj</a>
+  </form>
+</div>
+{% endblock %}

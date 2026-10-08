@@ -1,0 +1,33 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Skaner — mini-WMS{% endblock %}
+{% block heading %}Skaner mini-WMS{% endblock %}
+{% block back %}{% url 'dashboard' %}{% endblock %}
+{% block content %}
+<div class="scn-tiles">
+  <a class="scn-tile" href="{% url 'scanner_putaway' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-map-pin"/></svg></span>
+    <span class="scn-tile-lab">Rozmieszczanie</span>
+  </a>
+  <a class="scn-tile" href="{% url 'scanner_picking' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-outbound"/></svg></span>
+    <span class="scn-tile-lab">Picking</span>
+  </a>
+  <a class="scn-tile" href="{% url 'scanner_inventory' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-clipboard-check"/></svg></span>
+    <span class="scn-tile-lab">Inwentaryzacja</span>
+  </a>
+  <a class="scn-tile" href="{% url 'scanner_repack' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-shuffle"/></svg></span>
+    <span class="scn-tile-lab">Przepakowanie</span>
+  </a>
+  <a class="scn-tile" href="{% url 'scanner_info' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-search"/></svg></span>
+    <span class="scn-tile-lab">Podgląd HU</span>
+  </a>
+  <a class="scn-tile" href="{% url 'scanner_locinfo' %}">
+    <span class="scn-tile-ic"><svg class="ic"><use href="#i-book-open"/></svg></span>
+    <span class="scn-tile-lab">Co w lokalizacji</span>
+  </a>
+</div>
+<p class="scn-hint">Tryb skanera — działa w przeglądarce na kolektorze lub telefonie.</p>
+{% endblock %}

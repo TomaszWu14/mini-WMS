@@ -1,0 +1,82 @@
+{% extends "warehouse/scanner/base.html" %}
+{% block title %}Co w lokalizacji — Skaner{% endblock %}
+{% block heading %}🗺️ Co w lokalizacji{% endblock %}
+{% block content %}
+<div id="banner" class="scn-banner"></div>
+
+<div class="scn-prompt">Zeskanuj lokalizację</div>
+<form id="scanForm" autocomplete="off">
+  <div class="scn-scan">
+    <input id="scan" inputmode="text" autocomplete="off" placeholder="Zeskanuj lokalizację…" autofocus>
+    <button type="button" class="scn-cam"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Skanuj aparatem</button>
+  </div>
+</form>
+
+<div id="locCard" class="scn-card hl hidden">
+  <div class="big" id="locCode">—</div>
+  <div class="scn-row"><span class="k">Typ</span><span class="v" id="locType">—</span></div>
+  <div class="scn-row"><span class="k">Palet</span><span class="v" id="locCount">—</span></div>
+</div>
+
+<div class="scn-lines" id="lines"></div>
+
+<button type="button" class="scn-reset-mini" id="resetBtn">Reset</button>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  var S = window.Scanner;
+  var scan = document.getElementById("scan");
+  var banner = document.getElementById("banner");
+  S.keepFocus(scan);
+
+  function render(loc, hus) {
+    document.getElementById("locCode").textContent = loc.code;
+    document.getElementById("locType").textContent = loc.type_label;
+    document.getElementById("locCount").textContent = hus.length;
+    document.getElementById("locCard").classList.remove("hidden");
+    var box = document.getElementById("lines");
+    box.innerHTML = "";
+    if (!hus.length) {
+      box.innerHTML = '<p class="scn-hint">Pusta lokalizacja.</p>';
+      return;
+    }
+    hus.forEach(function (h) {
+      var div = document.createElement("div");
+      div.className = "scn-lineitem";
+      // Budujemy węzły przez textContent — nazwy/numery pochodzą z danych
+      // użytkownika i nie mogą trafić do innerHTML (ryzyko XSS).
+      var left = document.createElement("span");
+      var strong = document.createElement("strong");
+      strong.textContent = h.number;
+      left.appendChild(strong);
+      left.appendChild(document.createElement("br"));
+      left.appendChild(document.createTextNode(h.material_index + " — " + h.material_name));
+      var right = document.createElement("span");
+      right.className = "prog";
+      right.textContent = h.quantity + " " + h.unit;
+      div.appendChild(left);
+      div.appendChild(right);
+      box.appendChild(div);
+    });
+  }
+
+  document.getElementById("scanForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = scan.value.trim(); scan.value = "";
+    if (!code) return;
+    S.getJSON("{% url 'scanner_api_location_contents' %}", { code: code }).then(function (j) {
+      if (!j.ok) { S.beepErr(); banner.className = "scn-banner show err"; banner.textContent = j.error; document.getElementById("locCard").classList.add("hidden"); document.getElementById("lines").innerHTML = ""; return; }
+      S.beepOk(); banner.className = "scn-banner";
+      render(j.location, j.hus);
+    });
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    document.getElementById("locCard").classList.add("hidden");
+    document.getElementById("lines").innerHTML = "";
+    banner.className = "scn-banner"; scan.value = ""; scan.focus();
+  });
+})();
+</script>
+{% endblock %}

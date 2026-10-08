@@ -1,0 +1,121 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Pulpit — mini-WMS{% endblock %}
+{% block content %}
+<h1>Pulpit</h1>
+
+<div class="cards">
+  <div class="card"><div class="kpi">{{ hu_total }}</div><div class="kpi-label">Aktywne HU</div></div>
+  <div class="card{% if hu_to_allocate %} alert{% endif %}"><div class="kpi">{{ hu_to_allocate }}</div><div class="kpi-label">HU do ułożenia</div></div>
+  <div class="card"><div class="kpi">{{ hu_stored }}</div><div class="kpi-label">HU zmagazynowane</div></div>
+  <div class="card"><div class="kpi">{{ material_count }}</div><div class="kpi-label">Materiały</div></div>
+  <div class="card"><div class="kpi">{{ occupied_locations }}/{{ location_count }}</div><div class="kpi-label">Zajęte lokalizacje</div></div>
+  <div class="card"><div class="kpi">{{ movements_today }}</div><div class="kpi-label">Dzisiejsze ruchy</div></div>
+  <div class="card{% if open_issues %} alert{% endif %}"><div class="kpi">{{ open_issues }}</div><div class="kpi-label">Otwarte wydania</div></div>
+</div>
+
+<div class="section-title">Skróty</div>
+<div class="groups">
+
+  {% if is_operator_role %}
+  <div class="group" style="--gc: var(--g-recv)">
+    <div class="group-head">Przyjęcia i rozmieszczanie</div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'receive' %}"><span class="tile-code">W01</span><span class="tile-ic"><svg class="ic"><use href="#i-inbound"/></svg></span><span class="tile-lab">Przyjęcie towaru</span></a>
+      <a class="tile" href="{% url 'receive_import' %}"><span class="tile-code">W02</span><span class="tile-ic"><svg class="ic"><use href="#i-upload"/></svg></span><span class="tile-lab">Import przyjęć</span></a>
+      <a class="tile" href="{% url 'hu_list' %}"><span class="tile-code">W03</span><span class="tile-ic"><svg class="ic"><use href="#i-layers"/></svg></span><span class="tile-lab">HU do ułożenia</span></a>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="group" style="--gc: var(--g-stock)">
+    <div class="group-head">Zapasy i dane podstawowe</div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'stock_list' %}"><span class="tile-code">S01</span><span class="tile-ic"><svg class="ic"><use href="#i-chart"/></svg></span><span class="tile-lab">Stany</span></a>
+      <a class="tile" href="{% url 'material_list' %}"><span class="tile-code">S02</span><span class="tile-ic"><svg class="ic"><use href="#i-package"/></svg></span><span class="tile-lab">Materiały</span></a>
+      <a class="tile" href="{% url 'location_list' %}"><span class="tile-code">S03</span><span class="tile-ic"><svg class="ic"><use href="#i-map-pin"/></svg></span><span class="tile-lab">Lokalizacje</span></a>
+      <a class="tile" href="{% url 'hu_list' %}"><span class="tile-code">S04</span><span class="tile-ic"><svg class="ic"><use href="#i-layers"/></svg></span><span class="tile-lab">HU (palety)</span></a>
+      <a class="tile" href="{% url 'stock_by_location' %}"><span class="tile-code">S05</span><span class="tile-ic"><svg class="ic"><use href="#i-map"/></svg></span><span class="tile-lab">Stan wg lokalizacji</span></a>
+    </div>
+  </div>
+
+  <div class="group" style="--gc: var(--g-issue)">
+    <div class="group-head">Wydania</div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'issue_list' %}"><span class="tile-code">D01</span><span class="tile-ic"><svg class="ic"><use href="#i-truck"/></svg></span><span class="tile-lab">Wydania</span></a>
+      <a class="tile" href="{% url 'issue_import' %}"><span class="tile-code">D02</span><span class="tile-ic"><svg class="ic"><use href="#i-upload"/></svg></span><span class="tile-lab">Import wydań</span></a>
+      {% if is_operator_role %}<a class="tile" href="{% url 'scanner_picking' %}"><span class="tile-code">D03</span><span class="tile-ic"><svg class="ic"><use href="#i-scan"/></svg></span><span class="tile-lab">Picking (skaner)</span></a>{% endif %}
+    </div>
+  </div>
+
+  <div class="group" style="--gc: var(--g-ops)">
+    <div class="group-head">Operacje magazynowe</div>
+    <div class="tiles">
+      {% if is_operator_role %}<a class="tile" href="{% url 'inventory' %}"><span class="tile-code">O01</span><span class="tile-ic"><svg class="ic"><use href="#i-clipboard-check"/></svg></span><span class="tile-lab">Inwentaryzacja</span></a>{% endif %}
+      {% if is_operator_role %}<a class="tile" href="{% url 'repack' %}"><span class="tile-code">O02</span><span class="tile-ic"><svg class="ic"><use href="#i-shuffle"/></svg></span><span class="tile-lab">Przepakowanie</span></a>{% endif %}
+      <a class="tile" href="{% url 'stocktake_list' %}"><span class="tile-code">O03</span><span class="tile-ic"><svg class="ic"><use href="#i-clipboard-list"/></svg></span><span class="tile-lab">Spis z natury</span></a>
+      {% if is_operator_role %}<a class="tile" href="{% url 'scanner_home' %}"><span class="tile-code">O04</span><span class="tile-ic"><svg class="ic"><use href="#i-scan"/></svg></span><span class="tile-lab">Tryb skanera</span></a>{% endif %}
+    </div>
+  </div>
+
+  <div class="group" style="--gc: var(--g-report)">
+    <div class="group-head">Analityka</div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'report_index' %}"><span class="tile-code">R01</span><span class="tile-ic"><svg class="ic"><use href="#i-trending-up"/></svg></span><span class="tile-lab">Raporty</span></a>
+      <a class="tile" href="{% url 'movement_list' %}"><span class="tile-code">R02</span><span class="tile-ic"><svg class="ic"><use href="#i-arrows"/></svg></span><span class="tile-lab">Ruchy</span></a>
+      <a class="tile" href="{% url 'report_material' %}"><span class="tile-code">R03</span><span class="tile-ic"><svg class="ic"><use href="#i-history"/></svg></span><span class="tile-lab">Historia materiału</span></a>
+    </div>
+  </div>
+
+  {% if is_admin_role %}
+  <div class="group" style="--gc: var(--g-admin)">
+    <div class="group-head">Administracja</div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'user_list' %}"><span class="tile-code">A01</span><span class="tile-ic"><svg class="ic"><use href="#i-users"/></svg></span><span class="tile-lab">Użytkownicy</span></a>
+      <a class="tile" href="{% url 'login_log' %}"><span class="tile-code">A02</span><span class="tile-ic"><svg class="ic"><use href="#i-shield-check"/></svg></span><span class="tile-lab">Log logowań</span></a>
+      <a class="tile" href="/admin/"><span class="tile-code">A03</span><span class="tile-ic"><svg class="ic"><use href="#i-settings"/></svg></span><span class="tile-lab">Administracja</span></a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="section-title">Stan wg materiału</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Indeks</th><th>Nazwa</th><th class="text-right">Ilość</th><th class="text-right">HU</th></tr></thead>
+  <tbody>
+    {% for row in stock_by_material %}
+      <tr>
+        <td>{{ row.material__index }}</td>
+        <td>{{ row.material__name }}</td>
+        <td class="text-right">{{ row.qty }} {{ row.material__unit__code }}</td>
+        <td class="text-right">{{ row.hus }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">Brak stanów na magazynie.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="section-title">Ostatnie ruchy</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>Typ</th><th>Materiał</th><th>HU</th><th class="text-right">Zmiana</th><th>Kto</th></tr></thead>
+  <tbody>
+    {% for m in recent_movements %}
+      <tr>
+        <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ m.get_type_display }}</td>
+        <td>{{ m.material.index }}</td>
+        <td>{% if m.handling_unit %}{{ m.handling_unit.number }}{% else %}—{% endif %}</td>
+        <td class="text-right">{{ m.quantity_delta }}</td>
+        <td>{{ m.created_by.username|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak ruchów.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

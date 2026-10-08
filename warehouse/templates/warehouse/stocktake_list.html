@@ -1,0 +1,40 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Spis z natury — mini-WMS{% endblock %}
+{% block content %}
+<h1>Spis z natury</h1>
+
+{% if is_operator_role %}
+<div class="panel form-narrow">
+  <h2 style="margin-top:0">Nowy arkusz spisu</h2>
+  <form method="post" action="{% url 'stocktake_create' %}">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+      {{ form.location }}
+      <div class="helptext">{{ form.location.help_text }}</div>
+    </div>
+    <button class="btn" type="submit">Utwórz arkusz (migawka stanu)</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Numer</th><th>Zakres</th><th>Status</th><th class="text-right">Pozycje</th><th>Utworzono</th><th>Kto</th></tr></thead>
+  <tbody>
+    {% for s in sheets %}
+      <tr>
+        <td><a href="{% url 'stocktake_detail' s.pk %}">{{ s.number }}</a></td>
+        <td>{{ s.location.code|default:"cały magazyn" }}</td>
+        <td><span class="badge badge-{{ s.status }}">{{ s.get_status_display }}</span></td>
+        <td class="text-right">{{ s.line_count }}</td>
+        <td class="nowrap">{{ s.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ s.created_by.username|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak arkuszy spisu.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

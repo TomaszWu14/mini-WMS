@@ -1,0 +1,45 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Dziennik logowań — mini-WMS{% endblock %}
+{% block content %}
+<h1>Dziennik logowań</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'user_list' %}">← Użytkownicy</a>
+</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>Zdarzenie</th><th>Login</th><th>IP</th><th>Przeglądarka</th></tr></thead>
+  <tbody>
+    {% for e in events %}
+      <tr>
+        <td class="nowrap">{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+        <td>
+          {% if e.kind == "FAILED" %}<span style="color:var(--err)">⚠ {{ e.get_kind_display }}</span>
+          {% elif e.kind == "LOGIN" %}<span style="color:var(--ok)">✓ {{ e.get_kind_display }}</span>
+          {% else %}{{ e.get_kind_display }}{% endif %}
+        </td>
+        <td>{{ e.username|default:"—" }}</td>
+        <td>{{ e.ip|default:"—" }}</td>
+        <td class="muted" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.user_agent|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">Brak zdarzeń.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="toolbar" style="margin-top:12px">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-sm btn-secondary" href="?page={{ page_obj.previous_page_number }}">← Nowsze</a>
+  {% endif %}
+  <div class="spacer"></div>
+  <span class="muted">Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+    ({{ page_obj.paginator.count }} zdarzeń)</span>
+  <div class="spacer"></div>
+  {% if page_obj.has_next %}
+    <a class="btn btn-sm btn-secondary" href="?page={{ page_obj.next_page_number }}">Starsze →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+# Zależności deweloperskie (lint, typy, coverage). Instalacja:
+#   pip install -r requirements-dev.txt
+# Produkcyjne zależności są w requirements.txt (używane w obrazie Docker).
+-r requirements.txt
+
+ruff==0.15.20
+mypy==1.13.0
+django-stubs[compatible-mypy]==5.1.1
+coverage==7.6.9
