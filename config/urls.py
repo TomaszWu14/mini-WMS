@@ -1,5 +1,6 @@
 """Główna konfiguracja URL projektu mini-WMS."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.db import connection
@@ -29,8 +30,11 @@ def healthz(request):
 
 urlpatterns = [
     path("healthz", healthz, name="healthz"),
-    path("admin/", admin.site.urls),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("warehouse.urls")),
 ]
+
+# Publiczne demo: bez panelu admina (konto z DJANGO_SUPERUSER_* zostaje do zadań serwisowych).
+if not settings.DEMO_MODE:
+    urlpatterns.insert(1, path("admin/", admin.site.urls))

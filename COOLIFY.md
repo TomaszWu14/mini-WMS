@@ -195,6 +195,8 @@ z własną bazą, nigdy na danych produkcyjnych.
 
 Konta demo: `demo_operator` (Operator) i `demo_podglad` (Podgląd), hasło
 `demo1234`. Konto administratora z `DJANGO_SUPERUSER_*` zostaje prywatne.
+Przy `DEMO_MODE=1` panel `/admin/` jest wyłączony (404); dane demo odnawia Scheduled Task
+`python manage.py seed_demo --reset`, a zadania serwisowe robi się przez `manage.py` w kontenerze.
 
 ---
 

@@ -136,3 +136,33 @@ class DemoModeViewTests(TestCase):
         self.assertContains(resp, "Konta demo są chronione", status_code=403)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password(DEMO_PASSWORD))
+
+
+class AdminHiddenInDemoTests(TestCase):
+    """Publiczne demo: panel /admin/ nie istnieje (konto admina z env zostaje do zadań serwisowych)."""
+
+    def _get_admin(self):
+        import importlib
+
+        from django.urls import clear_url_caches
+
+        import config.urls
+
+        clear_url_caches()
+        importlib.reload(config.urls)
+        try:
+            return self.client.get("/admin/")
+        finally:
+            clear_url_caches()
+
+    def tearDown(self):
+        self._get_admin()  # przywraca urlconf zgodny z bieżącymi ustawieniami
+
+    @override_settings(DEMO_MODE=True)
+    def test_admin_404_in_demo(self):
+        self.assertEqual(self._get_admin().status_code, 404)
+
+    def test_admin_login_redirect_without_demo(self):
+        r = self._get_admin()
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/admin/login/", r["Location"])
