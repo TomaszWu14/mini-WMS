@@ -90,6 +90,26 @@ reverse-proxy i chcemy auto-deploy oraz harmonogram zadań z panelu.
   przy większym ruchu — wspólny cache (np. Redis).
 - Brak rezerwacji stanu pod otwarte WZ — dostępność liczona jest w chwili realizacji.
 
+## Mój wkład
+
+Projekt w całości mojego autorstwa (jedyny twórca): od modelu danych po wdrożenie.
+
+- Model magazynu (materiał → HU → lokalizacja → ruch) i warstwa usług
+  `warehouse/services.py`, w której każda zmiana stanu zapisuje ruch w tej samej transakcji.
+- Dobór palet FEFO → FIFO z priorytetem lokalizacji PICKING i blokadą wierszy przy pickingu.
+- Ekrany skanera (przyjęcie, alokacja, picking, spis) i etykiety PDF z kodem QR.
+- Tryb demo, 119 testów, CI (ruff, `check --deploy`, kontrola migracji) i dwa warianty wdrożenia.
+
+## Gdzie zacząć czytać kod
+
+1. [`warehouse/services.py`](warehouse/services.py) — cała logika magazynowa: przyjęcie, alokacja, picking FEFO/FIFO.
+2. [`warehouse/scanner_views.py`](warehouse/scanner_views.py) — API i widoki terminala skanera.
+3. [`warehouse/tests.py`](warehouse/tests.py) — testy reguł (stan nie spada poniżej zera, kolejność FEFO, audyt ruchów).
+
+## Wideo
+
+Wkrótce (YouTube) — krótki przegląd przyjęcia, etykiety i pickingu na skanerze.
+
 ## Funkcje
 
 - **Słownik materiałów** — indeks (≤40 zn.), nazwa, jednostka miary (domyślnie `PCS`),
