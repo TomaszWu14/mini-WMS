@@ -44,14 +44,46 @@ erDiagram
     USER |o--o{ STOCK_MOVEMENT : "kto"
     USER |o--o{ LOGIN_EVENT : "kto"
 
-    MATERIAL { string index UK  string name  int max_per_pallet }
-    LOCATION { string code UK  enum type  int capacity }
-    HANDLING_UNIT { string number UK  int quantity  string lot  date expiry_date  enum status }
-    ISSUE_DOCUMENT { string number UK  string reference  enum status }
-    ISSUE_LINE { int requested_qty  int picked_qty }
-    STOCK_MOVEMENT { enum type  int quantity_delta  enum reason  datetime created_at }
-    STOCKTAKE_SHEET { string number UK  enum status }
-    STOCKTAKE_LINE { int expected_qty  int counted_qty }
+    MATERIAL {
+        string index UK
+        string name
+        int max_per_pallet
+    }
+    LOCATION {
+        string code UK
+        enum type
+        int capacity
+    }
+    HANDLING_UNIT {
+        string number UK
+        int quantity
+        string lot
+        date expiry_date
+        enum status
+    }
+    ISSUE_DOCUMENT {
+        string number UK
+        string reference
+        enum status
+    }
+    ISSUE_LINE {
+        int requested_qty
+        int picked_qty
+    }
+    STOCK_MOVEMENT {
+        enum type
+        int quantity_delta
+        enum reason
+        datetime created_at
+    }
+    STOCKTAKE_SHEET {
+        string number UK
+        enum status
+    }
+    STOCKTAKE_LINE {
+        int expected_qty
+        int counted_qty
+    }
 ```
 
 Usuwanie: materiał i jednostka są chronione (`PROTECT`) — nie da się usunąć materiału z historią.
