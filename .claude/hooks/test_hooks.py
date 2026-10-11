@@ -86,6 +86,8 @@ BLOCKED = [
             "curl -X GET 'https://coolify.example.com/api/v1/deploy?uuid=abc&force=false'"
         ),
     ),
+    ("prod", bash("curl -s https://coolify.twapp.pl/api/v1/applications")),
+    ("prod", bash("coolify deploy --uuid abc")),
     ("prod", bash("ssh root@204.0.0.1 docker ps")),
     ("prod", bash("docker compose -f docker-compose.coolify.yml up -d")),
     ("prod", bash("git push origin main")),
@@ -114,6 +116,9 @@ ALLOWED = [
     bash("psql -h localhost -U wms"),
     bash("DATABASE_URL=postgres://wms:pw@localhost:5432/wms python manage.py test"),
     bash("python manage.py runserver 8001"),
+    bash("grep -n '^## ' COOLIFY.md"),
+    bash("git add COOLIFY.md README.md"),
+    bash('gh pr create --body "see https://example.com — Coolify notes"'),
     {
         "tool_name": "Write",
         "tool_input": {"file_path": "/repo/.env.example", "content": "X="},

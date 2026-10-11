@@ -19,7 +19,10 @@
    `docker-compose.coolify.yml` (Traefik Coolify, bez Caddy). Zmiana zmiennych środowiskowych
    → zaktualizuj oba + `.env.example`/`.env.docker.example` + tabelę w `COOLIFY.md` §6.
 8. **Backup to osobny kontener `backup`** (`scripts/pg_backup.sh`, retencja 7 dni) na tym
-   samym serwerze co baza — to nie jest kopia off-site.
+   samym serwerze co baza — to nie jest kopia off-site. Skrypt jest montowany z repo, więc
+   w Coolify musi być włączone **Preserve Repository During Deployment** — bez tego
+   `backup` restartuje się w kółko. Domenę w Coolify wpisuj bez `:8000` (port z
+   `SERVICE_FQDN_WEB_8000`).
 9. **CI (`ci.yml`) uruchamia testy przez `manage.py test` (bez MD5 hashera) — ~5 min.**
    Lokalnie i w Stop hooku: `pytest` (~11–40 s). Wyniki powinny być identyczne; różnica to
    tylko hasher.
