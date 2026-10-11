@@ -117,3 +117,9 @@ jedna pozycja spisu na paletę w arkuszu, ochrona materiału z historią przed u
 8. **Spis: `expected_qty`/`counted_qty` dopuszczają liczby ujemne** w bazie; ekran przycina do 0
    (`views.py:1009`).
 9. **Lokalizacja w pozycji spisu to tekst** (migawka), nie FK — świadomie, ale bez komentarza.
+10. **Pojemność lokalizacji** — formularz dopuszcza 0 („bez limitu”), import wymusza ≥ 1
+    (`forms.py:59`, `imports.py:56`); w bazie brak ograniczenia.
+11. **Suma pozycji WZ wskazujących ten sam HU** może przekroczyć ilość na palecie — formularz
+    sprawdza każdą pozycję osobno (`forms.py:340`).
+12. **Jedna paleta w wielu otwartych arkuszach spisu** — `UNIQUE (sheet, handling_unit)`
+    obejmuje tylko jeden arkusz (`models.py:491`).

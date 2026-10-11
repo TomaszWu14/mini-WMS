@@ -72,6 +72,7 @@ flowchart TD
 | Dobór palet | PICKING przed ZAPAS → najkrótsza data ważności → najstarsze przyjęcie | `services.py:305` |
 | Łączenie palet | ten sam materiał, zgodna partia, cel niepusty | `services.py:251-269` |
 | Spis | różnica policzone ≠ stan → korekta | `services.py:560` |
+| Korekta pustej palety | korekta z 0 na więcej przywraca paletę do statusu „Do ułożenia” (bez lokalizacji) | `services.py:212` |
 
 ## Założenia procesu
 

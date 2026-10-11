@@ -172,3 +172,7 @@ flowchart LR
    (`picking_doc.html:93-95`).
 7. Endpointy tylko-POST wywołane GET-em — ciche przekierowanie bez komunikatu.
 8. Spis: wartości nie-liczbowe w „Policzono” pomijane bez informacji (`views.py:1009`).
+9. „Administracja” dla roli Administrator bez konta superusera → logowanie panelu Django
+   odrzuca konto (brak `is_staff`, `views.py:1220`).
+10. Skaner — kompletacja: przy pozycji z „konkretnym HU” skaner przyjmuje dowolną paletę tego
+    materiału, bez ostrzeżenia (`scanner_views.py:284-291`).

@@ -46,6 +46,39 @@ Status: **zaawansowany prototyp**.
 10. Skaner: po wygaśnięciu sesji (30 min) pokazuje „Błąd serwera (200).” zamiast ekranu
     logowania; pusty skan nie daje żadnej reakcji.
 11. Szczegóły palety, WZ i spisu nie mają linku powrotu do listy; przyjęcie nie ma „Anuluj”.
+12. Zbiorczy wydruk etykiet palet obcina listę do 200 bez komunikatu (`views.py:514`).
+
+**Reguły — obserwacje z przeglądu kodu, status do rozstrzygnięcia**
+
+`<DO UZUPEŁNIENIA: dla 13–15 — wymaganie niespełnione (⚠ w 05) czy świadomie poza zakresem?>`
+
+13. Skaner ignoruje paletę wskazaną w pozycji WZ („konkretny HU”): pozycja jest dobierana po
+    materiale, więc przyjmie każdą paletę tego materiału (`scanner_views.py:284-291`).
+14. Powód korekty jest wybierany tylko na ekranie „Inwentaryzacja”; „Korekta ilości” palety i
+    inwentaryzacja skanerem zapisują korektę bez powodu (`views.py:586`,
+    `scanner_views.py:404`).
+15. Wydanie automatyczne bierze też palety „Do ułożenia” (bez lokalizacji) — na końcu kolejki,
+    po PICKING i ZAPAS (`services.py:315`).
+16. Kilka pozycji WZ może wskazywać tę samą paletę; formularz sprawdza ilość tylko dla jednej
+    pozycji, więc realizacja kończy się błędem braku stanu (`forms.py:340`).
+17. Import lokalizacji nie pozwala ustawić pojemności 0 („bez limitu”) — wymusza ≥ 1
+    (`imports.py:56`); formularz pozwala (`forms.py:59`). Import lokalizacji, w odróżnieniu od
+    pozostałych trzech, nie działa w jednej transakcji (`imports.py:112`).
+18. API skanera przyjmuje wydanie bez dokumentu WZ (ruch WYDANIE bez dokumentu); ekrany skanera
+    z tego nie korzystają (`scanner_views.py:273`).
+
+**Dostęp**
+19. Rola Administrator bez konta superusera widzi „Administracja”, ale panel Django jej nie
+    wpuści (konto nie ma `is_staff`, `views.py:1220`). Mapa uprawnień przypisuje
+    Administratorowi „Edycję / usuwanie ruchów” (`views.py:1182`), a panel pozwala na to tylko
+    superuserowi (`admin.py:106-111`).
+20. Limit prób logowania działa tylko w trybie demo (`demo.py:50`). Adres IP w dzienniku i w
+    limicie pochodzi z nagłówka `X-Forwarded-For` bez weryfikacji (`signals.py:30-35`).
+
+**Współbieżność — uzupełnienie**
+21. Alokacja nie blokuje lokalizacji — dwie równoczesne mogą przekroczyć pojemność
+    (`services.py:160-174`).
+22. Dwa otwarte arkusze spisu mogą obejmować tę samą paletę (`services.py:534`).
 
 Pełna lista ścieżek ślepych: [03-user-flow.md](03-user-flow.md#ścieżki-ślepe-znane-problemy).
 
