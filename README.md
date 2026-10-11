@@ -1,6 +1,6 @@
 # mini-WMS — prosty system zarządzania magazynem
 
-![Lista HU w trybie demo](docs/img/hu-list.png)
+![Lista HU w trybie demo](docs/screenshots/hu-list.png)
 
 Lekki WMS w Django dla małego magazynu (jeden magazyn, kilku operatorów), który
 nie ma jeszcze systemu WMS: przyjęcia z etykietami HU, lokalizacje, picking FEFO/FIFO
@@ -56,7 +56,7 @@ jak dotąd.
 
 | Wydanie (WZ) po realizacji FEFO | Skaner — wybór zlecenia pickingu |
 |---|---|
-| ![Szczegóły wydania](docs/img/issue-detail.png) | ![Skaner — picking](docs/img/scanner-picking.png) |
+| ![Szczegóły wydania](docs/screenshots/issue-detail.png) | ![Skaner — picking](docs/screenshots/scanner-picking.png) |
 
 ## Przepływ danych
 
