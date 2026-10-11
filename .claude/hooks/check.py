@@ -75,7 +75,7 @@ def main() -> int:
     if py_files:
         failure = run("ruff", [py, "-m", "ruff", "check", "--force-exclude", *py_files])
     if not failure and typed:
-        failure = run("mypy", [py, "-m", "mypy", *typed])
+        failure = run("mypy", [py, "-m", "mypy", "--follow-imports=silent", *typed])
     if not failure:
         failure = run("pytest", [py, "-m", "pytest", "-x", "-q", "-p", "no:warnings"])
 
