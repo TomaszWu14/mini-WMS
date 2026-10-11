@@ -232,3 +232,42 @@ class CorrectionReasonRequiredTests(BaseSetup):
         self.assertFalse(
             StockMovement.objects.filter(type=MovementType.KOREKTA).exists()
         )
+
+
+class PickLineGuardTests(BaseSetup):
+    """Pobranie na pozycję WZ nie przekroczy żądanej ilości ani nie trafi do
+    zamkniętego dokumentu — osłona w `pick_from_hu` (skaner i „Realizuj”)."""
+
+    def _doc_with_line(self, qty):
+        doc = IssueDocument.objects.create(
+            number=services.generate_issue_number(), created_by=self.user
+        )
+        line = IssueLine.objects.create(
+            document=doc, material=self.material, requested_qty=qty
+        )
+        hu = services.receive_material(
+            material=self.material, quantities=[50], user=self.user
+        ).handling_units[0]
+        return doc, line, hu
+
+    def test_pick_over_remaining_on_line_raises(self):
+        doc, line, hu = self._doc_with_line(10)
+        services.pick_from_hu(
+            hu=hu, quantity=6, user=self.user, document=doc, line=line
+        )
+        with self.assertRaises(WMSError):
+            services.pick_from_hu(
+                hu=hu, quantity=5, user=self.user, document=doc, line=line
+            )
+        line.refresh_from_db()
+        self.assertEqual(line.picked_qty, 6)
+
+    def test_pick_on_closed_document_raises(self):
+        doc, line, hu = self._doc_with_line(10)
+        IssueDocument.objects.filter(pk=doc.pk).update(status=IssueStatus.ZREALIZOWANY)
+        with self.assertRaises(WMSError):
+            services.pick_from_hu(
+                hu=hu, quantity=1, user=self.user, document=doc, line=line
+            )
+        hu.refresh_from_db()
+        self.assertEqual(hu.quantity, 50)

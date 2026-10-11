@@ -18,6 +18,7 @@ from .models import (
     HUNumberingConfig,
     HUStatus,
     IssueDocument,
+    IssueLine,
     IssueStatus,
     Location,
     LocationType,
@@ -43,14 +44,9 @@ def _lock_and_sync(obj):
     wartości. Zwykłe `select_for_update().get(pk=...)` tworzy nowy obiekt i
     zostawia oryginał z nieaktualnymi danymi — stąd kopiujemy pola świeżo
     zablokowanego wiersza z powrotem na oryginał, zamiast podmieniać
-    referencję.
+    referencję. Relacje zostają do leniwego pobrania (bez dodatkowych zapytań).
     """
-    locked = type(obj).objects.select_for_update().get(pk=obj.pk)
-    for field in obj._meta.concrete_fields:
-        if field.is_relation:
-            setattr(obj, field.name, getattr(locked, field.name))
-        else:
-            setattr(obj, field.attname, getattr(locked, field.attname))
+    obj.refresh_from_db(from_queryset=type(obj).objects.select_for_update())
     return obj
 
 
@@ -184,8 +180,9 @@ def allocate_hu(*, hu: HandlingUnit, location: Location, user) -> HandlingUnit:
     Pojemność lokalizacji jest informacyjna (W-08) — nie blokuje alokacji;
     `location_over_capacity` daje wołającemu sygnał do ostrzeżenia.
     """
+    # Lokalizacji celowo nie blokujemy: pojemność nie jest już warunkiem
+    # alokacji, więc ostrzeżenie (`location_over_capacity`) jest „best effort”.
     _lock_and_sync(hu)
-    _lock_and_sync(location)
     if hu.status == HUStatus.PUSTY:
         raise WMSError(f"HU {hu.number} jest pusty — nie można go ulokować.")
 
@@ -297,8 +294,15 @@ def repack_hu(*, source: HandlingUnit, target: HandlingUnit, quantity: int, user
     Łączenie palet (konsolidacja). Gdy źródło zejdzie do zera, staje się
     puste i zwalnia lokalizację.
     """
-    source = HandlingUnit.objects.select_for_update().get(pk=source.pk)
-    target = HandlingUnit.objects.select_for_update().get(pk=target.pk)
+    # Blokady zawsze w kolejności pk — dwa równoległe przepakowania A→B i B→A
+    # nie zakleszczą się na PostgreSQL.
+    locked = {
+        h.pk: h
+        for h in HandlingUnit.objects.select_for_update()
+        .filter(pk__in=[source.pk, target.pk])
+        .order_by("pk")
+    }
+    source, target = locked[source.pk], locked[target.pk]
 
     if source.pk == target.pk:
         raise WMSError("Paleta źródłowa i docelowa są takie same.")
@@ -393,10 +397,26 @@ def available_quantity(material: Material) -> int:
 
 @transaction.atomic
 def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=None):
-    """Zdejmuje `quantity` z konkretnego HU. Picking częściowy dozwolony."""
-    hu = HandlingUnit.objects.select_for_update().get(pk=hu.pk)
+    """Zdejmuje `quantity` z konkretnego HU. Picking częściowy dozwolony.
+
+    Pozycja WZ (z dokumentem) jest blokowana PRZED paletą — ta sama kolejność
+    blokad co w `execute_issue_document` (dokument → pozycja → HU). Dzięki temu
+    skaner i „Realizuj” na tym samym dokumencie nie pobiorą ponad żądaną ilość.
+    """
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
+    if line is not None:
+        locked_line = (
+            IssueLine.objects.select_for_update()
+            .select_related("document")
+            .get(pk=line.pk)
+        )
+        if locked_line.document.status != IssueStatus.OTWARTY:
+            raise WMSError(f"Dokument {locked_line.document.number} nie jest otwarty.")
+        remaining = locked_line.requested_qty - locked_line.picked_qty
+        if quantity > remaining:
+            raise WMSError(f"Na pozycji pozostało {remaining}, żądane {quantity}.")
+    hu = HandlingUnit.objects.select_for_update().get(pk=hu.pk)
     if hu.status == HUStatus.PUSTY or hu.quantity == 0:
         raise WMSError(f"HU {hu.number} jest pusty.")
     if quantity > hu.quantity:
@@ -633,7 +653,9 @@ def close_stocktake(*, sheet: StocktakeSheet, user) -> dict:
 
     adjusted = 0
     counted = 0
-    for line in sheet.lines.select_for_update().select_related("handling_unit"):
+    for line in sheet.lines.select_for_update(of=("self",)).select_related(
+        "handling_unit"
+    ):
         if line.counted_qty is None:
             continue
         counted += 1
