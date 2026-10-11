@@ -82,8 +82,10 @@ addopts = "-p no:cacheprovider"
 
 # --- mutmut (scripts/mutate.sh; wymaga Linux/WSL — fork) --------------------
 [tool.mutmut]
-paths_to_mutate = ["warehouse/services.py"]
-tests_dir = ["warehouse/"]
+# scripts/mutate.sh podmienia source_paths na wskazany moduł (w kopii repo).
+source_paths = ["warehouse/services.py"]
+pytest_add_cli_args_test_selection = ["warehouse/"]
+also_copy = ["config/", "manage.py", "warehouse/"]
 
 # --- bandit (scripts/security_scan.sh) --------------------------------------
 [tool.bandit]

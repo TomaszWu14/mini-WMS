@@ -39,3 +39,7 @@ node_modules/
 *.dump
 *.bak
 .DS_Store
+
+# Raporty skanów (scripts/security_scan.sh, scripts/mutate.sh)
+reports/
+mutants/
