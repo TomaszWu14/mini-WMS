@@ -15,7 +15,7 @@ MOD_PATH="${MOD_PATH//\\//}"
 MOD_NAME="${MOD_PATH%.py}"
 MOD_NAME="${MOD_NAME//\//.}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-STAMP="$(date +%Y-%m-%d_%H%M)"
+STAMP="${MUTATE_STAMP:-$(date +%Y-%m-%d_%H%M)}"
 REPORT_NAME="mutation-${MOD_NAME}-${STAMP}.md"
 
 [[ -f "$ROOT/$MOD_PATH" ]] || { echo "Brak pliku: $MOD_PATH" >&2; exit 1; }
@@ -25,7 +25,7 @@ if [[ "$(uname -s)" != "Linux" && -z "${MUTATE_INNER:-}" ]]; then
   command -v docker >/dev/null || { echo "mutmut wymaga Linuksa/WSL albo Dockera." >&2; exit 1; }
   echo "[mutate] $(uname -s) → uruchamiam w kontenerze python:3.11-slim"
   MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT":/src:ro -v "$ROOT/reports":/out \
-    -e MUTATE_INNER=1 -e REPORT_DIR=/out python:3.11-slim bash -c "
+    -e MUTATE_INNER=1 -e REPORT_DIR=/out -e MUTATE_STAMP="$STAMP" python:3.11-slim bash -c "
       set -e
       mkdir /work && tar -C /src --exclude=.venv --exclude=.git --exclude=mutants \
         --exclude=reports --exclude='*.sqlite3' -cf - . | tar -C /work -xf -
@@ -71,7 +71,7 @@ other=$(( total - killed - survived ))
 {
   echo "# Testy mutacyjne: \`$MOD_PATH\`"
   echo
-  echo "Data: $(date '+%Y-%m-%d %H:%M') · filtr: \`${FILTER:-brak}\` · czas: ${SECS} s"
+  echo "Data: ${STAMP/_/ } · filtr: \`${FILTER:-brak}\` · czas: ${SECS} s"
   echo
   echo "| Mutanty | Zabite | Przeżyły | Inne (timeout/bez testów/…) |"
   echo "|---|---|---|---|"
