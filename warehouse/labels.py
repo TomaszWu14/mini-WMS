@@ -1,4 +1,4 @@
-"""Etykiety HU i lokalizacji w PDF (A4, logo Cobalt-Sport, polskie czcionki)."""
+"""Etykiety HU i lokalizacji w PDF (A4, logo miniWMS, polskie czcionki)."""
 
 import os
 from io import BytesIO
@@ -51,7 +51,7 @@ def _ellipsize(text, font, size, max_width):
 
 
 def _draw_brand(c, x, y, bold, height=12 * mm):
-    """Rysuje logo (jeśli jest plik) albo napis cobaltSPORT z akcentem marki."""
+    """Rysuje logo (jeśli jest plik) albo napis miniWMS z akcentem marki."""
     if os.path.exists(_LOGO_PATH):
         try:
             img = ImageReader(_LOGO_PATH)
@@ -63,10 +63,10 @@ def _draw_brand(c, x, y, bold, height=12 * mm):
             pass
     c.setFont(bold, 18)
     c.setFillColor(_ACCENT)
-    c.drawString(x, y + 2 * mm, "cobalt")
-    yw = stringWidth("cobalt", bold, 18)
+    c.drawString(x, y + 2 * mm, "mini")
+    yw = stringWidth("mini", bold, 18)
     c.setFillColor(colors.black)
-    c.drawString(x + yw, y + 2 * mm, "SPORT")
+    c.drawString(x + yw, y + 2 * mm, "WMS")
 
 
 def _draw_hu_label(c, hu, width, height, regular, bold):
@@ -196,7 +196,7 @@ def _draw_hu_label(c, hu, width, height, regular, bold):
 
     c.setFillColor(_GREY)
     c.setFont(regular, 10)
-    c.drawString(margin, margin, "cobaltSPORT · mini-WMS")
+    c.drawString(margin, margin, "miniWMS")
 
 
 def hu_label_pdf(hu) -> bytes:

@@ -1393,3 +1393,10 @@ class ViewLayerTests(BaseSetup):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(IssueDocument.objects.count(), 1)
         self.assertEqual(IssueLine.objects.count(), 1)
+
+
+class BrandingTests(TestCase):
+    def test_login_page_shows_miniwms_brand(self):
+        resp = self.client.get("/login/")
+        self.assertContains(resp, '<span class="brand-accent">mini</span>WMS')
+        self.assertNotContains(resp, "cobalt")
