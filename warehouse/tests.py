@@ -335,13 +335,13 @@ class ReportViewTests(BaseSetup):
 
 class LocationImportTests(TestCase):
     def test_import_csv(self):
-        data = b"kod;typ;pojemnosc\nB0-81-301A;PICKING;1\nB0-81-302A;ZAPAS;2\n"
+        data = b"kod;typ;pojemnosc\nA-01-01A;PICKING;1\nA-01-02A;ZAPAS;2\n"
         created, updated, errors = import_locations("lokalizacje.csv", data)
         self.assertEqual(created, 2)
         self.assertEqual(updated, 0)
         self.assertEqual(errors, [])
         self.assertEqual(
-            Location.objects.get(code="B0-81-301A").type, LocationType.PICKING
+            Location.objects.get(code="A-01-01A").type, LocationType.PICKING
         )
 
     def test_import_updates_existing(self):
@@ -364,29 +364,29 @@ class StockImportTests(TestCase):
 
         data = (
             "HU;REF;nazwa;lokalizacja;data ważności;partia\n"
-            "10476246;XDB-R;Test Dumbbell;Przyjęcia;-;-\n"
-            "10476247;XDB-R;Test Dumbbell;Przyjęcia;-;-\n"
+            "90000001;MAT-R;Materiał importowany;Przyjęcia;-;-\n"
+            "90000002;MAT-R;Materiał importowany;Przyjęcia;-;-\n"
         ).encode()
         result = import_stock("stany.csv", data, self.user)
         self.assertEqual(result["created"], 2)
         self.assertEqual(result["materials_created"], 1)
         self.assertEqual(result["errors"], [])
-        hu = HandlingUnit.objects.get(number="10476246")
+        hu = HandlingUnit.objects.get(number="90000001")
         self.assertEqual(hu.quantity, 0)
         self.assertEqual(hu.status, HUStatus.DO_ULOZENIA)
         self.assertIsNone(hu.location)
-        self.assertEqual(hu.material.index, "XDB-R")
+        self.assertEqual(hu.material.index, "MAT-R")
 
     def test_import_real_location_allocates(self):
         from .stock_import import import_stock
 
-        data = b"HU,REF,nazwa,ilosc,lokalizacja\n900,MAT-X,Test,5,B0-81-301A\n"
+        data = b"HU,REF,nazwa,ilosc,lokalizacja\n900,MAT-X,Test,5,A-01-01A\n"
         result = import_stock("stany.csv", data, self.user)
         self.assertEqual(result["created"], 1)
         hu = HandlingUnit.objects.get(number="900")
         self.assertEqual(hu.quantity, 5)
         self.assertEqual(hu.status, HUStatus.ZMAGAZYNOWANY)
-        self.assertEqual(hu.location.code, "B0-81-301A")
+        self.assertEqual(hu.location.code, "A-01-01A")
 
     def test_import_skips_duplicate_hu(self):
         from .stock_import import import_stock
@@ -402,7 +402,7 @@ class ScannerTests(BaseSetup):
         super().setUp()
         Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
         self.client.login(username="operator", password="x")
-        self.loc = Location.objects.create(code="B0-81-301A", type=LocationType.PICKING)
+        self.loc = Location.objects.create(code="A-01-01A", type=LocationType.PICKING)
         self.hu = HandlingUnit.objects.create(
             number="HU-SCAN-1",
             material=self.material,
@@ -424,7 +424,7 @@ class ScannerTests(BaseSetup):
 
     def test_api_allocate(self):
         resp = self.client.post(
-            "/skaner/api/rozmiesc/", {"hu": "HU-SCAN-1", "location": "B0-81-301A"}
+            "/skaner/api/rozmiesc/", {"hu": "HU-SCAN-1", "location": "A-01-01A"}
         )
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.json()["ok"])
@@ -457,7 +457,7 @@ class ScannerTests(BaseSetup):
         # HU-SCAN-1 jest w strefie przyjęć; ulokujmy go w self.loc
         services.allocate_hu(hu=self.hu, location=self.loc, user=self.user)
         resp = self.client.get(
-            "/skaner/api/lokalizacja-zawartosc/", {"code": "B0-81-301A"}
+            "/skaner/api/lokalizacja-zawartosc/", {"code": "A-01-01A"}
         )
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -1314,7 +1314,7 @@ class AuditFixTests(BaseSetup):
             quantity=5,
             status=HUStatus.DO_ULOZENIA,
         )
-        loc = Location.objects.create(code="MEXL", type=LocationType.ZAPAS)
+        loc = Location.objects.create(code="ZB-01", type=LocationType.ZAPAS)
         services.allocate_hu(hu=hu, location=loc, user=self.user)  # ALOKACJA
         # filtr PRZYJECIE nie powinien zawierać ruchu ALOKACJA
         resp = self.client.get("/ruchy/eksport/csv/", {"type": "ALOKACJA"})
@@ -1362,7 +1362,7 @@ class ViewLayerTests(BaseSetup):
             quantity=5,
             status=HUStatus.DO_ULOZENIA,
         )
-        loc = Location.objects.create(code="ALV-L", type=LocationType.ZAPAS)
+        loc = Location.objects.create(code="ZB-02", type=LocationType.ZAPAS)
         resp = self.client.post(f"/hu/{hu.pk}/alokacja/", {"location": loc.pk})
         self.assertEqual(resp.status_code, 302)
         hu.refresh_from_db()
@@ -1393,3 +1393,10 @@ class ViewLayerTests(BaseSetup):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(IssueDocument.objects.count(), 1)
         self.assertEqual(IssueLine.objects.count(), 1)
+
+
+class BrandingTests(TestCase):
+    def test_login_page_shows_miniwms_brand(self):
+        resp = self.client.get("/login/")
+        self.assertContains(resp, '<span class="brand-accent">mini</span>WMS')
+        self.assertNotContains(resp, "cobalt")

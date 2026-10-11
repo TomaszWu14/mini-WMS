@@ -1,7 +1,7 @@
 [project]
 name = "mini-wms"
 version = "0.1.0"
-description = "Mini-WMS (magazyn) dla cobaltSPORT — Django."
+description = "miniWMS — lekki system magazynowy (Django)."
 requires-python = ">=3.11"
 # Zależności produkcyjne (źródło prawdy). requirements.txt jest ich odbiciem
 # na potrzeby budowy obrazu Docker (pip install -r requirements.txt).

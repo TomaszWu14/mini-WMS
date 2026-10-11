@@ -99,7 +99,7 @@ class InventoryForm(forms.Form):
         label="Numer HU",
         max_length=30,
         widget=forms.TextInput(
-            attrs={"autofocus": True, "placeholder": "np. 10476246"}
+            attrs={"autofocus": True, "placeholder": "np. HU00000001"}
         ),
     )
     mode = forms.ChoiceField(

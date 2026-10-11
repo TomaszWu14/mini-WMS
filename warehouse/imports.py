@@ -1,7 +1,7 @@
 """Import lokalizacji z pliku CSV lub XLSX.
 
 Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
-    kod         — wymagany, unikalny kod lokalizacji (np. B0-81-301A)
+    kod         — wymagany, unikalny kod lokalizacji (np. A-01-01A)
     typ         — opcjonalny: PICKING albo ZAPAS (domyślnie ZAPAS)
     pojemnosc   — opcjonalna liczba HU (domyślnie 1)
 """

@@ -11,7 +11,7 @@ automatycznym SSL**, więc nie używamy tu własnego Caddy — wystarczy wariant
 
 - Serwer (VPS) z systemem Linux, publicznym IP, otwartymi portami **80** i **443**.
 - Domena, np. `miniwms.example.com`, z rekordem **A** skierowanym na IP serwera.
-- Repozytorium: `https://github.com/TomaszWu14/mini-WMS` (publiczne).
+- Repozytorium: `https://github.com/TomaszWu14/miniWMS-public` (publiczne).
 
 ---
 
@@ -49,7 +49,7 @@ samego Coolify (np. `coolify.example.com`). Nie jest to wymagane do wdrożenia W
 
 1. **+ New Resource**.
 2. Wybierz **Docker Compose** (lub „Public Repository”, a typ ustaw na Compose).
-3. **Repository URL:** `https://github.com/TomaszWu14/mini-WMS`
+3. **Repository URL:** `https://github.com/TomaszWu14/miniWMS-public`
 4. **Branch:** `main`
 5. **Docker Compose file location:** `docker-compose.coolify.yml`
 6. Zatwierdź — Coolify wczyta usługi `web` i `db`.
@@ -120,7 +120,7 @@ merge do `main`. Dwie drogi:
 
 1. W Coolify: **Sources → + Add → GitHub App**.
 2. Kliknij **Install/Connect** i autoryzuj konto GitHub; wybierz repozytorium
-   `TomaszWu14/mini-WMS` (lub „All repositories”).
+   `TomaszWu14/miniWMS-public` (lub „All repositories”).
 3. Wróć do zasobu `mini-wms` → zakładka **Source** → zmień źródło na właśnie
    dodaną **GitHub App** i to samo repo/branch (`main`).
 4. Włącz **Automatic Deployment** (czasem: „Auto Deploy” / „Deploy on push”).

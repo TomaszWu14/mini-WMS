@@ -20,13 +20,13 @@ def issue_document_pdf(doc) -> bytes:
     margin = 18 * mm
     y = height - margin
 
-    # Marka cobaltSPORT
+    # Marka miniWMS
     c.setFont(bold, 14)
     c.setFillColor(colors.HexColor("#0047ab"))
-    c.drawString(margin, y, "cobalt")
-    yw = c.stringWidth("cobalt", bold, 14)
+    c.drawString(margin, y, "mini")
+    yw = c.stringWidth("mini", bold, 14)
     c.setFillColor(colors.black)
-    c.drawString(margin + yw, y, "SPORT")
+    c.drawString(margin + yw, y, "WMS")
     y -= 9 * mm
 
     # Nagłówek
@@ -49,8 +49,8 @@ def issue_document_pdf(doc) -> bytes:
         info.append(
             f"Zrealizowano: {timezone.localtime(doc.completed_at):%Y-%m-%d %H:%M}"
         )
-    for line in info:
-        c.drawString(margin, y, line)
+    for text in info:
+        c.drawString(margin, y, text)
         y -= 6 * mm
 
     y -= 4 * mm
@@ -103,7 +103,7 @@ def issue_document_pdf(doc) -> bytes:
     c.drawRightString(width - margin, y - 4 * mm, "Odebrał (podpis)")
 
     c.setFont(regular, 8)
-    c.drawCentredString(width / 2, margin - 4 * mm, "cobaltSPORT · mini-WMS")
+    c.drawCentredString(width / 2, margin - 4 * mm, "miniWMS")
     c.showPage()
     c.save()
     buffer.seek(0)
