@@ -131,7 +131,7 @@
     <div class="group-head">Wydania</div>
     <div class="tiles">
       <a class="tile" href="{% url 'issue_list' %}"><span class="tile-code">D01</span><span class="tile-ic"><svg class="ic"><use href="#i-truck"/></svg></span><span class="tile-lab">Wydania</span></a>
-      <a class="tile" href="{% url 'issue_import' %}"><span class="tile-code">D02</span><span class="tile-ic"><svg class="ic"><use href="#i-upload"/></svg></span><span class="tile-lab">Import wydań</span></a>
+      {% if is_operator_role %}<a class="tile" href="{% url 'issue_import' %}"><span class="tile-code">D02</span><span class="tile-ic"><svg class="ic"><use href="#i-upload"/></svg></span><span class="tile-lab">Import wydań</span></a>{% endif %}
       {% if is_operator_role %}<a class="tile" href="{% url 'scanner_picking' %}"><span class="tile-code">D03</span><span class="tile-ic"><svg class="ic"><use href="#i-scan"/></svg></span><span class="tile-lab">Picking (skaner)</span></a>{% endif %}
     </div>
   </div>
@@ -161,7 +161,7 @@
     <div class="tiles">
       <a class="tile" href="{% url 'user_list' %}"><span class="tile-code">A01</span><span class="tile-ic"><svg class="ic"><use href="#i-users"/></svg></span><span class="tile-lab">Użytkownicy</span></a>
       <a class="tile" href="{% url 'login_log' %}"><span class="tile-code">A02</span><span class="tile-ic"><svg class="ic"><use href="#i-shield-check"/></svg></span><span class="tile-lab">Log logowań</span></a>
-      <a class="tile" href="/admin/"><span class="tile-code">A03</span><span class="tile-ic"><svg class="ic"><use href="#i-settings"/></svg></span><span class="tile-lab">Administracja</span></a>
+      {% if user.is_superuser and not demo_mode %}<a class="tile" href="/admin/"><span class="tile-code">A03</span><span class="tile-ic"><svg class="ic"><use href="#i-settings"/></svg></span><span class="tile-lab">Administracja</span></a>{% endif %}
     </div>
   </div>
   {% endif %}

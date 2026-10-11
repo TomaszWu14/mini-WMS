@@ -45,7 +45,9 @@
     {% if is_admin_role %}
     <div class="nav-label">Administracja</div>
     <a href="{% url 'user_list' %}"{% if u == 'user_list' or u == 'user_edit' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-users"/></svg> Użytkownicy</a>
+    {% if user.is_superuser and not demo_mode %}
     <a href="/admin/"><svg class="ic"><use href="#i-settings"/></svg> Administracja</a>
+    {% endif %}
     {% endif %}
     {% if is_operator_role %}
     <div class="nav-promo">

@@ -18,10 +18,10 @@
       <tr>
         <td><a href="{% url 'stock_by_location' %}?q={{ r.loc.code }}">{{ r.loc.code }}</a></td>
         <td><span class="badge badge-{{ r.loc.type }}">{{ r.loc.get_type_display }}</span></td>
-        <td class="text-right">{{ r.loc.capacity }}</td>
+        <td class="text-right">{% if r.loc.capacity %}{{ r.loc.capacity }}{% else %}<span class="muted">bez limitu</span>{% endif %}</td>
         <td class="text-right">{{ r.active }}</td>
-        <td class="text-right">{{ r.free }}</td>
-        <td>{% if r.active >= r.loc.capacity %}<span style="color:var(--err)">pełna</span>{% elif r.active > 0 %}częściowo{% else %}<span class="muted">pusta</span>{% endif %}</td>
+        <td class="text-right">{% if r.loc.capacity %}{{ r.free }}{% else %}<span class="muted">bez limitu</span>{% endif %}</td>
+        <td>{% if not r.loc.capacity %}{% if r.active > 0 %}zajęta{% else %}<span class="muted">pusta</span>{% endif %}{% elif r.active >= r.loc.capacity %}<span style="color:var(--err)">pełna</span>{% elif r.active > 0 %}częściowo{% else %}<span class="muted">pusta</span>{% endif %}</td>
       </tr>
     {% empty %}
       <tr><td colspan="6" class="muted">Brak lokalizacji.</td></tr>

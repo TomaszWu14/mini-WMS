@@ -69,7 +69,7 @@ class LocationForm(forms.ModelForm):
 class LocationImportForm(_MaxSizeFileMixin, forms.Form):
     file = forms.FileField(
         label="Plik CSV lub XLSX",
-        help_text="Kolumny: kod, typ (PICKING/ZAPAS), pojemnosc.",
+        help_text="Kolumny: kod, typ (PICKING/ZAPAS), pojemnosc (0 = bez limitu).",
     )
 
 
@@ -112,7 +112,8 @@ class InventoryForm(forms.Form):
     reason = forms.ChoiceField(
         label="Powód",
         choices=[("", "— wybierz —")] + list(AdjustReason.choices),
-        required=False,
+        required=True,
+        error_messages={"required": "Wybierz powód korekty."},
     )
     note = forms.CharField(label="Uwaga", max_length=255, required=False)
 
@@ -273,6 +274,12 @@ class DeliveryDateForm(forms.Form):
 
 class HUCorrectionForm(forms.Form):
     new_quantity = forms.IntegerField(label="Nowa ilość", min_value=0)
+    reason = forms.ChoiceField(
+        label="Powód",
+        choices=[("", "— wybierz —")] + list(AdjustReason.choices),
+        required=True,
+        error_messages={"required": "Wybierz powód korekty."},
+    )
     note = forms.CharField(label="Uwaga", max_length=255, required=False)
 
 

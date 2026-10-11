@@ -4,6 +4,7 @@
 <h1>HU {{ hu.number }}</h1>
 
 <div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'hu_list' %}">← Lista HU</a>
   <a class="btn btn-secondary" href="{% url 'hu_label' hu.pk %}" target="_blank">🏷 Etykieta PDF</a>
   {% if is_operator_role %}
     {% if hu.status != "PUSTY" %}
