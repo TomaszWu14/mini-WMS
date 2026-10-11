@@ -3,12 +3,12 @@
 **Porządkuje przepływ materiałów w małym magazynie, który do tej pory prowadził ewidencję na
 kartce papieru — dla magazynierów i kierowników.**
 
-![demo](docs/screenshots/demo.gif) `<DO UZUPEŁNIENIA: nagram>`
+![Rozmieszczanie palety skanerem w telefonie: skan palety, skan miejsca, potwierdzenie](docs/screenshots/demo.gif)
 
-📹 [Prezentacja działania — 2 min](#) `<DO UZUPEŁNIENIA: link YouTube>`
+<!-- DO UZUPEŁNIENIA: 📹 [Prezentacja działania — 2 min](LINK_YOUTUBE) -->
 
-Demo online: `<DO UZUPEŁNIENIA: link po wdrożeniu albo jedno zdanie, dlaczego go nie ma>`.
-Lokalnie dane demo uruchamia jedno polecenie — patrz [Jak uruchomić](#jak-uruchomić).
+Demo online nie jest utrzymywane — dane demo uruchamia lokalnie jedno polecenie, patrz
+[Jak uruchomić](#jak-uruchomić).
 
 ## Problem → rozwiązanie
 
@@ -88,7 +88,8 @@ Szczegóły: [07 — Ograniczenia](docs/07-ograniczenia.md).
 
 ## Kontekst projektu
 
-`<DO UZUPEŁNIENIA przeze mnie>`
+Projekt własny, oparty na moim doświadczeniu z pracy w magazynie. Aplikacja nie była wdrożona
+w firmie — proces, skala i wymagania w dokumentacji pochodzą z tej obserwacji.
 
 Nazwy firm są zamienione na fikcyjne, a dane demo i testowe są syntetyczne. Kod udostępniony
 do wglądu, wszelkie prawa zastrzeżone — patrz [LICENSE](LICENSE). Repozytorium zawiera też
