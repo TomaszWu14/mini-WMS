@@ -28,3 +28,10 @@ plikach + pytest).
    żadnej pętli review → poprawka → review. Odrzucone zgłoszenia: jedno zdanie dlaczego.
 
 Małe zadania (1–2 pliki): bez workerów, reviewer tylko gdy zmiana dotyka auth/danych.
+
+## Koniec brancha: dokument dla operatora
+
+Przed ostatnim commitem każdego brancha wygeneruj `docs/operator/<nazwa-brancha>.md`
+(`/` → `-`) według `docs/operator/TEMPLATE.md`. Wypełnij wszystkie sekcje faktami z diffu
+(`git diff main...HEAD`); czego nie dotyczy — wpisz „nie dotyczy”, nie usuwaj wiersza
+migracji ani planu wycofania.
