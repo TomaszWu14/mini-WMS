@@ -5,7 +5,7 @@ kartce papieru — dla magazynierów i kierowników.**
 
 ![Rozmieszczanie palety skanerem w telefonie: skan palety, skan miejsca, potwierdzenie](docs/screenshots/demo.gif)
 
-<!-- DO UZUPEŁNIENIA: 📹 [Prezentacja działania — 2 min](LINK_YOUTUBE) -->
+📹 [Prezentacja działania — 2 min, z napisami](docs/video/miniwms-demo.mp4)
 
 Demo online nie jest utrzymywane — dane demo uruchamia lokalnie jedno polecenie, patrz
 [Jak uruchomić](#jak-uruchomić).
