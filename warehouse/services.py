@@ -34,6 +34,26 @@ class WMSError(Exception):
     """Błąd reguły biznesowej (np. brak stanu, zła ilość)."""
 
 
+def _lock_and_sync(obj):
+    """Blokuje wiersz (`select_for_update`) i odświeża PRZEKAZANY obiekt w
+    miejscu — ta sama tożsamość Pythona, świeże dane z bazy.
+
+    Widoki/testy wołają serwis przekazując obiekt i czytają jego atrybuty
+    (np. ``hu.location.code``) PO wywołaniu, bez przechwytywania zwróconej
+    wartości. Zwykłe `select_for_update().get(pk=...)` tworzy nowy obiekt i
+    zostawia oryginał z nieaktualnymi danymi — stąd kopiujemy pola świeżo
+    zablokowanego wiersza z powrotem na oryginał, zamiast podmieniać
+    referencję.
+    """
+    locked = type(obj).objects.select_for_update().get(pk=obj.pk)
+    for field in obj._meta.concrete_fields:
+        if field.is_relation:
+            setattr(obj, field.name, getattr(locked, field.name))
+        else:
+            setattr(obj, field.attname, getattr(locked, field.attname))
+    return obj
+
+
 def save_with_unique_number(instance, number_fn, *, field="number", attempts=6):
     """Zapisuje obiekt nadając unikalny numer, ponawiając przy kolizji.
 
@@ -73,7 +93,9 @@ def generate_hu_number() -> str:
 
 
 def split_quantity(total: int, pallets: int) -> list[int]:
-    """Dzieli `total` na `pallets` części równo, resztę dokłada do ostatniej."""
+    """Dzieli `total` na `pallets` części, resztę rozkłada po jednej na
+    ostatnie palety (np. 10/4 → [2,2,3,3]) — tak samo liczy `forms.py`
+    ceil(total/pallets) przy walidacji limitu na paletę."""
     if pallets < 1:
         raise WMSError("Liczba palet musi być dodatnia.")
     if total < 1:
@@ -81,7 +103,8 @@ def split_quantity(total: int, pallets: int) -> list[int]:
     base = total // pallets
     remainder = total - base * pallets
     quantities = [base] * pallets
-    quantities[-1] += remainder
+    for i in range(pallets - remainder, pallets):
+        quantities[i] += 1
     if any(q <= 0 for q in quantities):
         raise WMSError(
             "Zbyt wiele palet dla podanej ilości — niektóre palety byłyby puste."
@@ -146,28 +169,28 @@ def receive_material(
 # --- Alokacja / przesunięcie -------------------------------------------------
 
 
+def location_over_capacity(location: Location) -> bool:
+    """True, gdy lokalizacja ma limit (>0) i jest przekroczony.
+
+    Informacyjne — nie blokuje alokacji (W-08). Wołane przez widoki po
+    alokacji, aby pokazać ostrzeżenie."""
+    return bool(location.capacity) and location.occupancy > location.capacity
+
+
 @transaction.atomic
 def allocate_hu(*, hu: HandlingUnit, location: Location, user) -> HandlingUnit:
-    """Ustawia HU w lokalizacji. Pierwsza alokacja lub przesunięcie."""
+    """Ustawia HU w lokalizacji. Pierwsza alokacja lub przesunięcie.
+
+    Pojemność lokalizacji jest informacyjna (W-08) — nie blokuje alokacji;
+    `location_over_capacity` daje wołającemu sygnał do ostrzeżenia.
+    """
+    _lock_and_sync(hu)
+    _lock_and_sync(location)
     if hu.status == HUStatus.PUSTY:
         raise WMSError(f"HU {hu.number} jest pusty — nie można go ulokować.")
 
     previous = hu.location
     is_move = previous is not None and previous != location
-
-    # Pojemność lokalizacji (gdy >0) — nie pozwól przepełnić miejsca. Liczymy
-    # aktywne HU już tam stojące, pomijając samą przenoszoną paletę.
-    if location.capacity and (previous != location):
-        occupied = (
-            location.handling_units.exclude(status=HUStatus.PUSTY)
-            .exclude(pk=hu.pk)
-            .count()
-        )
-        if occupied >= location.capacity:
-            raise WMSError(
-                f"Lokalizacja {location.code} jest pełna "
-                f"(pojemność {location.capacity})."
-            )
 
     hu.location = location
     hu.status = HUStatus.ZMAGAZYNOWANY
@@ -196,9 +219,16 @@ def allocate_hu(*, hu: HandlingUnit, location: Location, user) -> HandlingUnit:
 
 @transaction.atomic
 def correct_hu_quantity(
-    *, hu: HandlingUnit, new_quantity: int, user, note: str = "", reason: str = ""
+    *, hu: HandlingUnit, new_quantity: int, user, reason: str, note: str = ""
 ):
-    """Koryguje ilość na HU (np. po inwentaryzacji). Zapisuje ruch korekty."""
+    """Koryguje ilość na HU (np. po inwentaryzacji). Zapisuje ruch korekty.
+
+    Każda korekta ma powód z `AdjustReason` (W-26) — pilnowane tu, nie tylko w
+    formularzach, żeby żadna ścieżka (web, skaner, spis) go nie pominęła.
+    """
+    if reason not in AdjustReason.values:
+        raise WMSError("Wybierz powód korekty.")
+    _lock_and_sync(hu)
     if new_quantity < 0:
         raise WMSError("Ilość nie może być ujemna.")
     delta = new_quantity - hu.quantity
@@ -226,6 +256,28 @@ def correct_hu_quantity(
         created_by=user,
     )
     return hu
+
+
+@transaction.atomic
+def adjust_hu_quantity(
+    *, hu: HandlingUnit, delta: int, user, reason: str, note: str = ""
+):
+    """Koryguje ilość na HU względem AKTUALNEGO (zablokowanego) stanu.
+
+    Zastępuje wzorzec liczenia nowej ilości z nieaktualnego odczytu w
+    widoku/skanerze — `delta` liczymy tu, pod blokadą wiersza.
+    """
+    _lock_and_sync(hu)
+    new_quantity = hu.quantity + delta
+    if delta == 0:
+        raise WMSError("Podaj ilość różną od zera.")
+    if new_quantity < 0:
+        raise WMSError(
+            f"Stan nie może być ujemny (na HU {hu.number} jest {hu.quantity})."
+        )
+    return correct_hu_quantity(
+        hu=hu, new_quantity=new_quantity, user=user, note=note, reason=reason
+    )
 
 
 def _apply_empty_if_zero(hu: HandlingUnit) -> None:
@@ -328,6 +380,12 @@ def _pickable_hus(material: Material):
     )
 
 
+def first_pickable_hu(material: Material) -> HandlingUnit | None:
+    """Pierwsza paleta w kolejce FEFO/FIFO (lub None) — do ostrzeżenia w
+    skanerze, gdy operator pobiera inną paletę niż podpowiadana (W-11)."""
+    return _pickable_hus(material).first()
+
+
 def available_quantity(material: Material) -> int:
     """Łączna dostępna ilość materiału na aktywnych HU."""
     return _pickable_hus(material).aggregate(t=Sum("quantity"))["t"] or 0
@@ -403,6 +461,10 @@ def execute_issue_document(
     allow_partial=False — pełna realizacja, błąd przy braku stanu.
     allow_partial=True  — pobiera ile dostępne, zamyka z brakami (shortage).
     """
+    # Świeży odczyt pod blokadą — dwa równoległe kliknięcia "realizuj" na
+    # tym samym (nieaktualnym w Pythonie) obiekcie nie zrealizują dokumentu
+    # dwa razy.
+    _lock_and_sync(document)
     if document.status != IssueStatus.OTWARTY:
         raise WMSError("Dokument nie jest otwarty.")
 
@@ -473,6 +535,9 @@ def picking_plan(material: Material, quantity: int) -> dict:
 
 @transaction.atomic
 def pack_issue_document(*, document: IssueDocument, user) -> IssueDocument:
+    # Blokada + świeży odczyt — jak w execute_issue_document, chroni przed
+    # dwukrotnym spakowaniem tego samego dokumentu z dwóch kliknięć.
+    _lock_and_sync(document)
     if document.status != IssueStatus.ZREALIZOWANY:
         raise WMSError("Spakować można tylko dokument zrealizowany.")
     document.status = IssueStatus.SPAKOWANY
@@ -485,6 +550,7 @@ def pack_issue_document(*, document: IssueDocument, user) -> IssueDocument:
 def ship_issue_document(
     *, document: IssueDocument, user, carrier: str = "", tracking: str = ""
 ) -> IssueDocument:
+    _lock_and_sync(document)
     if document.status not in (IssueStatus.SPAKOWANY, IssueStatus.ZREALIZOWANY):
         raise WMSError("Wysłać można dokument zrealizowany lub spakowany.")
     document.status = IssueStatus.WYSLANY
