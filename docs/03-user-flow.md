@@ -55,7 +55,7 @@ flowchart LR
     S5 -->|Ulokuj| S11
     S6 -->|Ulokuj/Przesuń| S11
     S11 -->|OK| S6
-    S11 -->|lokalizacja pełna| S11
+    S11 -->|ponad pojemność: OK + ostrzeżenie| S6
     S2 -->|menu Wydania| S16
     S16 -->|+ Nowe wydanie → Utwórz| S18
     S18 -->|Dodaj / Realizuj / Spakuj / Wyślij| S18
@@ -75,9 +75,9 @@ flowchart LR
 | 6 | HU — szczegóły | wszyscy | dane HU, historia (50); operator: Ulokuj, Korekta, Przepakuj; admin: Termin dostawy | przyciski | 11 / 12 / 15 / 13 / PDF |
 | 7 | Lokalizacje | wszyscy | tabela, etykiety; operator: Import, + Nowa | | 8 / 10 / PDF |
 | 8 | Nowa lokalizacja | operator | kod, typ, pojemność | Zapisz | 7 |
-| 9 | Przyjęcie `/przyjecie/` | operator | materiał, tryb (całkowita / na paletę), ilości, palety, LOT, data ważności, nr dostawy; brak „Anuluj” | Przyjmij | OK → 5 z numerami HU; walidacja/limit → 9 |
+| 9 | Przyjęcie `/przyjecie/` | operator | materiał, tryb (całkowita / na paletę), ilości, palety, LOT, data ważności, nr dostawy, „Anuluj” | Przyjmij / Anuluj | OK → 5 z numerami HU; walidacja/limit → 9 |
 | 10 | Import lokalizacji / przyjęć / zleceń / stanów | operator | plik CSV/XLSX (≤5 MB) | Importuj | lista (7 / 5 / 16 / 26) z podsumowaniem i ostrzeżeniami — także przy błędzie |
-| 11 | Alokacja HU | operator | lokalizacja (lista) | Ulokuj / Anuluj | 6; pełna → 11 z błędem; pusty HU → 6 z błędem |
+| 11 | Alokacja HU | operator | lokalizacja (lista) | Ulokuj / Anuluj | 6 (ponad pojemność — dodatkowe ostrzeżenie); pusty HU → 6 z błędem |
 | 12 | Korekta ilości HU | operator | nowa ilość ≥0, uwaga | Zapisz korektę | 6 |
 | 13 | Termin dostawy HU | admin | data, nr dostawy | Zapisz | 6 |
 | 14 | Inwentaryzacja `/inwentaryzacja/` | operator | nr HU, Dodaj/Odejmij, ilość, powód, uwaga, ostatnie korekty | Zapisz zmianę | 14 z komunikatem; nieznany HU / stan <0 → błąd pola |
@@ -143,10 +143,10 @@ flowchart LR
 | Nr | Ekran | Elementy | Akcja | Prowadzi do / wynik |
 |---|---|---|---|---|
 | 40 | Menu skanera `/skaner/` | 6 kafli, „‹” | kafel / ‹ | 41–47 / Pulpit web |
-| 41 | Rozmieszczanie | pole skanu, karta HU, karta lokalizacji, Potwierdź, Reset | skan HU → skan lokalizacji → Potwierdź | baner „✓ HU → LOC”, reset; błędy: nieznany HU/lokalizacja, pusty HU, pełna lokalizacja |
+| 41 | Rozmieszczanie | pole skanu, karta HU, karta lokalizacji, Potwierdź, Reset | skan HU → skan lokalizacji → Potwierdź | baner „✓ HU → LOC”, reset; ponad pojemność → ostrzeżenie; błędy: nieznany HU/lokalizacja, pusty HU, pusty skan |
 | 42 | Picking — lista | pole numeru, kafle otwartych WZ | skan / kafel | 43; nieznany numer → błąd |
-| 43 | Picking — zlecenie | pozycje, skan HU, klawiatura, Potwierdź, „Wróć do listy” | skan HU → ilość → Potwierdź | pozycja odhaczona; komplet → WZ Zrealizowany → „Wróć do listy”; błędy: materiał spoza WZ, za dużo, brak stanu |
-| 44 | Inwentaryzacja | skan HU, ±, ilość, „stan po zmianie”, Potwierdź | | ruch KOREKTA; błąd przy wyniku <0 |
+| 43 | Picking — zlecenie | pozycje, skan HU, klawiatura, Potwierdź, „Wróć do listy” | skan HU → ilość → Potwierdź | pozycja odhaczona; komplet → WZ Zrealizowany → „Wróć do listy”; paleta nie pierwsza wg FEFO → ostrzeżenie; błędy: materiał spoza WZ, inna paleta niż wskazana w WZ, za dużo, brak stanu |
+| 44 | Inwentaryzacja | skan HU, ±, ilość, powód (lista), „stan po zmianie”, Potwierdź | | ruch KOREKTA z powodem; błąd przy wyniku <0 lub bez powodu |
 | 45 | Przepakowanie | skan źródła, celu, ilość, „Cała paleta” | | 2 ruchy; błędy: ten sam HU, inny materiał, pusty cel, inny LOT (dopiero po Potwierdź) |
 | 46 | Podgląd HU | skan HU, karta | | tylko odczyt |
 | 47 | Co w lokalizacji | skan lokalizacji, lista palet | | tylko odczyt |
@@ -159,20 +159,13 @@ flowchart LR
   realizuj, zamknij z brakami, zamknij spis).
 - **Błąd walidacji** — formularze na osobnych stronach: ta sama strona z błędami pól; formularze
   wbudowane w szczegóły WZ i spisu: komunikat nad stroną, wpisane wartości przepadają.
-- **Przerwanie procesu** — skaner: „Reset” lub „‹” bez potwierdzenia; web: „Anuluj” (brak na
-  ekranie 9).
+- **Przerwanie procesu** — skaner: „Reset” lub „‹” bez potwierdzenia; web: „Anuluj”.
 
 ## Ścieżki ślepe (znane problemy)
-1. Strona 403 bez nawigacji (każdy ekran operatora/admina dla złej roli).
-2. Kafel „Import wydań” (D02) widoczny dla roli Podgląd → 403 (`dashboard.html:134`).
-3. „Administracja” w menu i kafel A03 w trybie DEMO → 404 (`config/urls.py:41`).
-4. Ekrany 6, 18, 22 bez linku powrotu do listy; ekran 9 bez „Anuluj”.
-5. Skaner — wygasła sesja pokazuje „Błąd serwera (200).” zamiast logowania (`scanner.js:47-51`).
-6. Skaner — pusty skan: brak reakcji; błąd wczytania zlecenia: pusta lista bez komunikatu
-   (`picking_doc.html:93-95`).
-7. Endpointy tylko-POST wywołane GET-em — ciche przekierowanie bez komunikatu.
-8. Spis: wartości nie-liczbowe w „Policzono” pomijane bez informacji (`views.py:1009`).
-9. „Administracja” dla roli Administrator bez konta superusera → logowanie panelu Django
-   odrzuca konto (brak `is_staff`, `views.py:1220`).
-10. Skaner — kompletacja: przy pozycji z „konkretnym HU” skaner przyjmuje dowolną paletę tego
-    materiału, bez ostrzeżenia (`scanner_views.py:284-291`).
+1. Skaner — błąd wczytania zlecenia: pusta lista bez komunikatu (`picking_doc.html`).
+2. Endpointy tylko-POST wywołane GET-em — ciche przekierowanie bez komunikatu.
+
+Naprawione w gałęzi `fix/code-gaps`: strona 403 w układzie aplikacji z menu; kafel „Import
+wydań” i link „Administracja” widoczne tylko dla uprawnionych; powroty do list z ekranów 6, 18,
+22 i „Anuluj” na ekranie 9; skaner przekierowuje na logowanie po wygaśnięciu sesji i reaguje na
+pusty skan; spis ostrzega o pominiętych wartościach; skaner pilnuje palety wskazanej w WZ.
