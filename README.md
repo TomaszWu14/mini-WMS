@@ -7,8 +7,9 @@ kartce papieru — dla magazynierów i kierowników.**
 
 📹 [Prezentacja działania — 2 min, z napisami](docs/video/miniwms-demo.mp4)
 
-Demo online nie jest utrzymywane — dane demo uruchamia lokalnie jedno polecenie, patrz
-[Jak uruchomić](#jak-uruchomić).
+🌐 **Demo online: <https://miniwms.twapp.pl>** — loginy `demo_operator` (Operator) i
+`demo_podglad` (Podgląd), hasło `demo1234`; skaner: <https://miniwms.twapp.pl/skaner/>.
+Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00.
 
 ## Problem → rozwiązanie
 
