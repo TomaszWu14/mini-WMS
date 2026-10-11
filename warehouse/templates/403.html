@@ -1,0 +1,9 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Brak uprawnień — mini-WMS{% endblock %}
+{% block content %}
+<h1>Brak uprawnień</h1>
+<div class="panel form-narrow">
+  <p>{% if exception %}{{ exception }}{% else %}Nie masz uprawnień do wykonania tej operacji.{% endif %}</p>
+  <a class="btn btn-secondary" href="{% url 'dashboard' %}">Wróć do pulpitu</a>
+</div>
+{% endblock %}

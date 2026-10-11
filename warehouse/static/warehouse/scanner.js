@@ -45,6 +45,13 @@
     // błędu 500) jest przechwytywany i zwracany jako {ok:false}, żeby UI nigdy
     // nie został zablokowany (przycisk disabled, brak komunikatu).
     _parse: function (r) {
+      // fetch śledzi 302 na /login/ przy wygasłej sesji — zostaje HTML
+      // logowania zamiast JSON (pułapka auth.md #9). Wykryj to po
+      // `r.redirected` i przekieruj, zamiast pokazywać "Błąd serwera (200)".
+      if (r.redirected && r.url.indexOf("/login/") !== -1) {
+        window.location.href = "/login/?next=" + encodeURIComponent(window.location.pathname);
+        return { ok: false, _status: r.status, error: "Sesja wygasła — zaloguj się ponownie." };
+      }
       return r.json().then(
         function (j) { j._status = r.status; return j; },
         function () { return { ok: false, _status: r.status, error: "Błąd serwera (" + r.status + ")." }; }

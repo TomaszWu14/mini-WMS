@@ -67,7 +67,7 @@ flowchart TD
 | Punkt | Reguła | Gdzie |
 |---|---|---|
 | Limit na paletę | ilość na jednej palecie ≤ limit materiału (jeśli ustawiony) | `services.py:114` |
-| Miejsce na regale | patrz [07](07-ograniczenia.md) — pojemność ma być informacyjna, kod ją wymusza | `services.py:160` |
+| Miejsce na regale | pojemność jest informacyjna — przekroczenie nie blokuje odłożenia, system pokazuje ostrzeżenie | `services.allocate_hu`, `location_over_capacity` |
 | Dostępność stanu | wydanie po materiale wymaga pełnej dostępnej ilości; tryb „z brakami” wydaje, ile jest | `services.py:381`, `services.py:407` |
 | Dobór palet | PICKING przed ZAPAS → najkrótsza data ważności → najstarsze przyjęcie | `services.py:305` |
 | Wydanie z rampy | gdy na regałach brakuje, system bierze też palety „Do ułożenia” (bez lokalizacji) — na końcu kolejki | `services.py:315` |

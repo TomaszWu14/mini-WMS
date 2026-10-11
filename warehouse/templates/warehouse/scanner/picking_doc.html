@@ -141,7 +141,14 @@
       S.beepOk();
       showBanner("ok", "✓ " + j.message);
       if (j.document) renderDoc(j.document);
-      setTimeout(function () { resetScan(true); }, 700);
+      setTimeout(function () {
+        if (j.warning) {
+          showBanner("warn", j.warning);
+          setTimeout(function () { resetScan(true); }, 1500);
+        } else {
+          resetScan(true);
+        }
+      }, 700);
     });
   }
 
@@ -159,7 +166,7 @@
   document.getElementById("scanForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var code = scan.value.trim(); scan.value = "";
-    if (!code) return;
+    if (!code) { S.beepErr(); showBanner("err", "Pusty skan — zeskanuj kod."); return; }
     if (state.step === "hu") handleHU(code);
   });
 

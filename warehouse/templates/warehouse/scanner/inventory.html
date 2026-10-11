@@ -28,6 +28,12 @@
   </div>
   <div class="scn-card"><div class="scn-hint" id="adjHint">Ilość do dodania</div><div class="scn-qty" id="qtyDisplay">0</div></div>
   <div class="scn-card"><div class="scn-row"><span class="k">Stan po zmianie</span><span class="v" id="previewQty">—</span></div></div>
+  <select id="reasonSelect" class="scn-select">
+    <option value="">— Wybierz powód korekty —</option>
+    {% for value, label in reasons %}
+    <option value="{{ value }}">{{ label }}</option>
+    {% endfor %}
+  </select>
   <div class="scn-numpad" id="numpad">
     <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
     <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
@@ -70,6 +76,7 @@
     document.getElementById("huCard").classList.add("hidden");
     document.getElementById("adjPanel").classList.add("hidden");
     document.getElementById("scanWrap").classList.remove("hidden");
+    document.getElementById("reasonSelect").value = "";
     setMode("plus");
     if (!keepBanner) clearBanner();
     scan.value = ""; scan.focus();
@@ -105,8 +112,10 @@
     var d = delta();
     if (d === 0) { S.beepErr(); showBanner("err", "Podaj ilość."); return; }
     if (state.current + d < 0) { S.beepErr(); showBanner("err", "Stan nie może być ujemny (jest " + state.current + ")."); return; }
+    var reason = document.getElementById("reasonSelect").value;
+    if (!reason) { S.beepErr(); showBanner("err", "Wybierz powód korekty."); return; }
     var btn = document.getElementById("confirmBtn"); btn.disabled = true;
-    S.postForm("{% url 'scanner_api_inventory' %}", { hu: state.hu, delta: d }).then(function (j) {
+    S.postForm("{% url 'scanner_api_inventory' %}", { hu: state.hu, delta: d, reason: reason }).then(function (j) {
       btn.disabled = false;
       if (!j.ok) { S.beepErr(); showBanner("err", j.error || "Błąd."); return; }
       S.beepOk();
@@ -133,7 +142,7 @@
   document.getElementById("scanForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var code = scan.value.trim(); scan.value = "";
-    if (!code) return;
+    if (!code) { S.beepErr(); showBanner("err", "Pusty skan — zeskanuj kod."); return; }
     if (state.step === "hu") handleHU(code);
   });
   document.getElementById("resetBtn").addEventListener("click", function () { resetAll(false); });

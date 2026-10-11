@@ -27,7 +27,7 @@ ile, skąd i dokąd.
 | [02 — Proces](docs/02-proces.md) | proces przed i po wdrożeniu (Mermaid), aktorzy, punkty decyzyjne, założenia |
 | [03 — User flow](docs/03-user-flow.md) | mapa ekranów panelu i skanera z przejściami, ścieżki alternatywne i ślepe |
 | [04 — Model danych](docs/04-model-danych.md) | diagram ERD, opis 13 encji, reguły integralności i ich luki |
-| [05 — Wymagania](docs/05-wymagania.md) | 26 wymagań z kryteriami akceptacji i wskazaniem kodu oraz testu; 4 niespełnione |
+| [05 — Wymagania](docs/05-wymagania.md) | 26 wymagań z kryteriami akceptacji i wskazaniem kodu oraz testu |
 | [06 — Decyzje](docs/06-decyzje.md) | dziennik decyzji: kontekst, opcje, uzasadnienie, skutki |
 | [07 — Ograniczenia](docs/07-ograniczenia.md) | czego aplikacja nie robi, znane problemy, co dalej |
 
@@ -81,9 +81,9 @@ W zakresie: przyjęcia z etykietami, rozmieszczanie, wydania z doborem palet wed
 ważności, korekty, łączenie palet, spis z natury, raporty i eksport.
 
 Poza zakresem świadomie: integracja z ERP (firma go nie ma), zwroty, blokada palet po terminie
-ważności, wiele magazynów. Cztery wymagania nie są jeszcze spełnione — skaner nie pilnuje
-kolejności dat ważności ani palety wskazanej w dokumencie, korekta nie zawsze wymaga powodu,
-a pojemność lokalizacji blokuje zamiast informować. Status: zaawansowany prototyp.
+ważności, wiele magazynów. Wszystkie spisane wymagania są spełnione; otwarte pozostają
+problemy, które wymagają decyzji (m.in. limit logowań za proxy, import stanów z ilością 0).
+Status: zaawansowany prototyp.
 Szczegóły: [07 — Ograniczenia](docs/07-ograniczenia.md).
 
 ## Kontekst projektu

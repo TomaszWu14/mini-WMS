@@ -527,10 +527,11 @@ def hu_allocate(request, pk):
     if request.method == "POST":
         form = AllocateForm(request.POST)
         if form.is_valid():
+            location = form.cleaned_data["location"]
             try:
                 services.allocate_hu(
                     hu=hu,
-                    location=form.cleaned_data["location"],
+                    location=location,
                     user=request.user,
                 )
             except WMSError as exc:
@@ -540,6 +541,12 @@ def hu_allocate(request, pk):
                     request,
                     f"HU {hu.number} ulokowano w {hu.location.code}.",
                 )
+                if services.location_over_capacity(hu.location):
+                    messages.warning(
+                        request,
+                        f"Lokalizacja {hu.location.code} ma więcej palet niż "
+                        f"pojemność ({hu.location.occupancy}/{hu.location.capacity}).",
+                    )
                 return redirect("hu_detail", pk=pk)
     else:
         form = AllocateForm()
@@ -588,6 +595,7 @@ def hu_correct(request, pk):
                     new_quantity=form.cleaned_data["new_quantity"],
                     user=request.user,
                     note=form.cleaned_data.get("note", ""),
+                    reason=form.cleaned_data["reason"],
                 )
             except WMSError as exc:
                 messages.error(request, str(exc))
@@ -666,15 +674,31 @@ def issue_add_line(request, pk):
     if request.method == "POST":
         form = IssueLineForm(request.POST)
         if form.is_valid():
+            qty = form.cleaned_data["requested_qty"]
+            hu = (
+                form.cleaned_data["specific_hu"]
+                if form.cleaned_data["mode"] == IssueLineForm.MODE_HU
+                else None
+            )
+            if hu is not None:
+                already = (
+                    doc.lines.filter(specific_hu=hu).aggregate(s=Sum("requested_qty"))[
+                        "s"
+                    ]
+                    or 0
+                )
+                if already + qty > hu.quantity:
+                    messages.error(
+                        request,
+                        f"HU {hu.number} ma tylko {hu.quantity} szt., a pozycje "
+                        f"dokumentu wskazują już {already}.",
+                    )
+                    return redirect("issue_detail", pk=pk)
             IssueLine.objects.create(
                 document=doc,
                 material=form.cleaned_data["material"],
-                requested_qty=form.cleaned_data["requested_qty"],
-                specific_hu=(
-                    form.cleaned_data["specific_hu"]
-                    if form.cleaned_data["mode"] == IssueLineForm.MODE_HU
-                    else None
-                ),
+                requested_qty=qty,
+                specific_hu=hu,
             )
             messages.success(request, "Dodano pozycję.")
         else:
@@ -999,6 +1023,7 @@ def stocktake_save(request, pk):
         return redirect("stocktake_detail", pk=pk)
     if request.method == "POST":
         updated = 0
+        skipped = 0
         for line in sheet.lines.all():
             raw = request.POST.get(f"counted_{line.id}", "").strip()
             if raw == "":
@@ -1007,12 +1032,17 @@ def stocktake_save(request, pk):
                 try:
                     new_val = max(0, int(raw))
                 except ValueError:
+                    skipped += 1
                     continue
             if new_val != line.counted_qty:
                 line.counted_qty = new_val
                 line.save(update_fields=["counted_qty"])
                 updated += 1
         messages.success(request, f"Zapisano ({updated} zmian).")
+        if skipped:
+            messages.warning(
+                request, f"Pominięto {skipped} wartości, które nie są liczbą."
+            )
     return redirect("stocktake_detail", pk=pk)
 
 
@@ -1050,31 +1080,24 @@ def inventory_view(request):
                 form.add_error("hu_number", f"Nie znaleziono HU „{number}”.")
             else:
                 delta = qty if mode == InventoryForm.MODE_ADD else -qty
-                new_quantity = hu.quantity + delta
-                if new_quantity < 0:
-                    form.add_error(
-                        "quantity",
-                        f"Stan nie może być ujemny (na HU jest {hu.quantity}).",
+                try:
+                    services.adjust_hu_quantity(
+                        hu=hu,
+                        delta=delta,
+                        user=request.user,
+                        note=note or "Inwentaryzacja (web)",
+                        reason=form.cleaned_data["reason"],
                     )
+                except WMSError as exc:
+                    form.add_error("quantity", str(exc))
                 else:
-                    try:
-                        services.correct_hu_quantity(
-                            hu=hu,
-                            new_quantity=new_quantity,
-                            user=request.user,
-                            note=note or "Inwentaryzacja (web)",
-                            reason=form.cleaned_data.get("reason", ""),
-                        )
-                    except WMSError as exc:
-                        messages.error(request, str(exc))
-                    else:
-                        sign = "+" if delta > 0 else "−"
-                        messages.success(
-                            request,
-                            f"HU {hu.number}: {sign}{abs(delta)} → stan "
-                            f"{new_quantity} {hu.material.unit.code}.",
-                        )
-                        return redirect("inventory")
+                    sign = "+" if delta > 0 else "−"
+                    messages.success(
+                        request,
+                        f"HU {hu.number}: {sign}{abs(delta)} → stan "
+                        f"{hu.quantity} {hu.material.unit.code}.",
+                    )
+                    return redirect("inventory")
     else:
         form = InventoryForm()
 
@@ -1179,7 +1202,7 @@ PERMISSION_MATRIX = [
     ("Import lokalizacji / stanów", True, True, False),
     ("Tryb skanera", True, True, False),
     ("Zmiana terminu dostawy", True, False, False),
-    ("Edycja / usuwanie ruchów", True, False, False),
+    ("Edycja / usuwanie ruchów (panel Django — tylko superuser)", True, False, False),
     ("Zarządzanie użytkownikami", True, False, False),
 ]
 

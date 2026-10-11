@@ -5,6 +5,7 @@
   <span class="badge badge-{{ doc.status }}">{{ doc.get_status_display }}</span>
 </h1>
 <div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'issue_list' %}">← Lista wydań</a>
   <a class="btn btn-secondary" href="{% url 'issue_pdf' doc.pk %}" target="_blank">🖨 Drukuj WZ (PDF)</a>
 </div>
 <p class="muted">

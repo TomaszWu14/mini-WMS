@@ -217,6 +217,21 @@ body.scn {
 .scn-btns { display: flex; gap: 10px; }
 .scn-btns .scn-btn { flex: 1; }
 
+/* Duży select dotykowy (np. powód korekty inwentaryzacji) */
+.scn-select {
+  width: 100%;
+  min-height: 54px;
+  padding: 14px 16px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  border-radius: 12px;
+  border: 2px solid var(--s-line);
+  background: var(--s-panel2);
+  color: var(--s-ink);
+}
+.scn-select:focus { outline: none; border-color: var(--s-accent); }
+
 /* Numpad do ilości */
 .scn-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .scn-numpad button {
@@ -242,6 +257,7 @@ body.scn {
 .scn-banner.show { display: block; }
 .scn-banner.ok { background: var(--s-ok-bg); color: var(--s-ok-ink); border: 1px solid var(--s-ok); }
 .scn-banner.err { background: var(--s-err-bg); color: var(--s-err-ink); border: 1px solid var(--s-err); }
+.scn-banner.warn { background: #fbe8d9; color: var(--s-warn); border: 1px solid var(--s-warn); }
 
 .scn-hint { color: var(--s-muted); font-size: 13px; text-align: center; }
 .hidden { display: none !important; }

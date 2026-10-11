@@ -4,6 +4,9 @@
 <h1>Spis {{ sheet.number }}
   <span class="badge badge-{{ sheet.status }}">{{ sheet.get_status_display }}</span>
 </h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'stocktake_list' %}">← Lista spisów</a>
+</div>
 <p class="muted">
   Zakres: <strong>{{ sheet.location.code|default:"cały magazyn" }}</strong> ·
   Utworzono: {{ sheet.created_at|date:"Y-m-d H:i" }} · {{ sheet.created_by.username|default:"—" }}

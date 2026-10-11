@@ -3,11 +3,13 @@
 Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
     kod         — wymagany, unikalny kod lokalizacji (np. A-01-01A)
     typ         — opcjonalny: PICKING albo ZAPAS (domyślnie ZAPAS)
-    pojemnosc   — opcjonalna liczba HU (domyślnie 1)
+    pojemnosc   — opcjonalna liczba HU (domyślnie 1, 0 = bez limitu)
 """
 
 import csv
 import io
+
+from django.db import transaction
 
 from .models import Location, LocationType
 
@@ -47,13 +49,17 @@ def _normalize_type(value: str) -> str:
 
 
 def _parse_capacity(value) -> int:
+    """0 = bez limitu (jak w LocationForm/modelu) — zostaje, nie jest
+    podnoszone do 1. Ujemne wartości to błąd wiersza importu."""
     if value in (None, ""):
         return 1
     try:
         capacity = int(float(str(value).strip()))
     except (TypeError, ValueError) as exc:
         raise ImportError_(f"Niepoprawna pojemność: '{value}'.") from exc
-    return max(capacity, 1)
+    if capacity < 0:
+        raise ImportError_(f"Niepoprawna pojemność: '{value}'.")
+    return capacity
 
 
 def _decode_csv(data: bytes) -> str:
@@ -109,6 +115,7 @@ def parse_locations_file(filename: str, data: bytes):
     raise ImportError_("Obsługiwane formaty to .csv oraz .xlsx.")
 
 
+@transaction.atomic
 def import_locations(filename: str, data: bytes):
     """Importuje lokalizacje. Zwraca (utworzone, zaktualizowane, błędy)."""
     rows = parse_locations_file(filename, data)

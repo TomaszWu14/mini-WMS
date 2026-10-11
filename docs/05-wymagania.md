@@ -2,8 +2,8 @@
 
 Wymagania odtworzone z działającego kodu i potwierdzone z interesariuszami. Kolumna
 „Gdzie zrealizowane” wskazuje kod i test, który sprawdza kryterium (`warehouse/tests.py`,
-chyba że podano inaczej). **Cztery wymagania nie są spełnione** — oznaczone ⚠ i opisane w
-[07-ograniczenia.md](07-ograniczenia.md).
+chyba że podano inaczej). Wszystkie wymagania są spełnione; W-08, W-11, W-25 i W-26 domknięto
+poprawkami opisanymi w [07-ograniczenia.md](07-ograniczenia.md).
 
 ## Przyjęcie i etykiety
 
@@ -21,7 +21,7 @@ chyba że podano inaczej). **Cztery wymagania nie są spełnione** — oznaczone
 |---|---|---|---|
 | W-06 | Operator odkłada paletę w lokalizacji — w panelu lub skanerem | Po skanie palety i miejsca paleta ma status „Zmagazynowany”, lokalizację i ruch ALOKACJA | `services.py` `allocate_hu`, `scanner_views.py` `api_allocate`; `test_allocate_sets_location_and_status`, `test_api_allocate` |
 | W-07 | Zmiana miejsca palety jest zapisywana jako przesunięcie | Przeniesienie z A do B tworzy ruch PRZESUNIĘCIE z polami „z” i „do” | `services.py:182` |
-| W-08 ⚠ | Pojemność lokalizacji jest **informacyjna** | Odłożenie palety do lokalizacji „pełnej” jest możliwe; system tylko informuje o przekroczeniu | **Niespełnione:** `services.py:160-170` blokuje alokację (`test_allocate_enforces_capacity` sprawdza blokadę) |
+| W-08 | Pojemność lokalizacji jest **informacyjna** | Odłożenie palety do lokalizacji „pełnej” jest możliwe; system tylko informuje o przekroczeniu | `services.py` `allocate_hu`, `location_over_capacity`; ostrzeżenie w panelu i skanerze; `test_allocate_over_capacity_succeeds_but_flagged`, `tests_views_fixes.py` `test_over_capacity_allocation_succeeds_with_warning`, `tests_scanner_fixes.py` `test_allocate_over_capacity_warns_but_succeeds` |
 | W-09 | Pustej palety nie da się odłożyć | Próba alokacji palety o statusie „Pusty” kończy się komunikatem | `services.py:153`, `views.py` `hu_allocate` |
 
 ## Wydania
@@ -29,14 +29,14 @@ chyba że podano inaczej). **Cztery wymagania nie są spełnione** — oznaczone
 | ID | Wymaganie | Kryterium akceptacji | Gdzie zrealizowane |
 |---|---|---|---|
 | W-10 | Wydanie po materiale dobiera palety automatycznie: PICKING przed ZAPAS, potem najkrótsza data ważności, potem najstarsze przyjęcie | Dwie palety tego materiału z datami 2026-01 i 2026-03 → wydanie bierze najpierw paletę z 2026-01; paleta w PICKING ma pierwszeństwo przed ZAPAS | `services.py:305` `_pickable_hus`; `test_fefo_prefers_earliest_expiry`, `test_picking_location_priority` |
-| W-11 ⚠ | Kolejność FEFO obowiązuje także przy kompletacji **skanerem** | Skan palety z późniejszą datą, gdy jest paleta z wcześniejszą, kończy się ostrzeżeniem lub odmową | **Niespełnione:** `scanner_views.py` `api_pick` przyjmuje dowolną paletę z materiałem z dokumentu |
+| W-11 | Kolejność FEFO obowiązuje także przy kompletacji **skanerem** | Skan palety z późniejszą datą, gdy jest paleta z wcześniejszą, kończy się ostrzeżeniem lub odmową | `scanner_views.py` `api_pick` + `services.first_pickable_hu` — pobranie z ostrzeżeniem wskazującym właściwą paletę; `tests_scanner_fixes.py` `ApiPickFefoWarningTests` |
 | W-12 | Stan palety nie może spaść poniżej zera | Wydanie 60 szt. z palety z 50 szt. jest odrzucane; baza odrzuca ilość < 0 | `services.py:341-347`, `models.py:216`; `test_overpick_blocked`, `test_hu_quantity_check_constraint` |
 | W-13 | Dokument WZ realizowany w całości albo z brakami | Brak stanu: „Realizuj” zgłasza błąd; „Zamknij z brakami” wydaje dostępną ilość i pokazuje brak | `services.py:407` `execute_issue_document`; `test_full_execution_raises_on_shortage`, `test_partial_execution_closes_with_shortage` |
 | W-14 | Pozycję WZ można wskazać jako konkretną paletę | Pozycja z paletą innego materiału niż pozycja jest odrzucana przy realizacji | `forms.py:327`, `services.py:421`; `test_execute_rejects_specific_hu_wrong_material` |
 | W-15 | Po pobraniu całej palety jest ona „Pusta” i zwalnia miejsce | Wydanie całej ilości → status „Pusty”, brak lokalizacji | `services.py:231`; `test_pick_to_zero_marks_empty_and_frees_location` |
 | W-16 | WZ przechodzi przez stany: Otwarty → Zrealizowany → (Spakowany) → Wysłany | Spakować można tylko zrealizowany; wysłać — zrealizowany lub spakowany; pozycji nie da się zmienić poza stanem „Otwarty” | `services.py:477, 489`, `views.py` `issue_add_line`; `test_pack_and_ship_flow`, `test_pack_requires_realized`, `test_cannot_add_line_to_packed_document` |
 | W-17 | Skaner prowadzi kompletację dokumentu i zamyka go po pobraniu wszystkiego | Ostatnia pozycja pobrana → WZ „Zrealizowany”; materiał spoza dokumentu odrzucony | `scanner_views.py` `api_pick`; `test_document_pick_completes_order`, `test_document_pick_rejects_wrong_material` |
-| W-25 ⚠ | Skaner respektuje paletę wskazaną w pozycji WZ | Pozycja z „konkretnym HU”: skan innej palety tego samego materiału kończy się odmową | **Niespełnione:** `scanner_views.py:284-291` dobiera pozycję tylko po materiale |
+| W-25 | Skaner respektuje paletę wskazaną w pozycji WZ | Pozycja z „konkretnym HU”: skan innej palety tego samego materiału kończy się odmową | `scanner_views.py` `api_pick`; `tests_scanner_fixes.py` `ApiPickSpecificHuTests` |
 
 ## Kontrola stanu
 
@@ -45,7 +45,7 @@ chyba że podano inaczej). **Cztery wymagania nie są spełnione** — oznaczone
 | W-18 | Korekta ilości palety z powodem i historią | Korekta +5 tworzy ruch KOREKTA +5 z powodem; korekta o 0 jest odrzucana | `services.py:198` `correct_hu_quantity`; `test_correction_logs_movement`, `test_web_inventory_add` |
 | W-19 | Łączenie palet tylko tego samego materiału i partii | Przepakowanie między różnymi materiałami jest odrzucane; opróżnione źródło staje się „Puste” | `services.py:242` `repack_hu`; `RepackTests` |
 | W-20 | Spis z natury: migawka → liczenie → zatwierdzenie różnic | Zamknięcie arkusza z różnicą tworzy korektę z powodem „Spis z natury”; pozycje niepoliczone nie zmieniają stanu | `services.py:534, 560`; `StocktakeTests` |
-| W-26 ⚠ | Każda korekta ilości ma powód | Zapis korekty bez powodu jest odrzucany — na ekranie palety, w inwentaryzacji i na skanerze | **Niespełnione:** powód wybierany tylko w „Inwentaryzacji” (`forms.py:112`); „Korekta ilości” i skaner zapisują bez powodu (`views.py:586`, `scanner_views.py:404`) |
+| W-26 | Każda korekta ilości ma powód | Zapis korekty bez powodu jest odrzucany — na ekranie palety, w inwentaryzacji i na skanerze | `services.py` `correct_hu_quantity` (powód z `AdjustReason` wymagany w serwisie), formularze i API skanera; `tests_services_fixes.py` `CorrectionReasonRequiredTests`, `tests_views_fixes.py` `HUCorrectionReasonTests`, `tests_scanner_fixes.py` `ApiInventoryReasonTests` |
 
 ## Raporty i dostęp
 
