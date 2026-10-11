@@ -20,7 +20,7 @@ z terminalem skanera i pełna historia ruchów.
 | **Problem** | Mały magazyn bez systemu WMS: palety (HU) bez etykiet, brak historii ruchów, picking „z pamięci”. |
 | **Rozwiązanie** | Lekki WMS: przyjęcia z generowaniem HU, etykiety PDF z kodem QR, lokalizacje, picking FEFO → FIFO, pełny rejestr ruchów z audytem. |
 | **Stack** | Python 3.11+, Django 5.1, PostgreSQL 16, ReportLab + qrcode (PDF/QR), openpyxl, Gunicorn + WhiteNoise, Docker Compose + Caddy (auto-HTTPS). |
-| **Jakość** | 123 testy (`manage.py test`), ruff, CI w GitHub Actions: `check`, `check --deploy`, `makemigrations --check`. |
+| **Jakość** | 124 testy (`manage.py test`), ruff, CI w GitHub Actions: `check`, `check --deploy`, `makemigrations --check`. |
 | **Wdrożenie** | Jedno polecenie `docker compose up -d --build` albo Coolify (`docker-compose.coolify.yml`). |
 
 Lekki WMS w Django do zarządzania materiałem w magazynie: przyjęcia z generowaniem
@@ -98,7 +98,7 @@ Projekt w całości mojego autorstwa (jedyny twórca): od modelu danych po wdro�
   `warehouse/services.py`, w której każda zmiana stanu zapisuje ruch w tej samej transakcji.
 - Dobór palet FEFO → FIFO z priorytetem lokalizacji PICKING i blokadą wierszy przy pickingu.
 - Ekrany skanera (przyjęcie, alokacja, picking, spis) i etykiety PDF z kodem QR.
-- Tryb demo, 123 testy, CI (ruff, `check --deploy`, kontrola migracji) i dwa warianty wdrożenia.
+- Tryb demo, 124 testy, CI (ruff, `check --deploy`, kontrola migracji) i dwa warianty wdrożenia.
 
 ## Gdzie zacząć czytać kod
 

@@ -876,6 +876,38 @@ class ViewAccessTests(BaseSetup):
         self.assertEqual(days[-1]["pct"], 100)
         self.assertEqual(resp.context["occupancy_pct"], 50)
 
+    def test_dashboard_issue_progress_and_plan(self):
+        open_doc = IssueDocument.objects.create(number="WZ-1", reference="Sklep")
+        IssueLine.objects.create(
+            document=open_doc, material=self.material, requested_qty=10, picked_qty=4
+        )
+        done_doc = IssueDocument.objects.create(
+            number="WZ-2", status=IssueStatus.SPAKOWANY
+        )
+        IssueLine.objects.create(
+            document=done_doc, material=self.material, requested_qty=10, picked_qty=10
+        )
+        old = IssueDocument.objects.create(number="WZ-0", status=IssueStatus.WYSLANY)
+        IssueLine.objects.create(
+            document=old, material=self.material, requested_qty=50, picked_qty=0
+        )
+        services.receive_material(
+            material=self.material, quantities=[5], user=self.user
+        )
+        self.client.login(username="operator", password="x")
+        resp = self.client.get("/")
+
+        progress = resp.context["issue_progress"]
+        # WZ-0 wysłany wcześniej (bez shipped_at dziś) — poza zakresem.
+        self.assertEqual(progress["pct"], 70)
+        self.assertEqual((progress["lines_done"], progress["lines_total"]), (1, 2))
+        self.assertEqual((progress["packed"], progress["docs"]), (1, 2))
+
+        plan = resp.context["today_plan"]
+        self.assertEqual([p["kind"] for p in plan], ["alert", "pick", "ship"])
+        self.assertEqual(plan[1]["title"], "WZ-1 — Sklep")
+        self.assertContains(resp, "Plan na dziś")
+
 
 class HeatLevelTests(TestCase):
     def test_levels(self):

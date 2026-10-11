@@ -454,3 +454,30 @@ ul.radio label { display: inline; font-weight: 600; }
 .mv-ALOKACJA, .mv-PRZESUNIECIE { background: var(--field); color: var(--ink-2); }
 .mv-KOREKTA { background: var(--warn-bg); color: var(--warn); }
 .mv-PRZEPAKOWANIE { background: #ece8f6; color: #4b3a8c; }
+
+/* Realizacja wydań — półokrągły wskaźnik */
+.gauge { display: flex; justify-content: center; }
+.gauge svg { width: 100%; max-width: 260px; height: auto; }
+.gauge-num { font-family: inherit; font-weight: 800; font-size: 34px; fill: var(--ink); }
+.gauge-cap { font-family: inherit; font-weight: 600; font-size: 12px; fill: var(--muted); }
+.stat-list { margin: 14px 0 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.stat-list div { display: flex; justify-content: space-between; gap: 12px; }
+.stat-list dt { color: var(--ink-2); font-weight: 600; }
+.stat-list dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Plan na dziś — kolejka zadań */
+.plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.plan-item {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--mint-soft); color: var(--ink);
+}
+.plan-item:hover { text-decoration: none; color: var(--ink); box-shadow: inset 0 0 0 2px var(--emerald); }
+.plan-item strong { font-size: 14px; font-weight: 800; }
+.plan-tag { font-size: 12px; font-weight: 800; color: var(--brand); }
+.plan-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.plan-time { font-family: var(--mono); padding: 2px 8px; border-radius: 6px; background: var(--card); }
+.plan-pack, .plan-ship { background: var(--field); }
+.plan-pack .plan-tag, .plan-ship .plan-tag { color: var(--ink-2); }
+.plan-alert, .plan-count { background: var(--warn-bg); }
+.plan-alert .plan-tag, .plan-count .plan-tag { color: var(--warn); }
