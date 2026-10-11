@@ -1,0 +1,15 @@
+# mini-WMS — instrukcje dla Claude
+
+Django 5.1, jeden app `warehouse`, ustawienia `config/settings/{base,dev,prod,test}.py`.
+Testy: `.venv/Scripts/python -m pytest -x -q` (~11–40 s). Hooki w `.claude/settings.json`:
+`guard.py` (PreToolUse — blokuje groźne komendy), `check.py` (Stop — ruff/mypy na zmienionych
+plikach + pytest).
+
+## Pułapki — czytaj przed pracą w danym obszarze
+
+| Praca dotyczy… | Czytaj |
+|---|---|
+| modeli, migracji, `services.py`, zapytań, transakcji | `docs/pitfalls/db.md` |
+| logowania, ról, dekoratorów widoków, kont demo, `signals.py` | `docs/pitfalls/auth.md` |
+| widoków, formularzy, importów CSV/XLSX, eksportów, skanera, szablonów | `docs/pitfalls/views.md` |
+| Dockera, `entrypoint.sh`, compose, Coolify, zmiennych środowiskowych, CI | `docs/pitfalls/deploy.md` |
