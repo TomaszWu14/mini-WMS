@@ -1,10 +1,13 @@
 """Widoki ekranów operatora mini-WMS."""
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncDate
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -87,8 +90,80 @@ def dashboard(request):
             .annotate(qty=Sum("quantity"), hus=Count("id"))
             .order_by("material__index")[:10]
         ),
+        "location_heat": _location_heat(),
+        "movement_days": _movement_days(today),
     }
+    if context["location_count"]:
+        context["occupancy_pct"] = round(
+            100 * context["occupied_locations"] / context["location_count"]
+        )
     return render(request, "warehouse/dashboard.html", context)
+
+
+HEAT_CELLS_MAX = 240
+
+
+def _heat_level(occupied, capacity):
+    """Poziom wypełnienia lokalizacji 0–4 (0 = pusta, 4 = pełna)."""
+    if not occupied:
+        return 0
+    if not capacity:  # 0 = bez limitu — tylko „zajęta”
+        return 2
+    ratio = occupied / capacity
+    if ratio >= 1:
+        return 4
+    if ratio > 2 / 3:
+        return 3
+    if ratio > 1 / 3:
+        return 2
+    return 1
+
+
+def _location_heat():
+    """Komórki mapy obłożenia: kod, poziom 0–4 i opis do podpowiedzi."""
+    locations = Location.objects.annotate(
+        occupied=Count(
+            "handling_units",
+            filter=Q(handling_units__quantity__gt=0)
+            & ~Q(handling_units__status=HUStatus.PUSTY),
+        )
+    ).order_by("code")[:HEAT_CELLS_MAX]
+    cells = []
+    for loc in locations:
+        limit = loc.capacity if loc.capacity else "∞"
+        cells.append(
+            {
+                "code": loc.code,
+                "level": _heat_level(loc.occupied, loc.capacity),
+                "title": f"{loc.code}: {loc.occupied}/{limit} HU",
+            }
+        )
+    return cells
+
+
+def _movement_days(today, days=14):
+    """Liczba ruchów dziennie z ostatnich `days` dni (z dniem dzisiejszym)."""
+    start = today - timedelta(days=days - 1)
+    counts = dict(
+        StockMovement.objects.filter(created_at__date__gte=start)
+        .annotate(day=TruncDate("created_at"))
+        .values_list("day")
+        .annotate(n=Count("id"))
+    )
+    peak = max(counts.values(), default=0) or 1
+    result = []
+    for offset in range(days):
+        day = start + timedelta(days=offset)
+        n = counts.get(day, 0)
+        result.append(
+            {
+                "day": day,
+                "count": n,
+                "pct": round(100 * n / peak),
+                "is_today": day == today,
+            }
+        )
+    return result
 
 
 # --- Materiały ---------------------------------------------------------------

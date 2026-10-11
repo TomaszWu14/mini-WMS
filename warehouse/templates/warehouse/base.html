@@ -13,32 +13,48 @@
 {% include "warehouse/_icons.html" %}
 <header class="topbar">
   <button class="menu-toggle" onclick="document.body.classList.toggle('nav-open')" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
-  <a class="brand" href="{% url 'dashboard' %}"><span class="brand-accent">cobalt</span>SPORT <span class="brand-sub">· mini-WMS</span></a>
+  <a class="brand" href="{% url 'dashboard' %}">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="29" width="32" height="3" rx="1" fill="#14533f"/><rect x="6" y="32" width="4" height="3" fill="#14533f"/><rect x="18" y="32" width="4" height="3" fill="#14533f"/><rect x="30" y="32" width="4" height="3" fill="#14533f"/><rect x="6" y="17" width="14" height="12" rx="2" fill="#2e8b66"/><rect x="21" y="17" width="13" height="12" rx="2" fill="#9fe0bf"/><rect x="12" y="5" width="15" height="12" rx="2" fill="#14533f"/></svg>
+    <span><span class="brand-accent">cobalt</span>SPORT <span class="brand-sub">· mini-WMS</span></span>
+  </a>
   <div class="topbar-right">
-    <span class="user-chip">{{ user.username }} · {{ user_role }}</span>
+    <span class="user-chip"><span class="avatar" aria-hidden="true">{{ user.username|slice:":2" }}</span><span class="user-meta">{{ user.username }}<small>{{ user_role }}</small></span></span>
     <form action="{% url 'logout' %}" method="post" class="inline">{% csrf_token %}
       <button class="btn btn-ghost" type="submit"><svg class="ic"><use href="#i-log-out"/></svg> Wyloguj</button>
     </form>
   </div>
 </header>
 
+{% with u=request.resolver_match.url_name %}
 <div class="layout">
-  <nav class="sidebar">
-    <a href="{% url 'dashboard' %}"><svg class="ic"><use href="#i-home"/></svg> Pulpit</a>
-    <a href="{% url 'stock_list' %}"><svg class="ic"><use href="#i-chart"/></svg> Stany</a>
-    <a href="{% url 'material_list' %}"><svg class="ic"><use href="#i-package"/></svg> Materiały</a>
-    <a href="{% url 'location_list' %}"><svg class="ic"><use href="#i-map-pin"/></svg> Lokalizacje</a>
-    {% if is_operator_role %}<a href="{% url 'receive' %}"><svg class="ic"><use href="#i-inbound"/></svg> Przyjęcie</a>{% endif %}
-    {% if is_operator_role %}<a href="{% url 'scanner_home' %}"><svg class="ic"><use href="#i-scan"/></svg> Skaner</a>{% endif %}
-    <a href="{% url 'hu_list' %}"><svg class="ic"><use href="#i-layers"/></svg> HU (palety)</a>
-    {% if is_operator_role %}<a href="{% url 'inventory' %}"><svg class="ic"><use href="#i-clipboard-check"/></svg> Inwentaryzacja</a>{% endif %}
-    {% if is_operator_role %}<a href="{% url 'repack' %}"><svg class="ic"><use href="#i-shuffle"/></svg> Przepakowanie</a>{% endif %}
-    <a href="{% url 'stocktake_list' %}"><svg class="ic"><use href="#i-clipboard-list"/></svg> Spis z natury</a>
-    <a href="{% url 'issue_list' %}"><svg class="ic"><use href="#i-truck"/></svg> Wydania</a>
-    <a href="{% url 'movement_list' %}"><svg class="ic"><use href="#i-arrows"/></svg> Ruchy</a>
-    <a href="{% url 'report_index' %}"><svg class="ic"><use href="#i-trending-up"/></svg> Raporty</a>
-    {% if is_admin_role %}<a href="{% url 'user_list' %}"><svg class="ic"><use href="#i-users"/></svg> Użytkownicy</a>{% endif %}
-    {% if is_admin_role %}<a href="/admin/"><svg class="ic"><use href="#i-settings"/></svg> Administracja</a>{% endif %}
+  <nav class="sidebar" aria-label="Menu główne">
+    <div class="nav-label">Przegląd</div>
+    <a href="{% url 'dashboard' %}"{% if u == 'dashboard' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-home"/></svg> Pulpit</a>
+    <a href="{% url 'stock_list' %}"{% if u == 'stock_list' or u == 'stock_by_location' or u == 'stock_import' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-chart"/></svg> Stany</a>
+    <a href="{% url 'hu_list' %}"{% if u == 'hu_list' or u == 'hu_detail' or u == 'hu_allocate' or u == 'hu_correct' or u == 'hu_delivery' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-layers"/></svg> HU (palety)</a>
+    <a href="{% url 'location_list' %}"{% if u == 'location_list' or u == 'location_create' or u == 'location_import' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-map-pin"/></svg> Lokalizacje</a>
+    <a href="{% url 'material_list' %}"{% if u == 'material_list' or u == 'material_create' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-package"/></svg> Materiały</a>
+    <div class="nav-label">Operacje</div>
+    {% if is_operator_role %}<a href="{% url 'receive' %}"{% if u == 'receive' or u == 'receive_import' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-inbound"/></svg> Przyjęcie</a>{% endif %}
+    <a href="{% url 'issue_list' %}"{% if u == 'issue_list' or u == 'issue_detail' or u == 'issue_create' or u == 'issue_import' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-truck"/></svg> Wydania</a>
+    {% if is_operator_role %}<a href="{% url 'inventory' %}"{% if u == 'inventory' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-clipboard-check"/></svg> Inwentaryzacja</a>{% endif %}
+    {% if is_operator_role %}<a href="{% url 'repack' %}"{% if u == 'repack' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-shuffle"/></svg> Przepakowanie</a>{% endif %}
+    <a href="{% url 'stocktake_list' %}"{% if u == 'stocktake_list' or u == 'stocktake_detail' or u == 'stocktake_create' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-clipboard-list"/></svg> Spis z natury</a>
+    <a href="{% url 'movement_list' %}"{% if u == 'movement_list' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-arrows"/></svg> Ruchy</a>
+    <a href="{% url 'report_index' %}"{% if u == 'report_index' or u == 'report_locations' or u == 'report_material' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-trending-up"/></svg> Raporty</a>
+    {% if is_admin_role %}
+    <div class="nav-label">Administracja</div>
+    <a href="{% url 'user_list' %}"{% if u == 'user_list' or u == 'user_edit' %} aria-current="page"{% endif %}><svg class="ic"><use href="#i-users"/></svg> Użytkownicy</a>
+    <a href="/admin/"><svg class="ic"><use href="#i-settings"/></svg> Administracja</a>
+    {% endif %}
+    {% if is_operator_role %}
+    <div class="nav-promo">
+      <svg class="promo-art" viewBox="0 0 120 80" aria-hidden="true"><path d="M10 0V80M50 0V80M90 0V80M10 26H130M10 54H130" stroke="#9fe0bf" stroke-width="3" fill="none"/><rect x="16" y="8" width="26" height="18" fill="#9fe0bf"/><rect x="56" y="34" width="28" height="20" fill="#9fe0bf"/><rect x="96" y="6" width="22" height="20" fill="#9fe0bf"/></svg>
+      <strong>Tryb skanera</strong>
+      <p>Picking FEFO, alokacje i spis na terminalu w hali.</p>
+      <a href="{% url 'scanner_home' %}"><svg class="ic"><use href="#i-scan"/></svg> Otwórz skaner</a>
+    </div>
+    {% endif %}
   </nav>
 
   <main class="content">
@@ -52,6 +68,7 @@
     {% block content %}{% endblock %}
   </main>
 </div>
+{% endwith %}
 {% else %}
   {% block anon %}{% endblock %}
 {% endif %}

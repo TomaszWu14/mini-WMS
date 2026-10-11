@@ -1,16 +1,57 @@
 {% extends "warehouse/base.html" %}
 {% block title %}Pulpit — mini-WMS{% endblock %}
 {% block content %}
-<h1>Pulpit</h1>
+<h1>Pulpit magazynu</h1>
+<p class="page-sub">Dzień dobry, {{ user.username }} · {% now "d.m.Y" %}</p>
 
 <div class="cards">
-  <div class="card"><div class="kpi">{{ hu_total }}</div><div class="kpi-label">Aktywne HU</div></div>
-  <div class="card{% if hu_to_allocate %} alert{% endif %}"><div class="kpi">{{ hu_to_allocate }}</div><div class="kpi-label">HU do ułożenia</div></div>
-  <div class="card"><div class="kpi">{{ hu_stored }}</div><div class="kpi-label">HU zmagazynowane</div></div>
-  <div class="card"><div class="kpi">{{ material_count }}</div><div class="kpi-label">Materiały</div></div>
-  <div class="card"><div class="kpi">{{ occupied_locations }}/{{ location_count }}</div><div class="kpi-label">Zajęte lokalizacje</div></div>
-  <div class="card"><div class="kpi">{{ movements_today }}</div><div class="kpi-label">Dzisiejsze ruchy</div></div>
-  <div class="card{% if open_issues %} alert{% endif %}"><div class="kpi">{{ open_issues }}</div><div class="kpi-label">Otwarte wydania</div></div>
+  <div class="card"><div class="card-body"><div class="card-head"><span class="kpi-label">Aktywne HU</span><span class="card-code" aria-hidden="true">HU</span></div><div class="kpi">{{ hu_total }}</div></div><div class="card-foot">{{ hu_stored }} zmagazynowanych</div></div>
+  <div class="card{% if hu_to_allocate %} alert{% endif %}"><div class="card-body"><div class="card-head"><span class="kpi-label">HU do ułożenia</span><span class="card-code" aria-hidden="true">W03</span></div><div class="kpi">{{ hu_to_allocate }}</div></div><div class="card-foot">{% if hu_to_allocate %}Czekają na lokalizację{% else %}Wszystko ułożone{% endif %}</div></div>
+  <div class="card"><div class="card-body"><div class="card-head"><span class="kpi-label">Zajęte lokalizacje</span><span class="card-code" aria-hidden="true">S03</span></div><div class="kpi">{{ occupied_locations }}/{{ location_count }}</div></div><div class="card-foot">{% if occupancy_pct is not None %}{{ occupancy_pct }}% pojemności{% else %}Brak lokalizacji{% endif %}</div></div>
+  <div class="card{% if open_issues %} alert{% endif %}"><div class="card-body"><div class="card-head"><span class="kpi-label">Otwarte wydania</span><span class="card-code" aria-hidden="true">D01</span></div><div class="kpi">{{ open_issues }}</div></div><div class="card-foot">{% if open_issues %}Czekają na picking{% else %}Brak otwartych WZ{% endif %}</div></div>
+  <div class="card"><div class="card-body"><div class="card-head"><span class="kpi-label">Materiały</span><span class="card-code" aria-hidden="true">S02</span></div><div class="kpi">{{ material_count }}</div></div><div class="card-foot">W kartotece</div></div>
+  <div class="card"><div class="card-body"><div class="card-head"><span class="kpi-label">Dzisiejsze ruchy</span><span class="card-code" aria-hidden="true">R02</span></div><div class="kpi">{{ movements_today }}</div></div><div class="card-foot">Przyjęcia, alokacje, wydania</div></div>
+</div>
+
+<div class="dash-grid">
+  <section class="panel" aria-labelledby="heat-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="heat-title">Obłożenie lokalizacji</h2>
+        <div class="big-num"><strong>{% if occupancy_pct is not None %}{{ occupancy_pct }}%{% else %}—{% endif %}</strong><span class="muted">{{ occupied_locations }} z {{ location_count }} zajętych</span></div>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="{% url 'stock_by_location' %}">Stan wg lokalizacji</a>
+    </div>
+    {% if location_heat %}
+    <div class="heat" role="list">
+      {% for c in location_heat %}<div class="heat-cell heat-{{ c.level }}" role="listitem" title="{{ c.title }}" aria-label="{{ c.title }}"></div>{% endfor %}
+    </div>
+    <div class="heat-legend">
+      <span><i style="background:#eef3f1"></i>Pusta</span>
+      <span><i style="background:#cdefd9;border-color:#cdefd9"></i>do 33%</span>
+      <span><i style="background:#7fd0a6;border-color:#7fd0a6"></i>do 66%</span>
+      <span><i style="background:#2e8b66;border-color:#2e8b66"></i>do 99%</span>
+      <span><i style="background:#14533f;border-color:#14533f"></i>Pełna</span>
+    </div>
+    {% else %}
+    <p class="muted">Brak zdefiniowanych lokalizacji.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="moves-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="moves-title">Ruchy magazynowe</h2>
+        <div class="big-num"><strong>{{ movements_today }}</strong><span class="pill">dziś</span><span class="muted">ostatnie 14 dni</span></div>
+      </div>
+    </div>
+    <div class="bars">
+      {% for d in movement_days %}<div class="bar{% if d.is_today %} today{% endif %}" style="height: {{ d.pct }}%" title="{{ d.day|date:'j E' }}: {{ d.count }}"><span>{% if d.count %}{{ d.count }}{% endif %}</span></div>{% endfor %}
+    </div>
+    <div class="bars-axis">
+      {% for d in movement_days %}<span>{{ d.day|date:"d" }}</span>{% endfor %}
+    </div>
+  </section>
 </div>
 
 <div class="section-title">Skróty</div>
@@ -79,8 +120,10 @@
 
 </div>
 
-<div class="section-title">Stan wg materiału</div>
-<div class="table-wrap">
+<div class="dash-grid">
+<section class="panel">
+<div class="panel-head"><h2>Stan wg materiału</h2><a href="{% url 'stock_list' %}">Wszystkie stany</a></div>
+<div style="overflow-x:auto">
 <table>
   <thead><tr><th>Indeks</th><th>Nazwa</th><th class="text-right">Ilość</th><th class="text-right">HU</th></tr></thead>
   <tbody>
@@ -97,16 +140,18 @@
   </tbody>
 </table>
 </div>
+</section>
 
-<div class="section-title">Ostatnie ruchy</div>
-<div class="table-wrap">
+<section class="panel">
+<div class="panel-head"><h2>Ostatnie ruchy</h2><a href="{% url 'movement_list' %}">Rejestr ruchów</a></div>
+<div style="overflow-x:auto">
 <table>
   <thead><tr><th>Kiedy</th><th>Typ</th><th>Materiał</th><th>HU</th><th class="text-right">Zmiana</th><th>Kto</th></tr></thead>
   <tbody>
     {% for m in recent_movements %}
       <tr>
         <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
-        <td>{{ m.get_type_display }}</td>
+        <td><span class="badge mv-{{ m.type }}">{{ m.get_type_display }}</span></td>
         <td>{{ m.material.index }}</td>
         <td>{% if m.handling_unit %}{{ m.handling_unit.number }}{% else %}—{% endif %}</td>
         <td class="text-right">{{ m.quantity_delta }}</td>
@@ -117,5 +162,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
+</section>
 </div>
 {% endblock %}

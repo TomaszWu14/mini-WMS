@@ -858,6 +858,36 @@ class ViewAccessTests(BaseSetup):
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, 200)
 
+    def test_dashboard_heatmap_and_movement_days(self):
+        loc = Location.objects.create(code="A-1", type=LocationType.ZAPAS, capacity=2)
+        Location.objects.create(code="A-2", type=LocationType.ZAPAS)
+        hu = services.receive_material(
+            material=self.material, quantities=[10], user=self.user
+        ).handling_units[0]
+        services.allocate_hu(hu=hu, location=loc, user=self.user)
+        self.client.login(username="operator", password="x")
+        resp = self.client.get("/")
+        heat = {c["code"]: c["level"] for c in resp.context["location_heat"]}
+        self.assertEqual(heat, {"A-1": 2, "A-2": 0})
+        days = resp.context["movement_days"]
+        self.assertEqual(len(days), 14)
+        self.assertTrue(days[-1]["is_today"])
+        self.assertEqual(days[-1]["count"], 2)  # przyjęcie + alokacja
+        self.assertEqual(days[-1]["pct"], 100)
+        self.assertEqual(resp.context["occupancy_pct"], 50)
+
+
+class HeatLevelTests(TestCase):
+    def test_levels(self):
+        from .views import _heat_level
+
+        self.assertEqual(_heat_level(0, 3), 0)
+        self.assertEqual(_heat_level(1, 3), 1)
+        self.assertEqual(_heat_level(2, 3), 2)
+        self.assertEqual(_heat_level(3, 4), 3)
+        self.assertEqual(_heat_level(1, 1), 4)
+        self.assertEqual(_heat_level(5, 0), 2)  # bez limitu
+
 
 class SecurityTests(BaseSetup):
     """Dziennik logowań, silne hasła i ochrona własnej roli administratora."""

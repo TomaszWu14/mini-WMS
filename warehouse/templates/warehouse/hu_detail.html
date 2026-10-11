@@ -39,7 +39,7 @@
     {% for m in movements %}
       <tr>
         <td class="nowrap">{{ m.created_at|date:"Y-m-d H:i" }}</td>
-        <td>{{ m.get_type_display }}</td>
+        <td><span class="badge mv-{{ m.type }}">{{ m.get_type_display }}</span></td>
         <td class="text-right">{{ m.quantity_delta }}</td>
         <td>{{ m.location_from.code|default:"—" }} → {{ m.location_to.code|default:"—" }}</td>
         <td>{{ m.created_by.username|default:"—" }}</td>
