@@ -104,7 +104,7 @@ class LocationType(models.TextChoices):
 
 
 class Location(models.Model):
-    """Miejsce składowania (np. B0-81-301A)."""
+    """Miejsce składowania (np. A-01-01A)."""
 
     code = models.CharField("kod", max_length=40, unique=True)
     type = models.CharField(

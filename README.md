@@ -119,7 +119,7 @@ Wkrótce (YouTube) — krótki przegląd przyjęcia, etykiety i pickingu na skan
   ostatniej palety) i generuje **HU** o numerach `prefiks + licznik` (konfigurowalny).
   HU może chwilowo czekać w strefie przyjęć (status *Do ułożenia*).
 - **Etykiety HU** — wydruk PDF (A6) z **kodem QR** i danymi palety.
-- **Lokalizacje** — kod tekstowy (np. `B0-81-301A`), typy **PICKING** / **ZAPAS**,
+- **Lokalizacje** — kod tekstowy (np. `A-01-01A`), typy **PICKING** / **ZAPAS**,
   pojemność informacyjna. Masowy **import z CSV/XLSX**.
 - **Alokacja / przesunięcia** — ulokuj HU w miejscu; HU dostaje status *Zmagazynowany*.
 - **Picking / wydania** — dokument wydania z pozycjami; wydanie **po materiale**
@@ -171,8 +171,8 @@ nadaj rolę w panelu admina (sekcja *Profile użytkowników*).
 
    ```csv
    kod;typ;pojemnosc
-   B0-81-301A;PICKING;1
-   B0-81-302A;ZAPAS;2
+   A-01-01A;PICKING;1
+   A-01-02A;ZAPAS;2
    ```
 
 3. **Przyjęcie** → wybierz materiał, podaj ilość i liczbę palet → powstają HU.
