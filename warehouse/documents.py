@@ -49,8 +49,8 @@ def issue_document_pdf(doc) -> bytes:
         info.append(
             f"Zrealizowano: {timezone.localtime(doc.completed_at):%Y-%m-%d %H:%M}"
         )
-    for line in info:
-        c.drawString(margin, y, line)
+    for text in info:
+        c.drawString(margin, y, text)
         y -= 6 * mm
 
     y -= 4 * mm
