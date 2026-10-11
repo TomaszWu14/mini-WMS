@@ -9,6 +9,7 @@ from django.test import TestCase
 from . import services
 from .imports import import_locations
 from .models import (
+    AdjustReason,
     HandlingUnit,
     HUStatus,
     IssueDocument,
@@ -177,7 +178,9 @@ class CorrectionTests(BaseSetup):
             quantity=10,
             status=HUStatus.DO_ULOZENIA,
         )
-        services.correct_hu_quantity(hu=hu, new_quantity=7, user=self.user)
+        services.correct_hu_quantity(
+            hu=hu, new_quantity=7, user=self.user, reason=AdjustReason.STRATA
+        )
         hu.refresh_from_db()
         self.assertEqual(hu.quantity, 7)
         move = StockMovement.objects.get(type=MovementType.KOREKTA)
@@ -432,9 +435,20 @@ class ScannerTests(BaseSetup):
         self.assertEqual(self.hu.location, self.loc)
         self.assertEqual(self.hu.status, HUStatus.ZMAGAZYNOWANY)
 
+    def _open_doc(self, qty):
+        doc = IssueDocument.objects.create(
+            number=services.generate_issue_number(), created_by=self.user
+        )
+        IssueLine.objects.create(
+            document=doc, material=self.material, requested_qty=qty
+        )
+        return doc
+
     def test_api_pick_partial(self):
+        doc = self._open_doc(10)
         resp = self.client.post(
-            "/skaner/api/pick/", {"hu": "HU-SCAN-1", "quantity": "4"}
+            "/skaner/api/pick/",
+            {"hu": "HU-SCAN-1", "quantity": "4", "document": str(doc.pk)},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.json()["ok"])
@@ -442,8 +456,10 @@ class ScannerTests(BaseSetup):
         self.assertEqual(self.hu.quantity, 6)
 
     def test_api_pick_overpick_blocked(self):
+        doc = self._open_doc(200)
         resp = self.client.post(
-            "/skaner/api/pick/", {"hu": "HU-SCAN-1", "quantity": "99"}
+            "/skaner/api/pick/",
+            {"hu": "HU-SCAN-1", "quantity": "99", "document": str(doc.pk)},
         )
         self.assertEqual(resp.status_code, 400)
         self.assertFalse(resp.json()["ok"])
@@ -475,13 +491,15 @@ class ScannerTests(BaseSetup):
 
     def test_api_inventory_add_and_subtract(self):
         resp = self.client.post(
-            "/skaner/api/inwentaryzacja/", {"hu": "HU-SCAN-1", "delta": "5"}
+            "/skaner/api/inwentaryzacja/",
+            {"hu": "HU-SCAN-1", "delta": "5", "reason": "POMYLKA"},
         )
         self.assertEqual(resp.status_code, 200)
         self.hu.refresh_from_db()
         self.assertEqual(self.hu.quantity, 15)
         resp = self.client.post(
-            "/skaner/api/inwentaryzacja/", {"hu": "HU-SCAN-1", "delta": "-3"}
+            "/skaner/api/inwentaryzacja/",
+            {"hu": "HU-SCAN-1", "delta": "-3", "reason": "POMYLKA"},
         )
         self.assertEqual(resp.status_code, 200)
         self.hu.refresh_from_db()
@@ -489,7 +507,8 @@ class ScannerTests(BaseSetup):
 
     def test_api_inventory_cannot_go_negative(self):
         resp = self.client.post(
-            "/skaner/api/inwentaryzacja/", {"hu": "HU-SCAN-1", "delta": "-99"}
+            "/skaner/api/inwentaryzacja/",
+            {"hu": "HU-SCAN-1", "delta": "-99", "reason": "POMYLKA"},
         )
         self.assertEqual(resp.status_code, 400)
         self.hu.refresh_from_db()
@@ -590,7 +609,12 @@ class WebInventoryTests(BaseSetup):
     def test_web_inventory_add(self):
         resp = self.client.post(
             "/inwentaryzacja/",
-            {"hu_number": "INV-1", "mode": "add", "quantity": "5"},
+            {
+                "hu_number": "INV-1",
+                "mode": "add",
+                "quantity": "5",
+                "reason": "NADWYZKA",
+            },
         )
         self.assertEqual(resp.status_code, 302)
         self.hu.refresh_from_db()
@@ -599,7 +623,7 @@ class WebInventoryTests(BaseSetup):
     def test_web_inventory_subtract(self):
         resp = self.client.post(
             "/inwentaryzacja/",
-            {"hu_number": "INV-1", "mode": "sub", "quantity": "4"},
+            {"hu_number": "INV-1", "mode": "sub", "quantity": "4", "reason": "STRATA"},
         )
         self.assertEqual(resp.status_code, 302)
         self.hu.refresh_from_db()
@@ -608,7 +632,7 @@ class WebInventoryTests(BaseSetup):
     def test_web_inventory_negative_blocked(self):
         resp = self.client.post(
             "/inwentaryzacja/",
-            {"hu_number": "INV-1", "mode": "sub", "quantity": "99"},
+            {"hu_number": "INV-1", "mode": "sub", "quantity": "99", "reason": "STRATA"},
         )
         self.assertEqual(resp.status_code, 200)  # formularz z błędem
         self.hu.refresh_from_db()
@@ -1149,7 +1173,8 @@ class HardeningTests(BaseSetup):
 class AuditFixTests(BaseSetup):
     """Druga fala poprawek z audytu (40 bugów)."""
 
-    def test_allocate_enforces_capacity(self):
+    def test_allocate_over_capacity_succeeds_but_flagged(self):
+        """W-08: pojemność lokalizacji jest informacyjna — nie blokuje alokacji."""
         loc = Location.objects.create(code="CAP1", type=LocationType.ZAPAS, capacity=1)
         hu1 = HandlingUnit.objects.create(
             number="C1",
@@ -1164,8 +1189,11 @@ class AuditFixTests(BaseSetup):
             status=HUStatus.DO_ULOZENIA,
         )
         services.allocate_hu(hu=hu1, location=loc, user=self.user)
-        with self.assertRaises(services.WMSError):
-            services.allocate_hu(hu=hu2, location=loc, user=self.user)
+        self.assertFalse(services.location_over_capacity(loc))
+        services.allocate_hu(hu=hu2, location=loc, user=self.user)
+        hu2.refresh_from_db()
+        self.assertEqual(hu2.location, loc)
+        self.assertTrue(services.location_over_capacity(loc))
 
     def test_daily_number_is_deletion_safe(self):
         from .services import _next_daily_number
@@ -1202,7 +1230,9 @@ class AuditFixTests(BaseSetup):
             quantity=0,
             status=HUStatus.PUSTY,
         )
-        services.correct_hu_quantity(hu=hu, new_quantity=5, user=self.user)
+        services.correct_hu_quantity(
+            hu=hu, new_quantity=5, user=self.user, reason=AdjustReason.POMYLKA
+        )
         hu.refresh_from_db()
         self.assertEqual(hu.quantity, 5)
         self.assertEqual(hu.status, HUStatus.DO_ULOZENIA)

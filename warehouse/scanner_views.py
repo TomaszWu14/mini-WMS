@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from . import services
 from .models import (
+    AdjustReason,
     HandlingUnit,
     HUStatus,
     IssueDocument,
@@ -121,7 +122,11 @@ def scanner_picking_doc(request, pk):
 
 @operator_required
 def scanner_inventory(request):
-    return render(request, "warehouse/scanner/inventory.html")
+    return render(
+        request,
+        "warehouse/scanner/inventory.html",
+        {"reasons": AdjustReason.choices},
+    )
 
 
 @operator_required
@@ -240,17 +245,21 @@ def api_allocate(request):
         services.allocate_hu(hu=hu, location=loc, user=request.user)
     except WMSError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-    return JsonResponse(
-        {
-            "ok": True,
-            "message": f"HU {hu.number} → {loc.code}",
-            "hu": _hu_payload(
-                HandlingUnit.objects.select_related(
-                    "material", "location", "material__unit"
-                ).get(pk=hu.pk)
-            ),
-        }
-    )
+    response = {
+        "ok": True,
+        "message": f"HU {hu.number} → {loc.code}",
+        "hu": _hu_payload(
+            HandlingUnit.objects.select_related(
+                "material", "location", "material__unit"
+            ).get(pk=hu.pk)
+        ),
+    }
+    if services.location_over_capacity(loc):
+        response["warning"] = (
+            f"Lokalizacja {loc.code} ma więcej palet niż pojemność "
+            f"({loc.occupancy}/{loc.capacity})."
+        )
+    return JsonResponse(response)
 
 
 @operator_required
@@ -260,6 +269,9 @@ def api_pick(request):
     qty_raw = (request.POST.get("quantity") or "").strip()
     doc_id = (request.POST.get("document") or "").strip()
 
+    if not doc_id:
+        return JsonResponse({"ok": False, "error": "Brak zlecenia."}, status=400)
+
     hu = HandlingUnit.objects.filter(number=hu_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
@@ -268,41 +280,60 @@ def api_pick(request):
     except ValueError:
         return JsonResponse({"ok": False, "error": "Niepoprawna ilość."}, status=400)
 
-    doc = None
-    line = None
-    if doc_id:
-        doc = (
-            IssueDocument.objects.filter(pk=doc_id, status=IssueStatus.OTWARTY).first()
-            if doc_id.isdigit()
-            else None
+    doc = (
+        IssueDocument.objects.filter(pk=doc_id, status=IssueStatus.OTWARTY).first()
+        if doc_id.isdigit()
+        else None
+    )
+    if doc is None:
+        return JsonResponse(
+            {"ok": False, "error": "Zlecenie zamknięte lub nieznane."},
+            status=404,
         )
-        if doc is None:
-            return JsonResponse(
-                {"ok": False, "error": "Zlecenie zamknięte lub nieznane."},
-                status=404,
-            )
-        line = next(
-            (
-                ln
-                for ln in doc.lines.filter(material=hu.material)
-                if ln.requested_qty - ln.picked_qty > 0
-            ),
-            None,
-        )
-        if line is None:
+
+    # Pozycje tego materiału z pozostałą ilością — wiązanie do konkretnego
+    # HU (specific_hu) ma pierwszeństwo przed pozycją ogólną (W-25).
+    candidates = [
+        ln
+        for ln in doc.lines.filter(material=hu.material).select_related("specific_hu")
+        if ln.requested_qty - ln.picked_qty > 0
+    ]
+    line = next((ln for ln in candidates if ln.specific_hu_id == hu.id), None)
+    if line is None:
+        line = next((ln for ln in candidates if ln.specific_hu_id is None), None)
+    if line is None:
+        if candidates:
+            other = candidates[0].specific_hu
             return JsonResponse(
                 {
                     "ok": False,
-                    "error": f"Materiał {hu.material.index} nie jest na tym "
-                    f"zleceniu albo już skompletowany.",
+                    "error": f"Pozycja wskazuje paletę {other.number} — zeskanuj ją.",
                 },
                 status=400,
             )
-        remaining = line.requested_qty - line.picked_qty
-        if quantity > remaining:
-            return JsonResponse(
-                {"ok": False, "error": f"Na zleceniu pozostało {remaining}."},
-                status=400,
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": f"Materiał {hu.material.index} nie jest na tym "
+                f"zleceniu albo już skompletowany.",
+            },
+            status=400,
+        )
+    remaining = line.requested_qty - line.picked_qty
+    if quantity > remaining:
+        return JsonResponse(
+            {"ok": False, "error": f"Na zleceniu pozostało {remaining}."},
+            status=400,
+        )
+
+    # W-11: ostrzeżenie FEFO — tylko dla pozycji ogólnej (nie wiązanej do HU),
+    # gdy operator pobiera inną paletę niż podpowiadana kolejność.
+    warning = None
+    if line.specific_hu_id is None:
+        first = services.first_pickable_hu(hu.material)
+        if first is not None and first.pk != hu.pk:
+            warning = f"Wg kolejności FEFO najpierw paleta {first.number}" + (
+                f" ({first.location.code})" if first.location else ""
             )
 
     try:
@@ -321,15 +352,16 @@ def api_pick(request):
             ).get(pk=hu.pk)
         ),
     }
-    if doc is not None:
-        doc.refresh_from_db()
+    if warning:
+        response["warning"] = warning
+    doc.refresh_from_db()
+    payload = _doc_payload(doc)
+    if payload["remaining_total"] == 0 and doc.status == IssueStatus.OTWARTY:
+        doc.status = IssueStatus.ZREALIZOWANY
+        doc.completed_at = timezone.now()
+        doc.save(update_fields=["status", "completed_at"])
         payload = _doc_payload(doc)
-        if payload["remaining_total"] == 0 and doc.status == IssueStatus.OTWARTY:
-            doc.status = IssueStatus.ZREALIZOWANY
-            doc.completed_at = timezone.now()
-            doc.save(update_fields=["status", "completed_at"])
-            payload = _doc_payload(doc)
-        response["document"] = payload
+    response["document"] = payload
     return JsonResponse(response)
 
 
@@ -380,6 +412,7 @@ def api_inventory(request):
     """Inwentaryzacja — dodanie/odjęcie ilości na HU (ruch korekty)."""
     hu_code = (request.POST.get("hu") or "").strip()
     delta_raw = (request.POST.get("delta") or "").strip()
+    reason = (request.POST.get("reason") or "").strip()
 
     hu = HandlingUnit.objects.filter(number=hu_code).first()
     if hu is None:
@@ -390,21 +423,17 @@ def api_inventory(request):
         return JsonResponse({"ok": False, "error": "Niepoprawna ilość."}, status=400)
     if delta == 0:
         return JsonResponse({"ok": False, "error": "Podaj ilość."}, status=400)
-
-    new_quantity = hu.quantity + delta
-    if new_quantity < 0:
+    if reason not in AdjustReason.values:
         return JsonResponse(
-            {
-                "ok": False,
-                "error": f"Nie można zejść poniżej zera (stan {hu.quantity}).",
-            },
-            status=400,
+            {"ok": False, "error": "Wybierz powód korekty."}, status=400
         )
+
     try:
-        services.correct_hu_quantity(
+        services.adjust_hu_quantity(
             hu=hu,
-            new_quantity=new_quantity,
+            delta=delta,
             user=request.user,
+            reason=reason,
             note="Inwentaryzacja (skaner)",
         )
     except WMSError as exc:
