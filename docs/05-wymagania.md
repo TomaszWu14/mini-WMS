@@ -2,7 +2,7 @@
 
 Wymagania odtworzone z działającego kodu i potwierdzone z interesariuszami. Kolumna
 „Gdzie zrealizowane” wskazuje kod i test, który sprawdza kryterium (`warehouse/tests.py`,
-chyba że podano inaczej). **Dwa wymagania nie są spełnione** — oznaczone ⚠ i opisane w
+chyba że podano inaczej). **Cztery wymagania nie są spełnione** — oznaczone ⚠ i opisane w
 [07-ograniczenia.md](07-ograniczenia.md).
 
 ## Przyjęcie i etykiety
@@ -36,6 +36,7 @@ chyba że podano inaczej). **Dwa wymagania nie są spełnione** — oznaczone �
 | W-15 | Po pobraniu całej palety jest ona „Pusta” i zwalnia miejsce | Wydanie całej ilości → status „Pusty”, brak lokalizacji | `services.py:231`; `test_pick_to_zero_marks_empty_and_frees_location` |
 | W-16 | WZ przechodzi przez stany: Otwarty → Zrealizowany → (Spakowany) → Wysłany | Spakować można tylko zrealizowany; wysłać — zrealizowany lub spakowany; pozycji nie da się zmienić poza stanem „Otwarty” | `services.py:477, 489`, `views.py` `issue_add_line`; `test_pack_and_ship_flow`, `test_pack_requires_realized`, `test_cannot_add_line_to_packed_document` |
 | W-17 | Skaner prowadzi kompletację dokumentu i zamyka go po pobraniu wszystkiego | Ostatnia pozycja pobrana → WZ „Zrealizowany”; materiał spoza dokumentu odrzucony | `scanner_views.py` `api_pick`; `test_document_pick_completes_order`, `test_document_pick_rejects_wrong_material` |
+| W-25 ⚠ | Skaner respektuje paletę wskazaną w pozycji WZ | Pozycja z „konkretnym HU”: skan innej palety tego samego materiału kończy się odmową | **Niespełnione:** `scanner_views.py:284-291` dobiera pozycję tylko po materiale |
 
 ## Kontrola stanu
 
@@ -44,6 +45,7 @@ chyba że podano inaczej). **Dwa wymagania nie są spełnione** — oznaczone �
 | W-18 | Korekta ilości palety z powodem i historią | Korekta +5 tworzy ruch KOREKTA +5 z powodem; korekta o 0 jest odrzucana | `services.py:198` `correct_hu_quantity`; `test_correction_logs_movement`, `test_web_inventory_add` |
 | W-19 | Łączenie palet tylko tego samego materiału i partii | Przepakowanie między różnymi materiałami jest odrzucane; opróżnione źródło staje się „Puste” | `services.py:242` `repack_hu`; `RepackTests` |
 | W-20 | Spis z natury: migawka → liczenie → zatwierdzenie różnic | Zamknięcie arkusza z różnicą tworzy korektę z powodem „Spis z natury”; pozycje niepoliczone nie zmieniają stanu | `services.py:534, 560`; `StocktakeTests` |
+| W-26 ⚠ | Każda korekta ilości ma powód | Zapis korekty bez powodu jest odrzucany — na ekranie palety, w inwentaryzacji i na skanerze | **Niespełnione:** powód wybierany tylko w „Inwentaryzacji” (`forms.py:112`); „Korekta ilości” i skaner zapisują bez powodu (`views.py:586`, `scanner_views.py:404`) |
 
 ## Raporty i dostęp
 

@@ -19,6 +19,8 @@ Status: **zaawansowany prototyp**.
 |---|---|---|
 | [W-08](05-wymagania.md) | Pojemność lokalizacji ma być **informacyjna** | alokacja blokuje przepełnienie (`warehouse/services.py:160-170`) |
 | [W-11](05-wymagania.md) | FEFO także przy kompletacji **skanerem** | skaner przyjmuje dowolną paletę z materiałem z dokumentu (`warehouse/scanner_views.py` `api_pick`) |
+| [W-25](05-wymagania.md) | Skaner respektuje paletę wskazaną w pozycji WZ | pozycja dobierana tylko po materiale (`warehouse/scanner_views.py:284-291`) |
+| [W-26](05-wymagania.md) | Każda korekta ilości ma powód | powód tylko w „Inwentaryzacji”; „Korekta ilości” i skaner zapisują bez powodu (`warehouse/views.py:586`, `warehouse/scanner_views.py:404`) |
 
 ## Znane problemy
 
@@ -48,17 +50,13 @@ Status: **zaawansowany prototyp**.
 11. Szczegóły palety, WZ i spisu nie mają linku powrotu do listy; przyjęcie nie ma „Anuluj”.
 12. Zbiorczy wydruk etykiet palet obcina listę do 200 bez komunikatu (`views.py:514`).
 
-**Reguły — obserwacje z przeglądu kodu, status do rozstrzygnięcia**
+**Reguły — obserwacje z przeglądu kodu**
 
-`<DO UZUPEŁNIENIA: dla 13–15 — wymaganie niespełnione (⚠ w 05) czy świadomie poza zakresem?>`
-
-13. Skaner ignoruje paletę wskazaną w pozycji WZ („konkretny HU”): pozycja jest dobierana po
-    materiale, więc przyjmie każdą paletę tego materiału (`scanner_views.py:284-291`).
-14. Powód korekty jest wybierany tylko na ekranie „Inwentaryzacja”; „Korekta ilości” palety i
-    inwentaryzacja skanerem zapisują korektę bez powodu (`views.py:586`,
-    `scanner_views.py:404`).
-15. Wydanie automatyczne bierze też palety „Do ułożenia” (bez lokalizacji) — na końcu kolejki,
-    po PICKING i ZAPAS (`services.py:315`).
+13. Skaner ignoruje paletę wskazaną w pozycji WZ — wymaganie [W-25](05-wymagania.md).
+14. Korekta bez powodu — wymaganie [W-26](05-wymagania.md).
+15. Wydanie automatyczne bierze też palety „Do ułożenia” (bez lokalizacji), na końcu kolejki —
+    **reguła celowa**: towar można wydać prosto z rampy, gdy na regałach go brakuje
+    ([02](02-proces.md#punkty-decyzyjne), `services.py:315`).
 16. Kilka pozycji WZ może wskazywać tę samą paletę; formularz sprawdza ilość tylko dla jednej
     pozycji, więc realizacja kończy się błędem braku stanu (`forms.py:340`).
 17. Import lokalizacji nie pozwala ustawić pojemności 0 („bez limitu”) — wymusza ≥ 1
@@ -85,7 +83,9 @@ Pełna lista ścieżek ślepych: [03-user-flow.md](03-user-flow.md#ścieżki-śl
 ## Co dalej (priorytet)
 
 1. W-11 — FEFO na skanerze (podpowiedź palety, ostrzeżenie przy innej).
-2. W-08 — pojemność jako ostrzeżenie zamiast blokady.
-3. Problem 1 — jedna reguła podziału w formularzu i w zapisie.
-4. Problem 5 — blokada dokumentu przy realizacji.
-5. Aktualizacja Django 5.1 → 5.2 LTS (seria 5.1 nie dostaje już poprawek bezpieczeństwa).
+2. W-25 — skaner pilnuje palety wskazanej w pozycji WZ.
+3. W-26 — powód przy każdej korekcie.
+4. W-08 — pojemność jako ostrzeżenie zamiast blokady.
+5. Problem 1 — jedna reguła podziału w formularzu i w zapisie.
+6. Problem 5 — blokada dokumentu przy realizacji.
+7. Aktualizacja Django 5.1 → 5.2 LTS (seria 5.1 nie dostaje już poprawek bezpieczeństwa).
