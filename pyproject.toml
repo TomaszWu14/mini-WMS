@@ -21,6 +21,11 @@ dev = [
     "mypy==1.13.0",
     "django-stubs==5.1.1",
     "coverage==7.6.9",
+    "pytest==9.1.1",
+    "pytest-django==4.14.0",
+    "mutmut==3.8.0",
+    "pip-audit==2.10.1",
+    "bandit==1.9.4",
 ]
 
 [build-system]
@@ -68,6 +73,24 @@ ignore_errors = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings"
+
+# --- pytest (uruchamia istniejące testy Django TestCase) --------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["tests.py", "tests_*.py", "test_*.py"]
+addopts = "-p no:cacheprovider"
+
+# --- mutmut (scripts/mutate.sh; wymaga Linux/WSL — fork) --------------------
+[tool.mutmut]
+# scripts/mutate.sh podmienia source_paths na wskazany moduł (w kopii repo).
+source_paths = ["warehouse/services.py"]
+pytest_add_cli_args_test_selection = ["warehouse/"]
+also_copy = ["config/", "manage.py", "warehouse/"]
+
+# --- bandit (scripts/security_scan.sh) --------------------------------------
+[tool.bandit]
+exclude_dirs = ["warehouse/migrations", "warehouse/static", ".venv"]
+skips = ["B101"]  # assert w testach
 
 # --- Coverage ---------------------------------------------------------------
 [tool.coverage.run]
