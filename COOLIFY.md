@@ -52,7 +52,10 @@ samego Coolify (np. `coolify.example.com`). Nie jest to wymagane do wdrożenia W
 3. **Repository URL:** `https://github.com/TomaszWu14/miniWMS-public`
 4. **Branch:** `main`
 5. **Docker Compose file location:** `docker-compose.coolify.yml`
-6. Zatwierdź — Coolify wczyta usługi `web` i `db`.
+6. Zatwierdź — Coolify wczyta usługi `web`, `db` i `backup`.
+7. W **General → Build** zaznacz **Preserve Repository During Deployment**. Usługa
+   `backup` montuje `./scripts/pg_backup.sh` z repozytorium — bez tej opcji Coolify usuwa
+   klon po buildzie i kontener `backup` restartuje się w kółko.
 
 ---
 
@@ -60,8 +63,10 @@ samego Coolify (np. `coolify.example.com`). Nie jest to wymagane do wdrożenia W
 
 W ustawieniach zasobu, sekcja **Domains** dla usługi **web**:
 
-- Wpisz: `https://miniwms.example.com`
-- Port docelowy: **8000** (jeśli pytane).
+- Wpisz: `https://miniwms.example.com` — **bez portu**. Port 8000 Coolify bierze z
+  nazwy zmiennej `SERVICE_FQDN_WEB_8000` w compose; wpis z `:8000` Coolify cofa przy zapisie.
+- Kilka domen oddziel przecinkiem; każdą dopisz też do `DJANGO_ALLOWED_HOSTS` i
+  `DJANGO_CSRF_TRUSTED_ORIGINS`.
 
 Coolify automatycznie wystawi certyfikat Let's Encrypt dla tej domeny.
 
@@ -177,7 +182,7 @@ docker exec "$B" sh -c 'gunzip -c /backups/wms-XXXX.sql.gz' \
 Publiczne demo to osobny zasób z tym samym `docker-compose.coolify.yml` —
 z własną bazą, nigdy na danych produkcyjnych.
 
-1. Domena, np. `https://wms-demo.twapp.pl` (przykład), oraz zmienne jak w kroku 6
+1. Domena (działające demo: `https://miniwms.twapp.pl`), oraz zmienne jak w kroku 6
    plus **`DEMO_MODE=1`**. Tryb demo włącza baner „DEMO — dane przykładowe…”,
    pokazuje loginy kont demo na stronie logowania, blokuje edycję kont demo,
    ogranicza logowania (10 prób / 5 min / IP) i wysyła maile tylko do konsoli.
