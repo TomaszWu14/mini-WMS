@@ -54,6 +54,8 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-${DOMAIN:-localhost}}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-1}
+      # Sieć lokalna bez HTTPS (DOMAIN=:80): DJANGO_SSL_REDIRECT=0 i DJANGO_SECURE_COOKIES=0.
+      DJANGO_SSL_REDIRECT: ${DJANGO_SSL_REDIRECT:-1}
       DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Europe/Warsaw}
       # Jedno proxy (Caddy) — IP klienta z ostatniego wpisu X-Forwarded-For.
       DJANGO_TRUSTED_PROXY_COUNT: ${DJANGO_TRUSTED_PROXY_COUNT:-1}
@@ -74,7 +76,6 @@ services:
         condition: service_healthy
     environment:
       DOMAIN: ${DOMAIN:-localhost}
-      ACME_EMAIL: ${ACME_EMAIL:-}
     ports:
       - "80:80"
       - "443:443"

@@ -53,8 +53,10 @@ docker compose up -d --build   # aktualizacja po zmianach w kodzie
 > (trwałe między restartami). Tylko Caddy jest wystawiony na świat — aplikacja
 > `web` jest dostępna wyłącznie przez niego.
 >
-> **Sieć lokalna (bez domeny/HTTPS):** ustaw `DOMAIN=:80` w `.env` oraz
-> `DJANGO_SECURE_COOKIES=0` — Caddy będzie serwował po zwykłym HTTP.
+> **Sieć lokalna (bez domeny/HTTPS):** ustaw w `.env` `DOMAIN=:80`,
+> `DJANGO_SECURE_COOKIES=0`, `DJANGO_SSL_REDIRECT=0` oraz
+> `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1` (albo IP serwera) — Caddy będzie serwował po
+> zwykłym HTTP pod `http://localhost/`.
 
 ## Wdrożenie na Coolify
 
