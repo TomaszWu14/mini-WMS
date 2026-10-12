@@ -13,7 +13,12 @@
   palety, skaner, wydanie FEFO, spis, ruchy, raporty), podświetla omawiany element, pokazuje
   napisy i czyta tekst. Pasek na dole: start/pauza, poprzedni/następny, wycisz, głośność,
   postęp, zakończ.
-- Bez nagrań ElevenLabs (dziś ich brak) tekst czyta głos przeglądarki (pl-PL).
+- Nagrania: 14 plików MP3 (ok. 2 min 52 s), głos ElevenLabs „Arleta — Calm Instructor”,
+  model `eleven_multilingual_v2`. Wygenerowane przez konektor ElevenLabs w Claude (bez
+  klucza API w repo) — konektor nie przyjmuje `voice_settings` ani `previous_text`/
+  `next_text`, więc obecne nagrania mają domyślne ustawienia głosu. Pełne ustawienia z
+  `config/voice.json` zadziałają przy przegenerowaniu skryptem z kluczem API.
+- Brak pliku nagrania → tekst czyta głos przeglądarki (pl-PL).
 - Technicznie: `tools/generate_voiceover.py` generuje nagrania MP3 (ElevenLabs, ustawienia w
   `config/voice.json`, cache po hashu tekstu — zmiana jednego kroku = jeden nowy plik).
 
