@@ -23,7 +23,8 @@
    w Coolify musi być włączone **Preserve Repository During Deployment** — bez tego
    `backup` restartuje się w kółko. Domenę w Coolify wpisuj bez `:8000` (port z
    `SERVICE_FQDN_WEB_8000`).
-9. **CI (`ci.yml`) uruchamia testy przez `manage.py test` (bez MD5 hashera) — ~5 min.**
+9. **CI (`ci.yml`) uruchamia testy przez `manage.py test` (bez MD5 hashera) — ~5 min**, raz na
+   SQLite (`test`) i raz na PostgreSQL 16 (`test-postgres`).
    Lokalnie i w Stop hooku: `pytest` (~11–40 s). Wyniki powinny być identyczne; różnica to
    tylko hasher.
 10. **mypy w CI sprawdza tylko `services.py`, `config/log.py`, `config/urls.py`**; Stop hook

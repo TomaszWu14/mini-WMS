@@ -75,3 +75,44 @@ Kontekst i skutki odczytane z kodu; rozważane opcje i powody wyboru potwierdzon
   instalować; ten sam serwer i te same reguły co panel; kamera telefonu czyta kod QR.
 - **Skutki:** kamera wymaga HTTPS; przy wygaśnięciu sesji skaner pokazuje mylący komunikat
   (patrz [07](07-ograniczenia.md)).
+
+## D-09. Import stanów z ilością 0 zostaje — z ostrzeżeniem
+
+- **Kontekst:** przy pierwszym imporcie ilości na paletach zwykle nie są znane; import
+  tworzył palety z ilością 0 po cichu i nie sprawdzał pojemności lokalizacji.
+- **Rozważane opcje:** (1) odrzucać wiersze bez ilości; (2) zostawić 0 i ostrzec.
+- **Dlaczego ta:** (2) — odrzucenie blokuje start ewidencji; ilość uzupełnia się korektą.
+- **Skutki:** podsumowanie importu podaje liczbę palet z ilością 0 i lokalizacje z
+  przekroczoną pojemnością (informacyjnie, jak przy alokacji — W-08).
+
+## D-10. Numery palet bez rozróżniania wielkości liter
+
+- **Kontekst:** importy szukały palet bez rozróżniania wielkości liter, skaner i ekrany — z
+  rozróżnianiem; „hu-001” wpisane ręcznie nie znajdowało „HU-001”.
+- **Dlaczego ta:** jedna reguła wszędzie, taka jak w importach (które już pilnują, by nie
+  powstały dwie palety różniące się tylko wielkością liter).
+- **Skutki:** skaner, przepakowanie i inwentaryzacja szukają przez `number__iexact`.
+
+## D-11. Zbiorczy wydruk etykiet: limit 200 z komunikatem
+
+- **Kontekst:** wydruk obcinał listę do 200 palet bez informacji.
+- **Dlaczego ta:** jeden PDF z setkami stron i tak trzeba drukować partiami; lepiej poprosić
+  o zawężenie filtra niż wydrukować niepełną listę.
+- **Skutki:** powyżej 200 palet — powrót do listy z komunikatem „Zawęź filtr”.
+
+## D-12. Limit logowań zawsze; IP tylko od zaufanego proxy
+
+- **Kontekst:** limit prób logowania działał tylko w trybie demo, a IP klienta brane było z
+  pierwszego wpisu `X-Forwarded-For`, który klient może podrobić.
+- **Dlaczego ta:** limit chroni każdą instalację, nie tylko demo. Za proxy ufamy wpisowi
+  dopisanemu przez proxy (N-temu od końca), nie wpisowi klienta.
+- **Skutki:** nowa zmienna `DJANGO_TRUSTED_PROXY_COUNT` (compose: 1 — Traefik/Caddy;
+  domyślnie 0 = nagłówek ignorowany).
+
+## D-13. Paleta tylko w jednym otwartym arkuszu spisu
+
+- **Kontekst:** dwa otwarte arkusze mogły objąć tę samą paletę; zamknięcie drugiego
+  nadpisałoby korektę z pierwszego.
+- **Dlaczego ta:** nowy arkusz pomija palety, które są już w otwartym arkuszu, i mówi o tym
+  komunikatem — bez blokowania tworzenia spisu.
+- **Skutki:** po zamknięciu arkusza palety wracają do zakresu kolejnych spisów.

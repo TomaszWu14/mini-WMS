@@ -82,8 +82,8 @@ W zakresie: przyjęcia z etykietami, rozmieszczanie, wydania z doborem palet wed
 ważności, korekty, łączenie palet, spis z natury, raporty i eksport.
 
 Poza zakresem świadomie: integracja z ERP (firma go nie ma), zwroty, blokada palet po terminie
-ważności, wiele magazynów. Wszystkie spisane wymagania są spełnione; otwarte pozostają
-problemy, które wymagają decyzji (m.in. limit logowań za proxy, import stanów z ilością 0).
+ważności, wiele magazynów. Wszystkie spisane wymagania są spełnione, a decyzje do znanych
+problemów zapisane (D-09…D-13); testy przechodzą też na PostgreSQL, łącznie z testem wyścigu.
 Status: zaawansowany prototyp.
 Szczegóły: [07 — Ograniczenia](docs/07-ograniczenia.md).
 

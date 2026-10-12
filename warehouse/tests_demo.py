@@ -111,10 +111,11 @@ class DemoModeViewTests(TestCase):
             self.assertEqual(self.client.post("/login/", data).status_code, 200)
         self.assertEqual(self.client.post("/login/", data).status_code, 429)
 
-    def test_no_rate_limit_without_demo_mode(self):
+    def test_rate_limit_also_without_demo_mode(self):
         data = {"username": "x", "password": "zle"}
-        for _ in range(LOGIN_RATE_LIMIT + 2):
+        for _ in range(LOGIN_RATE_LIMIT):
             self.assertEqual(self.client.post("/login/", data).status_code, 200)
+        self.assertEqual(self.client.post("/login/", data).status_code, 429)
 
     @override_settings(DEMO_MODE=True)
     def test_demo_account_cannot_change_password(self):

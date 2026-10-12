@@ -37,18 +37,27 @@ Brak. W-08, W-11, W-25 i W-26 domknięto poprawkami z gałęzi `fix/code-gaps` (
 | Dwa równoległe przepakowania A→B i B→A mogły się zakleszczyć | blokady palet zawsze w kolejności `pk` | `services.repack_hu` |
 | Brak powrotu z detali palety, WZ i spisu; brak „Anuluj” w przyjęciu; spis po cichu pomijał nieliczby | linki powrotu, „Anuluj”, ostrzeżenie o pominiętych wartościach | szablony, `views.stocktake_save` |
 
-## Znane problemy (otwarte — wymagają decyzji)
+## Rozstrzygnięte decyzje (gałąź `fix/open-decisions`)
 
-1. Import stanów tworzy palety z ilością 0 o statusie „Zmagazynowany” (ilość „do uzupełnienia”)
-   i zakłada lokalizacje bez sprawdzania pojemności (`stock_import.py:125-137`).
-2. Numery palet: importy porównują bez rozróżniania wielkości liter, skaner i ekrany — z
-   rozróżnianiem.
-3. Zbiorczy wydruk etykiet palet obcina listę do 200 bez komunikatu (`views.py:514`).
-4. Limit prób logowania działa tylko w trybie demo (`demo.py:50`). Adres IP w dzienniku i w
-   limicie pochodzi z nagłówka `X-Forwarded-For` bez weryfikacji (`signals.py:30-35`) —
-   poprawka zależy od konfiguracji proxy na serwerze.
-5. Dwa otwarte arkusze spisu mogą obejmować tę samą paletę (`services.py:600`).
-6. Blokady wierszy działają tylko na PostgreSQL; testy na SQLite nie dowodzą braku wyścigów.
+| Było | Teraz | Decyzja |
+|---|---|---|
+| Import stanów po cichu tworzył palety z ilością 0 i nie sprawdzał pojemności | podsumowanie podaje liczbę palet z ilością 0 i lokalizacje z przekroczoną pojemnością | [D-09](06-decyzje.md#d-09-import-stanów-z-ilością-0-zostaje--z-ostrzeżeniem) |
+| Importy szukały palet bez rozróżniania wielkości liter, skaner i ekrany — z rozróżnianiem | wszędzie bez rozróżniania | [D-10](06-decyzje.md#d-10-numery-palet-bez-rozróżniania-wielkości-liter) |
+| Zbiorczy wydruk etykiet obcinał listę do 200 bez komunikatu | powyżej 200 — komunikat „Zawęź filtr” | [D-11](06-decyzje.md#d-11-zbiorczy-wydruk-etykiet-limit-200-z-komunikatem) |
+| Limit logowań tylko w demo; IP z podrabialnego `X-Forwarded-For` | limit zawsze; IP od zaufanego proxy (`DJANGO_TRUSTED_PROXY_COUNT`) | [D-12](06-decyzje.md#d-12-limit-logowań-zawsze-ip-tylko-od-zaufanego-proxy) |
+| Dwa otwarte arkusze spisu mogły objąć tę samą paletę | nowy arkusz pomija palety z otwartego arkusza i mówi o tym | [D-13](06-decyzje.md#d-13-paleta-tylko-w-jednym-otwartym-arkuszu-spisu) |
+| Blokady wierszy sprawdzane tylko na SQLite (gdzie nic nie blokują) | job CI `test-postgres`: cały zestaw na PostgreSQL 16 + test wyścigu dwóch WZ o jedną paletę | `tests_concurrency_pg.py` |
+| Django 5.1 (bez poprawek bezpieczeństwa) | Django 5.2 LTS | — |
+
+## Znane problemy
+
+1. Limit logowań liczy próby w pamięci procesu (LocMem) — przy N workerach gunicorna realny
+   limit to N×10 prób / 5 min. Wspólny cache (Redis), gdy to za mało.
+2. Dwa arkusze spisu założone w tej samej chwili mogą jeszcze objąć tę samą paletę (brak
+   blokady przy tworzeniu — przy ręcznym zakładaniu spisów wystarcza).
+3. Wyszukiwanie palety bez rozróżniania wielkości liter (`number__iexact`) nie korzysta z
+   indeksu na PostgreSQL — przy setkach palet bez znaczenia; przy dziesiątkach tysięcy indeks
+   funkcyjny `Upper("number")` (migracja).
 
 **Reguła celowa (nie błąd):** wydanie automatyczne bierze też palety „Do ułożenia” (bez
 lokalizacji), na końcu kolejki — towar można wydać prosto z rampy, gdy na regałach go brakuje
@@ -58,6 +67,5 @@ lokalizacji), na końcu kolejki — towar można wydać prosto z rampy, gdy na r
 
 ## Co dalej (priorytet)
 
-1. Decyzje do problemów 1–5 powyżej.
-2. Test współbieżności realizacji WZ na PostgreSQL (CI z usługą Postgres).
-3. Aktualizacja Django 5.1 → 5.2 LTS (seria 5.1 nie dostaje już poprawek bezpieczeństwa).
+1. Ograniczenia `CheckConstraint(check=…)` → `condition=` przed Django 6.0 (migracja).
+2. Wspólny cache (Redis) dla limitu logowań, gdy aplikacja dostanie więcej workerów.

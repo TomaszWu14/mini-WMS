@@ -5,7 +5,7 @@
 
 ruff==0.15.20
 mypy==1.13.0
-django-stubs[compatible-mypy]==5.1.1
+django-stubs[compatible-mypy]==5.2.9
 coverage==7.6.9
 pytest==9.1.1
 pytest-django==4.14.0

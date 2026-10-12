@@ -50,7 +50,7 @@ jobs:
 
       - name: Type check (mypy — warstwa logiki)
         run: |
-          pip install mypy==1.13.0 "django-stubs[compatible-mypy]==5.1.1"
+          pip install mypy==1.13.0 "django-stubs[compatible-mypy]==5.2.9"
           mypy warehouse/services.py config/log.py config/urls.py
 
       - name: Production deploy check
@@ -65,6 +65,41 @@ jobs:
         run: python manage.py makemigrations --check --dry-run
 
       - name: Run tests
+        run: python manage.py test --verbosity=2
+
+  test-postgres:
+    # Produkcja działa na PostgreSQL: blokady wierszy (select_for_update) i
+    # zapytania typu FOR UPDATE na złączeniach sprawdzi tylko prawdziwy Postgres.
+    # Tu działa też warehouse.tests_concurrency_pg (na SQLite jest pomijany).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: wms
+          POSTGRES_PASSWORD: wms
+          POSTGRES_DB: wms
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U wms"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://wms:wms@localhost:5432/wms
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests (PostgreSQL)
         run: python manage.py test --verbosity=2
 
   docker-build:

@@ -28,11 +28,23 @@ def ensure_profile(sender, instance, created, **kwargs):
 
 
 def _client_ip(request):
+    """IP klienta. X-Forwarded-For tylko za zaufanymi proxy.
+
+    Każde proxy dopisuje na końcu adres, od którego dostało żądanie — klient
+    wpisuje, co chce, na początku. Ufamy więc wpisowi N-temu od końca, gdzie
+    N = TRUSTED_PROXY_COUNT; bez proxy nagłówek jest ignorowany.
+    """
     if request is None:
         return None
-    fwd = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if fwd:
-        return fwd.split(",")[0].strip()
+    count = settings.TRUSTED_PROXY_COUNT
+    if count > 0:
+        hops = [
+            h.strip()
+            for h in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
+            if h.strip()
+        ]
+        if len(hops) >= count:
+            return hops[-count]
     return request.META.get("REMOTE_ADDR")
 
 

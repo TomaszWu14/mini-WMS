@@ -91,6 +91,7 @@ Zakładka **Environment Variables** zasobu → dodaj (Twoje własne wartości!):
 | `POSTGRES_DB` | `wms` |
 | `POSTGRES_USER` | `wms` |
 | `POSTGRES_PASSWORD` | mocne hasło bazy |
+| `DJANGO_TRUSTED_PROXY_COUNT` | `1` (domyślnie w compose; liczba proxy przed aplikacją) |
 
 > Wygenerowanie klucza (lokalnie): `python -c "import secrets;print(secrets.token_urlsafe(64))"`.
 
@@ -184,8 +185,9 @@ z własną bazą, nigdy na danych produkcyjnych.
 
 1. Domena (działające demo: `https://miniwms.twapp.pl`), oraz zmienne jak w kroku 6
    plus **`DEMO_MODE=1`**. Tryb demo włącza baner „DEMO — dane przykładowe…”,
-   pokazuje loginy kont demo na stronie logowania, blokuje edycję kont demo,
-   ogranicza logowania (10 prób / 5 min / IP) i wysyła maile tylko do konsoli.
+   pokazuje loginy kont demo na stronie logowania, blokuje edycję kont demo
+   i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP) działa
+   zawsze, także bez trybu demo.
 2. Po pierwszym deployu zasiej dane (terminal kontenera `web` w Coolify):
    `python manage.py seed_demo`
 3. **Reset co 24 h** — zakładka zasobu **Scheduled Tasks → + Add**:

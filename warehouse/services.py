@@ -618,7 +618,14 @@ def generate_stocktake_number() -> str:
 
 @transaction.atomic
 def create_stocktake(*, location=None, user) -> StocktakeSheet:
-    """Tworzy arkusz spisu z migawką stanu (aktywne HU w zakresie)."""
+    """Tworzy arkusz spisu z migawką stanu (aktywne HU w zakresie).
+
+    Palety, które są już w innym otwartym arkuszu, są pomijane — ich liczba
+    trafia do `sheet.skipped_in_open` (komunikat w widoku).
+
+    ponytail: dwa arkusze tworzone w tej samej chwili mogą jeszcze objąć tę samą
+    paletę (brak blokady); wystarczy przy ręcznym zakładaniu spisów.
+    """
     sheet = save_with_unique_number(
         StocktakeSheet(location=location, created_by=user),
         generate_stocktake_number,
@@ -628,6 +635,13 @@ def create_stocktake(*, location=None, user) -> StocktakeSheet:
     )
     if location is not None:
         hus = hus.filter(location=location)
+    # isnull=False: pozycja po usuniętej palecie ma NULL, a NOT IN z NULL-em
+    # odrzuciłby wszystkie palety.
+    in_open = StocktakeLine.objects.filter(
+        sheet__status=StocktakeStatus.OTWARTY, handling_unit__isnull=False
+    ).values("handling_unit")
+    sheet.skipped_in_open = hus.filter(pk__in=in_open).count()
+    hus = hus.exclude(pk__in=in_open)
     lines = [
         StocktakeLine(
             sheet=sheet,

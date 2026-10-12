@@ -496,6 +496,9 @@ def hu_label(request, pk):
     return response
 
 
+HU_LABELS_LIMIT = 200
+
+
 @login_required
 def hu_labels(request):
     """Wydruk wielu etykiet HU naraz — wg tych samych filtrów co lista HU."""
@@ -511,7 +514,16 @@ def hu_labels(request):
             | Q(location__code__icontains=query)
             | Q(delivery_ref__icontains=query)
         )
-    hus = hus[:200]  # bezpieczny limit jednej partii wydruku
+    # Limit jednej partii wydruku — powyżej nie obcinamy po cichu, tylko prosimy
+    # o zawężenie filtra.
+    count = hus.count()
+    if count > HU_LABELS_LIMIT:
+        messages.error(
+            request,
+            f"Wybrano {count} palet — limit jednego wydruku to {HU_LABELS_LIMIT}. "
+            "Zawęź filtr.",
+        )
+        return redirect(f"{reverse('hu_list')}?{request.GET.urlencode()}")
     pdf = hu_labels_pdf(hus)
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = 'inline; filename="etykiety_hu.pdf"'
@@ -878,6 +890,18 @@ def stock_import_view(request):
                     f"Nowych materiałów: {result['materials_created']}, "
                     f"nowych lokalizacji: {result['locations_created']}.",
                 )
+                if result["zero_qty"]:
+                    messages.warning(
+                        request,
+                        f"{result['zero_qty']} palet ma ilość 0 — uzupełnij ją "
+                        "korektą ilości.",
+                    )
+                if result["over_capacity"]:
+                    messages.warning(
+                        request,
+                        "Przekroczona pojemność lokalizacji: "
+                        + ", ".join(result["over_capacity"]),
+                    )
                 for err in result["errors"][:30]:
                     messages.warning(request, err)
             return redirect("stock_list")
@@ -930,10 +954,10 @@ def repack_view(request):
         form = RepackForm(request.POST)
         if form.is_valid():
             src = HandlingUnit.objects.filter(
-                number=form.cleaned_data["source_number"].strip()
+                number__iexact=form.cleaned_data["source_number"].strip()
             ).first()
             tgt = HandlingUnit.objects.filter(
-                number=form.cleaned_data["target_number"].strip()
+                number__iexact=form.cleaned_data["target_number"].strip()
             ).first()
             if src is None:
                 form.add_error("source_number", "Nie znaleziono palety źródłowej.")
@@ -993,6 +1017,12 @@ def stocktake_create(request):
                 request,
                 f"Utworzono arkusz {sheet.number} ({sheet.lines.count()} pozycji).",
             )
+            if sheet.skipped_in_open:
+                messages.warning(
+                    request,
+                    f"Pominięto {sheet.skipped_in_open} palet, które są już "
+                    "w innym otwartym arkuszu spisu.",
+                )
             return redirect("stocktake_detail", pk=sheet.pk)
         else:
             for errs in form.errors.values():
@@ -1075,7 +1105,7 @@ def inventory_view(request):
             qty = form.cleaned_data["quantity"]
             mode = form.cleaned_data["mode"]
             note = form.cleaned_data.get("note", "")
-            hu = HandlingUnit.objects.filter(number=number).first()
+            hu = HandlingUnit.objects.filter(number__iexact=number).first()
             if hu is None:
                 form.add_error("hu_number", f"Nie znaleziono HU „{number}”.")
             else:
