@@ -8,7 +8,9 @@ Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
 
 import csv
 import io
+from itertools import islice
 
+from django.conf import settings
 from django.db import transaction
 
 from .models import Location, LocationType
@@ -109,10 +111,20 @@ def parse_locations_file(filename: str, data: bytes):
     """Zwraca listę słowników wierszy z pliku CSV/XLSX."""
     lower = filename.lower()
     if lower.endswith(".csv"):
-        return list(_rows_from_csv(data))
-    if lower.endswith((".xlsx", ".xlsm")):
-        return list(_rows_from_xlsx(data))
-    raise ImportError_("Obsługiwane formaty to .csv oraz .xlsx.")
+        gen = _rows_from_csv(data)
+    elif lower.endswith((".xlsx", ".xlsm")):
+        gen = _rows_from_xlsx(data)
+    else:
+        raise ImportError_("Obsługiwane formaty to .csv oraz .xlsx.")
+    if not settings.DEMO_MODE:
+        return list(gen)
+    # Demo: czytamy najwyżej limit+1 wierszy — mały XLSX potrafi rozpakować się
+    # do milionów wierszy, a publiczne konto demo nie może zabić procesu.
+    limit = settings.DEMO_IMPORT_MAX_ROWS
+    rows = list(islice(gen, limit + 1))
+    if len(rows) > limit:
+        raise ImportError_(f"W wersji demo import obejmuje najwyżej {limit} wierszy.")
+    return rows
 
 
 @transaction.atomic

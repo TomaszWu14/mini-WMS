@@ -2,13 +2,14 @@
 
 from io import StringIO
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
-from .demo import DEMO_PASSWORD, LOGIN_RATE_LIMIT
+from .demo import LOGIN_RATE_LIMIT
 from .models import (
     HandlingUnit,
     HUStatus,
@@ -22,7 +23,9 @@ from .models import (
     StocktakeStatus,
 )
 
-BANNER = "DEMO — dane przykładowe"
+DEMO_PASSWORD = settings.DEMO_PASSWORD
+
+BANNER = "Wersja demonstracyjna — dane fikcyjne"
 
 
 def seed(*args):

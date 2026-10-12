@@ -44,6 +44,11 @@ CSRF_TRUSTED_ORIGINS = [
 DEMO_MODE = env_bool("DEMO_MODE", False)
 if DEMO_MODE:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Konta demo są publiczne z założenia (README, ekran logowania) — env tylko po to,
+# by hasło i konto „Wejdź jako demo” dało się zmienić bez zmiany kodu.
+DEMO_USER = os.environ.get("DEMO_USER", "demo_operator")
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
+DEMO_IMPORT_MAX_ROWS = 500
 
 # Liczba zaufanych proxy przed aplikacją (Traefik/Caddy = 1). 0 = nagłówek
 # X-Forwarded-For jest ignorowany, IP klienta to REMOTE_ADDR. Od tego zależy

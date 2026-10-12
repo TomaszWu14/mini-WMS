@@ -4,6 +4,27 @@
 <h1>Pulpit magazynu</h1>
 <p class="page-sub">Dzień dobry, {{ user.username }} · {% now "d.m.Y" %}</p>
 
+{% if show_welcome %}
+<section class="panel welcome" aria-labelledby="welcome-title">
+  <div class="panel-head">
+    <div>
+      <h2 id="welcome-title">Od czego zacząć — 5 minut</h2>
+      <p class="muted">Paleta przechodzi przez magazyn: przyjęcie → regał → wydanie. Zobacz to w czterech krokach.</p>
+    </div>
+    <div class="welcome-actions">
+      <a class="btn btn-sm" href="{% url 'dashboard' %}?demo=1">▶ Prezentacja z lektorem</a>
+      <form method="post" action="{% url 'welcome_dismiss' %}" class="inline">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">Ukryj</button></form>
+    </div>
+  </div>
+  <ol class="welcome-steps">
+    <li><a href="{% url 'hu_list' %}?status=DO_ULOZENIA"><strong>Palety z etykietą QR</strong><span>Otwórz paletę „Do ułożenia” i kliknij „Etykieta” — tak wygląda wydruk na paletę.</span></a></li>
+    {% if is_operator_role %}<li><a href="{% url 'scanner_putaway' %}"><strong>Skaner: rozmieść paletę</strong><span>Wpisz numer palety, potem kod lokalizacji (np. z listy Lokalizacje). Na telefonie zadziała aparat.</span></a></li>{% endif %}
+    <li><a href="{% url 'issue_list' %}"><strong>Wydanie według FEFO</strong><span>Otwórz wydanie „Otwarte” — system podpowiada palety z najkrótszą datą ważności.</span></a></li>
+    <li><a href="{% url 'report_locations' %}"><strong>Raport zajętości</strong><span>Które miejsca są pełne, a gdzie zmieści się nowa dostawa.</span></a></li>
+  </ol>
+</section>
+{% endif %}
+
 <div class="cards">
   <div class="card"><div class="card-body"><div class="card-head"><span class="kpi-label">Aktywne HU</span><span class="card-code" aria-hidden="true">HU</span></div><div class="kpi">{{ hu_total }}</div></div><div class="card-foot">{{ hu_stored }} zmagazynowanych</div></div>
   <div class="card{% if hu_to_allocate %} alert{% endif %}"><div class="card-body"><div class="card-head"><span class="kpi-label">HU do ułożenia</span><span class="card-code" aria-hidden="true">W03</span></div><div class="kpi">{{ hu_to_allocate }}</div></div><div class="card-foot">{% if hu_to_allocate %}Czekają na lokalizację{% else %}Wszystko ułożone{% endif %}</div></div>

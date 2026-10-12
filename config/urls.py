@@ -7,7 +7,7 @@ from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
 
-from warehouse.demo import LoginView
+from warehouse.demo import LoginView, demo_login, welcome_dismiss
 
 admin.site.site_header = "mini-WMS — administracja"
 admin.site.site_title = "mini-WMS"
@@ -31,6 +31,8 @@ def healthz(request):
 urlpatterns = [
     path("healthz", healthz, name="healthz"),
     path("login/", LoginView.as_view(), name="login"),
+    path("login/demo/", demo_login, name="demo_login"),
+    path("powitanie/ukryj/", welcome_dismiss, name="welcome_dismiss"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("warehouse.urls")),
 ]

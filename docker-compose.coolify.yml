@@ -28,6 +28,9 @@ services:
       DJANGO_TRUSTED_PROXY_COUNT: ${DJANGO_TRUSTED_PROXY_COUNT:-1}
       # Publiczna instancja demo: DEMO_MODE=1 (baner, loginy demo).
       DEMO_MODE: ${DEMO_MODE:-0}
+      # Konto dla „Wejdź jako demo” i hasło kont demo (publiczne, opisane w README).
+      DEMO_USER: ${DEMO_USER:-demo_operator}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-demo1234}
       DATABASE_URL: postgres://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-wms}
       # Konto administratora tworzone automatycznie przy pierwszym starcie:
       DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
