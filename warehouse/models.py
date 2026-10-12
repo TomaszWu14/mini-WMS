@@ -88,7 +88,7 @@ class Material(models.Model):
             # Limit na paletę, jeśli ustawiony, musi być dodatni — inaczej
             # przyjęcie odrzucałoby każdą ilość.
             models.CheckConstraint(
-                check=models.Q(max_per_pallet__isnull=True)
+                condition=models.Q(max_per_pallet__isnull=True)
                 | models.Q(max_per_pallet__gte=1),
                 name="material_max_per_pallet_positive",
             ),
@@ -213,7 +213,7 @@ class HandlingUnit(models.Model):
             # Twarda gwarancja na poziomie bazy — ilość HU nigdy ujemna,
             # nawet przy operacjach z pominięciem warstwy aplikacji.
             models.CheckConstraint(
-                check=models.Q(quantity__gte=0), name="hu_quantity_nonneg"
+                condition=models.Q(quantity__gte=0), name="hu_quantity_nonneg"
             ),
         ]
         indexes = [

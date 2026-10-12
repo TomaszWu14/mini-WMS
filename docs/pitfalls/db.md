@@ -17,9 +17,8 @@
 5. **Ograniczenia w bazie, nie tylko w formularzu.** `CheckConstraint` (ilość ≥ 0) i
    pola `unique=True` (numer HU/WZ, kod lokalizacji, indeks materiału). Nowa reguła ilościowa
    → constraint + migracja, nie sam `clean()`.
-6. **`CheckConstraint(check=…)` jest przestarzałe** (RemovedInDjango60Warning w
-   `models.py:90,215`). Nowe constrainty pisz z `condition=`; zmiana istniejących generuje
-   migrację — osobny PR.
+6. **`CheckConstraint` pisz z `condition=`**, nie `check=` (usunięte w Django 6.0). Zamiana
+   w istniejących constraintach nie wymaga migracji (`makemigrations --check` = brak zmian).
 7. **Migracje danych muszą być odwracalne.** `0002_seed_defaults` ma
    `RunPython(create_defaults, remove_defaults)` — każdy nowy `RunPython` też z funkcją
    wsteczną (albo jawnie `RunPython.noop`). Używaj `apps.get_model`, nie importu modeli.
