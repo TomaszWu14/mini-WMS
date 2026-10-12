@@ -1,0 +1,5 @@
+# Skrypty uruchamiane w kontenerach Linuksa — zawsze LF, także po klonie na Windows
+# (core.autocrlf=true zamienia na CRLF → „env: bash\r: No such file or directory”).
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+Caddyfile   text eol=lf

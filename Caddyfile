@@ -1,10 +1,7 @@
 # Konfiguracja Caddy — automatyczny HTTPS (certyfikat Let's Encrypt).
-# Domena i e-mail pobierane ze zmiennych środowiskowych (z docker-compose/.env).
-
-{
-	# E-mail do powiadomień Let's Encrypt (opcjonalny, ale zalecany).
-	email {$ACME_EMAIL}
-}
+# Domena ze zmiennej środowiskowej DOMAIN (z docker-compose/.env); DOMAIN=:80 = sieć
+# lokalna bez HTTPS. Bez globalnego `email`: Let's Encrypt go nie wymaga, a pusta
+# zmienna dawała błąd składni i restart Caddy w kółko.
 
 {$DOMAIN} {
 	# Przekazywanie ruchu do aplikacji Django (gunicorn) w kontenerze `web`.
