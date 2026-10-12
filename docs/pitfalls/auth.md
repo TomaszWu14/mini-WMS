@@ -11,11 +11,11 @@
 4. **Brak separacji danych między użytkownikami — to jeden magazyn.** Każdy zalogowany
    widzi wszystkie HU/WZ. Jeśli pojawi się drugi magazyn/firma, filtrowanie trzeba dodać
    w każdym querysecie (dziś go nie ma).
-5. **`_client_ip` ufa pierwszemu wpisowi `X-Forwarded-For`** (`signals.py`). Klient może
-   go podrobić → limit logowań w DEMO_MODE (`demo.py`) i dziennik `LoginEvent` są
-   obchodzalne. Za proxy bierz ostatni zaufany hop, nie pierwszy.
+5. **`_client_ip` ufa `X-Forwarded-For` tylko przy `TRUSTED_PROXY_COUNT` > 0** (`signals.py`)
+   i bierze N-ty wpis od końca. Nowe proxy przed aplikacją (np. Cloudflare przed Traefikiem)
+   = podbij `DJANGO_TRUSTED_PROXY_COUNT`, inaczej wszyscy dzielą IP proxy i jeden limit.
 6. **Limit logowań jest per proces gunicorna** (LocMem cache) — przy 3 workerach realnie
-   ~30 prób/5 min. Działa tylko przy `DEMO_MODE=1`.
+   ~30 prób/5 min. Działa zawsze (nie tylko w demo) — testy POST na `/login/` czyszczą cache.
 7. **Konta demo chroni `is_demo_account` tylko w `user_edit`.** Nowy widok zmieniający
    hasło/rolę/status musi to sprawdzić osobno (inaczej publiczne demo da się zablokować).
 8. **Admin Django jest wyłączony przy `DEMO_MODE=1`** (`config/urls.py`). Funkcje

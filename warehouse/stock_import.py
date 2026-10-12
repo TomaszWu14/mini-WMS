@@ -4,7 +4,7 @@ Obsługiwane kolumny (nazwy nagłówków nieczułe na wielkość liter; elastycz
     HU / numer hu      — opcjonalny własny numer palety; pusty → generowany
     REF / indeks       — wymagany indeks materiału
     nazwa / name       — nazwa materiału (używana przy auto-tworzeniu materiału)
-    ilosc / quantity   — opcjonalna ilość (pusta → 1)
+    ilosc / quantity   — opcjonalna ilość (pusta → 0, do uzupełnienia korektą)
     lokalizacja        — kod lokalizacji; "Przyjęcia"/"-"/puste → strefa przyjęć
     partia / lot       — opcjonalna partia ("-" = brak)
     data ważności      — opcjonalna data ważności ("-" = brak)
@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from django.db import transaction
+from django.db.models import Count, F, Q
 
 from . import services
 from .imports import (
@@ -90,6 +91,21 @@ def _parse_date(value):
     raise ValueError(f"nieczytelna data ważności '{text}'")
 
 
+def _over_capacity_codes(location_pks: set[int]) -> list[str]:
+    """Kody lokalizacji z przekroczoną pojemnością — jednym zapytaniem
+    (ta sama reguła co `Location.occupancy` / `location_over_capacity`)."""
+    active = Q(handling_units__quantity__gt=0) & ~Q(
+        handling_units__status=HUStatus.PUSTY
+    )
+    return list(
+        Location.objects.filter(pk__in=location_pks, capacity__gt=0)
+        .annotate(occ=Count("handling_units", filter=active))
+        .filter(occ__gt=F("capacity"))
+        .order_by("code")
+        .values_list("code", flat=True)
+    )
+
+
 @transaction.atomic
 def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS"):
     """Importuje stan początkowy. Zwraca słownik z podsumowaniem i błędami."""
@@ -97,6 +113,8 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
     unit, _ = Unit.objects.get_or_create(code=default_unit_code)
 
     created = 0
+    zero_qty = 0
+    touched_locations: set[int] = set()
     materials_created: set[str] = set()
     locations_created: set[str] = set()
     errors: list[str] = []
@@ -135,6 +153,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             if l_created:
                 locations_created.add(loc_raw)
             status = HUStatus.ZMAGAZYNOWANY
+            touched_locations.add(location.pk)
 
         lot = _clean_dash(_get(row, "partia", "lot"))
         try:
@@ -176,10 +195,14 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             created_by=user,
         )
         created += 1
+        if not qty:
+            zero_qty += 1
 
     return {
         "created": created,
         "materials_created": len(materials_created),
         "locations_created": len(locations_created),
+        "zero_qty": zero_qty,
+        "over_capacity": _over_capacity_codes(touched_locations),
         "errors": errors,
     }

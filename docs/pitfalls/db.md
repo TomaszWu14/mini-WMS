@@ -5,7 +5,8 @@
    `hu.quantity = …; hu.save()` w widoku/komendzie rozjeżdża historię ze stanem.
 2. **`select_for_update()` w SQLite nic nie blokuje.** Dev i testy działają na SQLite,
    produkcja na PostgreSQL — wyścigi (dwa pickingi tej samej palety) widać dopiero na
-   Postgresie. Test „równoległości” na SQLite niczego nie dowodzi.
+   Postgresie. Test „równoległości” na SQLite niczego nie dowodzi — pisz go jak
+   `tests_concurrency_pg.py` (pomijany na SQLite, uruchamia go job CI `test-postgres`).
 3. **Blokuj wiersz przed odczytem ilości.** Wzór z `pick_from_hu`/`repack_hu`:
    `HandlingUnit.objects.select_for_update().get(pk=hu.pk)` na początku transakcji, potem
    walidacja. Walidacja na obiekcie przekazanym z widoku czyta nieaktualny stan.

@@ -45,6 +45,11 @@ DEMO_MODE = env_bool("DEMO_MODE", False)
 if DEMO_MODE:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+# Liczba zaufanych proxy przed aplikacją (Traefik/Caddy = 1). 0 = nagłówek
+# X-Forwarded-For jest ignorowany, IP klienta to REMOTE_ADDR. Od tego zależy
+# limit prób logowania i adres w dzienniku logowań.
+TRUSTED_PROXY_COUNT = int(os.environ.get("DJANGO_TRUSTED_PROXY_COUNT", "0"))
+
 
 # Application definition
 

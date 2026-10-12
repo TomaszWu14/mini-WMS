@@ -100,12 +100,13 @@ jedna pozycja spisu na paletę w arkuszu, ochrona materiału z historią przed u
 **Pilnowane tylko przez kod aplikacji** (luki modelu — obserwacje, nie zadania):
 1. **Status HU nie jest powiązany z ilością i lokalizacją w bazie.** Reguła „PUSTY ⇔ ilość 0,
    bez lokalizacji” i „ZMAGAZYNOWANY ⇒ ma lokalizację” żyje tylko w `services.py:231-235`.
-   Import stanów tworzy HU z ilością 0 i statusem ZMAGAZYNOWANY (`stock_import.py:125-137`).
+   Import stanów tworzy HU z ilością 0 i statusem ZMAGAZYNOWANY — celowo, z ostrzeżeniem
+   w podsumowaniu importu ([D-09](06-decyzje.md#d-09-import-stanów-z-ilością-0-zostaje--z-ostrzeżeniem)).
 2. **Pojemność 0 ma dwa znaczenia:** w alokacji „bez limitu” (`services.py:160`), w raporcie
    zajętości „pełna” (`report_locations.html:24`).
-3. **Unikalność numerów rozróżnia wielkość liter w bazie**, a importy szukają bez rozróżniania
-   (`imports.py:31`, `stock_import.py:148`); skaner i ekrany web szukają dokładnie
-   (`scanner_views.py:153,233`, `views.py:1048`).
+3. **Unikalność numerów rozróżnia wielkość liter w bazie**, a aplikacja szuka bez
+   rozróżniania (importy, skaner, ekrany — [D-10](06-decyzje.md#d-10-numery-palet-bez-rozróżniania-wielkości-liter));
+   importy nie tworzą palety różniącej się od istniejącej tylko wielkością liter.
 4. **Pozycja WZ z konkretnym HU** — zgodność materiału HU z materiałem pozycji pilnowana tylko
    w formularzu i przy realizacji (`services.py:421-426`), nie w bazie.
 5. **`picked_qty ≤ requested_qty`** — brak ograniczenia; pilnuje skaner (`scanner_views.py:300`)

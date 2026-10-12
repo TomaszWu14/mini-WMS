@@ -1,6 +1,6 @@
-"""Tryb demo (DEMO_MODE): konta demo, baner, rate limit logowania.
+"""Tryb demo (DEMO_MODE): konta demo i baner; do tego limit prób logowania.
 
-Bez DEMO_MODE nic z tego modułu nie zmienia zachowania aplikacji.
+Limit logowań działa zawsze; konta demo i baner — tylko przy DEMO_MODE.
 """
 
 from django.conf import settings
@@ -38,7 +38,7 @@ def demo_context(request):
 
 
 class LoginView(auth_views.LoginView):
-    """LoginView z prostym limitem prób POST na IP (tylko w DEMO_MODE).
+    """LoginView z prostym limitem prób POST na IP (zawsze, nie tylko w demo).
 
     ponytail: cache domyślny (LocMem) jest per proces gunicorna — przy N
     workerach realny limit to N×10; wspólny cache (Redis) gdy to za mało.
@@ -47,17 +47,16 @@ class LoginView(auth_views.LoginView):
     template_name = "warehouse/login.html"
 
     def post(self, request, *args, **kwargs):
-        if settings.DEMO_MODE:
-            key = f"login-rl:{_client_ip(request)}"
-            cache.add(key, 0, LOGIN_RATE_WINDOW)
-            try:
-                attempts = cache.incr(key)
-            except ValueError:  # klucz wygasł między add a incr
-                attempts = 1
-            if attempts > LOGIN_RATE_LIMIT:
-                return HttpResponse(
-                    "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut.",
-                    status=429,
-                    content_type="text/plain; charset=utf-8",
-                )
+        key = f"login-rl:{_client_ip(request)}"
+        cache.add(key, 0, LOGIN_RATE_WINDOW)
+        try:
+            attempts = cache.incr(key)
+        except ValueError:  # klucz wygasł między add a incr
+            attempts = 1
+        if attempts > LOGIN_RATE_LIMIT:
+            return HttpResponse(
+                "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut.",
+                status=429,
+                content_type="text/plain; charset=utf-8",
+            )
         return super().post(request, *args, **kwargs)

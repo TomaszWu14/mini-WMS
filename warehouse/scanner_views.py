@@ -155,7 +155,7 @@ def api_hu(request):
         return JsonResponse({"ok": False, "error": "Pusty kod."}, status=400)
     hu = (
         HandlingUnit.objects.select_related("material", "location", "material__unit")
-        .filter(number=code)
+        .filter(number__iexact=code)
         .first()
     )
     if hu is None:
@@ -235,7 +235,7 @@ def api_document(request):
 def api_allocate(request):
     hu_code = (request.POST.get("hu") or "").strip()
     loc_code = (request.POST.get("location") or "").strip()
-    hu = HandlingUnit.objects.filter(number=hu_code).first()
+    hu = HandlingUnit.objects.filter(number__iexact=hu_code).first()
     loc = Location.objects.filter(code=loc_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
@@ -272,7 +272,7 @@ def api_pick(request):
     if not doc_id:
         return JsonResponse({"ok": False, "error": "Brak zlecenia."}, status=400)
 
-    hu = HandlingUnit.objects.filter(number=hu_code).first()
+    hu = HandlingUnit.objects.filter(number__iexact=hu_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
     try:
@@ -373,8 +373,8 @@ def api_repack(request):
     target_code = (request.POST.get("target") or "").strip()
     qty_raw = (request.POST.get("quantity") or "").strip()
 
-    source = HandlingUnit.objects.filter(number=source_code).first()
-    target = HandlingUnit.objects.filter(number=target_code).first()
+    source = HandlingUnit.objects.filter(number__iexact=source_code).first()
+    target = HandlingUnit.objects.filter(number__iexact=target_code).first()
     if source is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU źródłowy."}, status=404)
     if target is None:
@@ -414,7 +414,7 @@ def api_inventory(request):
     delta_raw = (request.POST.get("delta") or "").strip()
     reason = (request.POST.get("reason") or "").strip()
 
-    hu = HandlingUnit.objects.filter(number=hu_code).first()
+    hu = HandlingUnit.objects.filter(number__iexact=hu_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
     try:

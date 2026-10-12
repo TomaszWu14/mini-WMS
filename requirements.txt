@@ -1,6 +1,6 @@
 # Zależności produkcyjne (odbicie [project.dependencies] z pyproject.toml).
 # Narzędzia deweloperskie: requirements-dev.txt.
-Django>=5.1,<5.2
+Django>=5.2,<5.3
 reportlab==5.0.0
 qrcode[pil]==8.2
 openpyxl==3.1.5

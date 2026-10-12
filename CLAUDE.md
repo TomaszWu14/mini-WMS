@@ -1,6 +1,6 @@
 # mini-WMS — instrukcje dla Claude
 
-Django 5.1, jeden app `warehouse`, ustawienia `config/settings/{base,dev,prod,test}.py`.
+Django 5.2 LTS, jeden app `warehouse`, ustawienia `config/settings/{base,dev,prod,test}.py`.
 Testy: `.venv/Scripts/python -m pytest -x -q` (~11–40 s). Hooki w `.claude/settings.json`:
 `guard.py` (PreToolUse — blokuje groźne komendy), `check.py` (Stop — ruff/mypy na zmienionych
 plikach + pytest).
