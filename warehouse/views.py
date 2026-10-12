@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -67,8 +68,10 @@ from .stock_import import import_stock
 @login_required
 def dashboard(request):
     today = timezone.localdate()
+    show_welcome = settings.DEMO_MODE and not request.session.get("welcome_dismissed")
     active_hus = HandlingUnit.objects.exclude(status=HUStatus.PUSTY)
     context = {
+        "show_welcome": show_welcome,
         "hu_total": active_hus.count(),
         "hu_to_allocate": active_hus.filter(status=HUStatus.DO_ULOZENIA).count(),
         "hu_stored": active_hus.filter(status=HUStatus.ZMAGAZYNOWANY).count(),

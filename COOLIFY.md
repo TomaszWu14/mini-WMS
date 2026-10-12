@@ -184,10 +184,12 @@ Publiczne demo to osobny zasób z tym samym `docker-compose.coolify.yml` —
 z własną bazą, nigdy na danych produkcyjnych.
 
 1. Domena (działające demo: `https://miniwms.twapp.pl`), oraz zmienne jak w kroku 6
-   plus **`DEMO_MODE=1`**. Tryb demo włącza baner „DEMO — dane przykładowe…”,
-   pokazuje loginy kont demo na stronie logowania, blokuje edycję kont demo
-   i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP) działa
-   zawsze, także bez trybu demo.
+   plus **`DEMO_MODE=1`**. Tryb demo włącza baner „Wersja demonstracyjna — dane
+   fikcyjne…”, przycisk **„Wejdź jako demo”** i loginy kont demo na stronie logowania,
+   panel „Od czego zacząć” na pulpicie, blokuje edycję kont demo, ogranicza importy do
+   500 wierszy i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP)
+   działa zawsze, także bez trybu demo. Opcjonalnie: `DEMO_USER` (konto przycisku,
+   domyślnie `demo_operator`) i `DEMO_PASSWORD` (domyślnie `demo1234`).
 2. Po pierwszym deployu zasiej dane (terminal kontenera `web` w Coolify):
    `python manage.py seed_demo`
 3. **Reset co 24 h** — zakładka zasobu **Scheduled Tasks → + Add**:

@@ -448,6 +448,23 @@ ul.radio label { display: inline; font-weight: 600; }
 }
 .demo-logins ul { margin: 6px 0 0; padding-left: 18px; }
 
+/* Tryb demo: „Wejdź jako demo” i panel „Od czego zacząć” */
+.demo-enter { margin-bottom: 4px; }
+.demo-enter .btn { width: 100%; }
+.demo-enter p { margin: 8px 0 0; font-size: 13px; text-align: center; }
+.login-or { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted); font-size: 13px; }
+.login-or::before, .login-or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.welcome { margin: 16px 0 4px; border: 1px solid var(--mint); }
+.welcome .muted { margin: 4px 0 0; }
+.welcome-actions { display: flex; gap: 8px; align-items: center; }
+.welcome-steps { counter-reset: step; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.welcome-steps li { counter-increment: step; }
+.welcome-steps a { display: grid; align-content: start; gap: 4px; height: 100%; box-sizing: border-box; padding: 12px 14px 12px 48px; position: relative; border-radius: 14px; background: var(--field); color: var(--ink); text-decoration: none; }
+.welcome-steps a::before { content: counter(step); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: #fff; font-weight: 700; font-size: 13px; }
+.welcome-steps a:hover { background: var(--mint-soft); }
+.welcome-steps a:focus-visible { outline: 3px solid var(--emerald); outline-offset: 2px; }
+.welcome-steps span { color: var(--ink-2); font-size: 14px; }
+
 /* Typy ruchów magazynowych */
 .mv-PRZYJECIE { background: var(--ok-bg); color: var(--ok); }
 .mv-WYDANIE { background: var(--info-bg); color: var(--info); }

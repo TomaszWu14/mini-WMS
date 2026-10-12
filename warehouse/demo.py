@@ -1,18 +1,25 @@
-"""Tryb demo (DEMO_MODE): konta demo i baner; do tego limit prób logowania.
+"""Tryb demo (DEMO_MODE): konta demo, „Wejdź jako demo”, powitanie, baner;
+do tego limit prób logowania.
 
-Limit logowań działa zawsze; konta demo i baner — tylko przy DEMO_MODE.
+Limit logowań działa zawsze; reszta — tylko przy DEMO_MODE.
 """
 
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 
 from .models import Role
 from .signals import _client_ip
 
-# Jawne hasło — konta demo są publiczne z założenia (opisane w README).
-DEMO_PASSWORD = "demo1234"
+# Hasło: settings.DEMO_PASSWORD (env, domyślnie jawne „demo1234” z README).
 DEMO_ACCOUNTS = {
     "demo_operator": Role.OPERATOR,
     "demo_podglad": Role.VIEWER,
@@ -33,7 +40,8 @@ def demo_context(request):
     return {
         "demo_mode": True,
         "demo_accounts": list(DEMO_ACCOUNTS),
-        "demo_password": DEMO_PASSWORD,
+        "demo_password": settings.DEMO_PASSWORD,
+        "demo_user": settings.DEMO_USER,
     }
 
 
@@ -60,3 +68,31 @@ class LoginView(auth_views.LoginView):
                 content_type="text/plain; charset=utf-8",
             )
         return super().post(request, *args, **kwargs)
+
+
+@require_POST
+def demo_login(request):
+    """„Wejdź jako demo” — loguje kontem settings.DEMO_USER bez wpisywania hasła."""
+    if not settings.DEMO_MODE:
+        raise Http404
+    user = None
+    if settings.DEMO_USER in DEMO_ACCOUNTS:
+        user = User.objects.filter(username=settings.DEMO_USER, is_active=True).first()
+    if user is None:
+        messages.error(request, "Konto demo nie jest jeszcze utworzone (seed_demo).")
+        return redirect("login")
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    target = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(
+        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        target = "dashboard"
+    return redirect(target)
+
+
+@login_required
+@require_POST
+def welcome_dismiss(request):
+    """Ukrywa panel „Od czego zacząć” do końca sesji."""
+    request.session["welcome_dismissed"] = True
+    return redirect("dashboard")

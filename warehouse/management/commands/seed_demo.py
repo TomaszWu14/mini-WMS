@@ -19,7 +19,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from warehouse import services
-from warehouse.demo import DEMO_ACCOUNTS, DEMO_PASSWORD
+from warehouse.demo import DEMO_ACCOUNTS
 from warehouse.models import (
     AdjustReason,
     HandlingUnit,
@@ -97,7 +97,7 @@ class Command(BaseCommand):
 
         users = {}
         for username, role in DEMO_ACCOUNTS.items():
-            user = User.objects.create_user(username, password=DEMO_PASSWORD)
+            user = User.objects.create_user(username, password=settings.DEMO_PASSWORD)
             Profile.objects.update_or_create(user=user, defaults={"role": role})
             users[username] = user
         op = users["demo_operator"]

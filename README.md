@@ -7,9 +7,26 @@ kartce papieru — dla magazynierów i kierowników.**
 
 📹 [Prezentacja działania — 2 min, z napisami](docs/video/miniwms-demo.mp4)
 
-🌐 **Demo online: <https://miniwms.twapp.pl>** — loginy `demo_operator` (Operator) i
-`demo_podglad` (Podgląd), hasło `demo1234`; skaner: <https://miniwms.twapp.pl/skaner/>.
-Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00.
+🌐 **Demo online: <https://miniwms.twapp.pl>** — kliknij **„Wejdź jako demo”** (bez hasła)
+albo zaloguj się: `demo_operator` (Operator) lub `demo_podglad` (Podgląd), hasło `demo1234`.
+Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00 — można klikać śmiało.
+
+### Od czego zacząć (5 minut)
+
+Po wejściu pulpit pokazuje panel „Od czego zacząć” z tymi samymi krokami:
+
+1. **Palety z etykietą QR** — *HU (palety)* → paleta „Do ułożenia” → *Etykieta* (PDF).
+2. **Skaner: rozmieść paletę** — [/skaner/](https://miniwms.twapp.pl/skaner/) → *Rozmieszczanie*:
+   numer palety, potem kod lokalizacji (na telefonie działa aparat).
+3. **Wydanie według FEFO** — *Wydania* → dokument „Otwarte”: system podpowiada palety z
+   najkrótszą datą ważności; *Realizuj* zdejmuje stan.
+4. **Raport zajętości** — *Raporty* → *Zajętość lokalizacji*.
+
+| Logowanie | Pulpit z panelem „Od czego zacząć” |
+|---|---|
+| ![Ekran logowania z przyciskiem „Wejdź jako demo”](docs/screenshots/login-demo.png) | ![Pulpit z panelem powitalnym i kafelkami stanu](docs/screenshots/dashboard-welcome.png) |
+| **Lista palet** | **Wydanie z podpowiedzią FEFO** |
+| ![Lista palet z numerem, materiałem, datą ważności i lokalizacją](docs/screenshots/hu-list.png) | ![Dokument wydania z podpowiedzią, z których palet pobrać](docs/screenshots/issue-detail.png) |
 
 ## Problem → rozwiązanie
 
