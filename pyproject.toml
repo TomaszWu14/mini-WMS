@@ -79,6 +79,8 @@ django_settings_module = "config.settings"
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "tests_*.py", "test_*.py"]
 addopts = "-p no:cacheprovider"
+# WhiteNoise w testach: brak staticfiles/ (collectstatic robi tylko Docker) — szum.
+filterwarnings = ["ignore:No directory at:UserWarning"]
 
 # --- mutmut (scripts/mutate.sh; wymaga Linux/WSL — fork) --------------------
 [tool.mutmut]

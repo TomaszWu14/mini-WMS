@@ -67,5 +67,4 @@ lokalizacji), na końcu kolejki — towar można wydać prosto z rampy, gdy na r
 
 ## Co dalej (priorytet)
 
-1. Ograniczenia `CheckConstraint(check=…)` → `condition=` przed Django 6.0 (migracja).
-2. Wspólny cache (Redis) dla limitu logowań, gdy aplikacja dostanie więcej workerów.
+1. Wspólny cache (Redis) dla limitu logowań, gdy aplikacja dostanie więcej workerów.
