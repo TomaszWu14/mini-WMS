@@ -75,7 +75,16 @@ SHELL_WRITE_ENV_RE = re.compile(
 # --- 5. produkcja ---------------------------------------------------------------
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "db", ""}
 DEPLOY_RES = [
-    (re.compile(r"\bcoolify\b", re.I), "wywołanie Coolify (deploy produkcyjny)"),
+    # Tylko faktyczne wywołania (HTTP do panelu/API albo CLI `coolify`) — samo słowo
+    # w nazwie pliku (COOLIFY.md) czy w grepie dokumentacji nie jest deployem.
+    (
+        re.compile(
+            r"https?://[^\s'\"/]*coolify[^\s'\"/]*"  # URL z hostem panelu Coolify
+            r"|(?:^|[;&|(])\s*coolify\s",  # CLI `coolify …` na pozycji polecenia
+            re.I,
+        ),
+        "wywołanie Coolify (deploy produkcyjny)",
+    ),
     (re.compile(r"/api/v1/deploy|[?&]uuid=.*force=", re.I), "webhook deployu Coolify"),
     (
         re.compile(r"(?:^|[\s;&|(])(?:ssh|scp|rsync)\s"),

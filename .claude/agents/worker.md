@@ -17,7 +17,10 @@ poza nim — przerwij i opisz, czego brakuje.
    - `.venv/Scripts/python -m ruff check <zmienione pliki>`
    - `.venv/Scripts/python -m mypy <zmienione pliki z warehouse/ lub config/>`
    - `.venv/Scripts/python -m pytest -x -q`
-5. Nie commituj, nie pushuj, nie ruszaj `.env*` ani migracji innych wycinków.
+5. Nie commituj, nie pushuj, nie ruszaj `.env*` ani migracji innych wycinków. Nie używaj
+   `git stash`, `git checkout`, `git restore`, `git reset` ani `git switch` — w tym samym
+   drzewie mogą pracować równolegle inni workerzy. Stan bazowy sprawdzaj przez
+   `git show origin/main:<plik>` albo `git diff origin/main -- <plik>`.
 
 ## Raport (krótko)
 - Zmienione pliki (ścieżki).
