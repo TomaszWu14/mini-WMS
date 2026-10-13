@@ -47,8 +47,8 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | `DEMO_USER` | nowa, opcjonalna | domyślnie `demo_operator` (w compose) | ☐ nie trzeba |
 | `DEMO_PASSWORD` | nowa, opcjonalna | domyślnie `demo1234` (w compose); zmiana działa po `seed_demo --reset` | ☐ nie trzeba |
 
-Zaktualizowano też: `.env.example` ☐ — **do dopisania ręcznie** (hook repo blokuje
-odczyt plików `.env*`), `.env.docker.example` — nie dotyczy (demo tylko w Coolify),
+Zaktualizowano też: `.env.example` ☑ (uzupełnione w `chore/env-examples`),
+`.env.docker.example` — nie dotyczy (demo tylko w Coolify),
 `COOLIFY.md` §11 (Instancja demo) ☑.
 
 ### Przed i po deployu
