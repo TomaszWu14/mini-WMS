@@ -44,9 +44,8 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | `DJANGO_SSL_REDIRECT` | przekazywana w `docker-compose.yml` (domyślnie `1`) | `1` | ☐ nie dotyczy (Coolify nie używa tego pliku) |
 | `ACME_EMAIL` | usunięta (nieużywana) | — | ☐ nie dotyczy |
 
-Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` ☐ — **do ręcznej
-korekty**: usunąć `ACME_EMAIL`, dopisać `DJANGO_SSL_REDIRECT=1` (hook repo blokuje mi odczyt
-plików `.env*`), `COOLIFY.md` §6 — nie dotyczy.
+Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` ☑ (uzupełnione w
+`chore/env-examples`: bez `ACME_EMAIL`, z `DJANGO_SSL_REDIRECT`), `COOLIFY.md` §6 — nie dotyczy.
 
 ### Przed i po deployu
 - ☐ CI zielone na PR (`ci.yml` — w tym `docker-build`)
