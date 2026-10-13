@@ -12,7 +12,7 @@
       <p class="muted">Paleta przechodzi przez magazyn: przyjęcie → regał → wydanie. Zobacz to w czterech krokach.</p>
     </div>
     <div class="welcome-actions">
-      <a class="btn btn-sm" href="{% url 'dashboard' %}?demo=1">▶ Prezentacja z lektorem</a>
+      <a class="btn btn-sm" href="{% url 'dashboard' %}?demo=1">▶ Prezentacja (3 min)</a>
       <form method="post" action="{% url 'welcome_dismiss' %}" class="inline">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">Ukryj</button></form>
     </div>
   </div>

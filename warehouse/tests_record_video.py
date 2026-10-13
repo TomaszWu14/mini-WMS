@@ -9,6 +9,7 @@ from django.test import SimpleTestCase
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "warehouse" / "static" / "demo" / "demo_script.json"
+DEMO_JS = SCRIPT.with_name("demo.js")
 
 _spec = importlib.util.spec_from_file_location(
     "record_video", ROOT / "tools" / "record_video.py"
@@ -53,19 +54,32 @@ class ChapterTests(SimpleTestCase):
         )
 
     def test_real_script_meets_youtube_rules(self):
-        """≥ 3 rozdziały, pierwszy w kroku 1, każdy ≥ 10 s nagrań lektora."""
+        """≥ 3 rozdziały, pierwszy w kroku 1, każdy ≥ 10 s."""
         steps = json.loads(SCRIPT.read_text(encoding="utf-8"))["steps"]
         marked = [i for i, s in enumerate(steps) if s.get("chapter")]
         self.assertGreaterEqual(len(marked), 3)
         self.assertEqual(marked[0], 0)
-        # ~12 znaków tekstu na sekundę lektora — szacunek bez plików MP3;
-        # ostatni rozdział trwa jeszcze przez planszę końcową.
+        # Ostatni rozdział trwa jeszcze przez planszę końcową.
         bounds = [*marked, len(steps)]
         for a, b in zip(bounds, bounds[1:], strict=False):
-            seconds = sum(len(s["text"]) for s in steps[a:b]) / 12
+            seconds = sum(rec.step_seconds(s["text"]) for s in steps[a:b])
             if b == len(steps):
                 seconds += rec.OUTRO
             self.assertGreaterEqual(seconds, 10, steps[a]["chapter"])
+
+
+class PacingTests(SimpleTestCase):
+    def test_same_pace_as_tour_script(self):
+        """Napisy filmu liczone tym samym tempem, co kroki w demo.js."""
+        js = DEMO_JS.read_text(encoding="utf-8")
+        self.assertIn(f"var MS_PER_CHAR = {rec.MS_PER_CHAR};", js)
+        self.assertIn(f"var MIN_STEP_MS = {rec.MIN_STEP_MS};", js)
+
+    def test_short_text_gets_minimum(self):
+        self.assertEqual(rec.step_seconds("Krótko."), rec.MIN_STEP_MS / 1000)
+        self.assertAlmostEqual(
+            rec.step_seconds("x" * 200), 200 * rec.MS_PER_CHAR / 1000
+        )
 
 
 class CardTests(SimpleTestCase):

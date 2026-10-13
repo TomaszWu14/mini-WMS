@@ -1,6 +1,6 @@
 # Film na YouTube — dane do wgrania
 
-Wygenerowane przez `tools/record_video.py`. Długość: 3:16.
+Wygenerowane przez `tools/record_video.py`. Długość: 2:47.
 
 | Pole | Wartość |
 |---|---|
@@ -28,15 +28,14 @@ spis z natury i pełna historia ruchów. Projekt portfolio — Django 5.2, Postg
 
 Rozdziały:
 0:00 Czym jest miniWMS
-0:21 Pulpit i mapa obłożenia
-0:48 Przyjęcie dostawy
-1:02 Palety HU i etykiety QR
-1:16 Skaner w telefonie
-1:42 Wydanie według FEFO
-2:20 Spis z natury
-2:34 Rejestr ruchów
-2:46 Raporty
-2:57 Podsumowanie
+0:17 Pulpit i mapa obłożenia
+0:41 Przyjęcie dostawy
+0:53 Palety HU i etykiety QR
+1:04 Skaner w telefonie
+1:27 Wydanie według FEFO
+1:58 Spis z natury
+2:10 Historia ruchów i raporty
+2:29 Podsumowanie
 
 Dane w filmie i w demo są fikcyjne.
 ```

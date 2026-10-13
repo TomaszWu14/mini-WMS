@@ -1,4 +1,4 @@
-/* Prezentacja z lektorem (?demo=1) — pasek napisów i sterowania + podświetlenie.
+/* Prezentacja z napisami (?demo=1) — pasek napisów i sterowania + podświetlenie.
    Kolory z tokenów aplikacji (z wartościami zapasowymi dla ekranów skanera). */
 
 body.demo-on { padding-bottom: 148px; }
@@ -50,12 +50,10 @@ body.demo-on { padding-bottom: 148px; }
 }
 .demo-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .2); }
 .demo-btn:disabled { opacity: .35; cursor: default; }
-.demo-btn:focus-visible, .demo-start-btn:focus-visible, .demo-volume:focus-visible {
+.demo-btn:focus-visible, .demo-start-btn:focus-visible {
   outline: 3px solid var(--mint, #9fe0bf);
   outline-offset: 2px;
 }
-
-.demo-volume { width: 90px; accent-color: var(--mint, #9fe0bf); }
 
 .demo-start {
   position: fixed;
@@ -84,7 +82,6 @@ body.demo-on { padding-bottom: 148px; }
   .demo-bar { bottom: 8px; width: calc(100% - 16px); padding: 0 12px 10px; }
   .demo-progress { margin: 0 -12px 10px; }
   .demo-caption { font-size: 15px; }
-  .demo-volume { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
