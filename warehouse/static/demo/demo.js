@@ -1,14 +1,18 @@
-/* Prezentacja z lektorem — włącza się parametrem ?demo=1, potem trwa między
+/* Prezentacja z napisami — włącza się parametrem ?demo=1, potem trwa między
  * stronami (stan w sessionStorage). Niczego nie zapisuje w aplikacji: tylko
- * nawigacja, podświetlenie, napisy i dźwięk. Bez ?demo=1 i bez trwającej
- * prezentacji skrypt kończy się w pierwszych liniach.
- * Scenariusz: demo_script.json, nagrania: audio/manifest.json
- * (tools/generate_voiceover.py). */
+ * nawigacja, podświetlenie i napisy. Bez ?demo=1 i bez trwającej prezentacji
+ * skrypt kończy się w pierwszych liniach.
+ * Scenariusz: demo_script.json. Krok trwa tyle, ile czytanie napisu
+ * (stepMs); start i koniec kroku idą jako zdarzenia demo:step / demo:end
+ * (tools/record_video.py liczy z nich rozdziały i napisy filmu). */
 (function () {
   "use strict";
 
   var KEY = "miniwms-demo";
   var PAUSE_MS = 500;
+  var MS_PER_CHAR = 65;   // ok. 15 znaków na sekundę — spokojne tempo czytania
+  var MIN_STEP_MS = 4000;
+  var TICK_MS = 100;
   var base = (document.currentScript && document.currentScript.dataset.base) || "/static/demo/";
 
   function load() {
@@ -22,7 +26,7 @@
   var state = load();
   if (!wantsDemo && !(state && state.active)) return;
 
-  state = state || { active: false, index: 0, playing: false, muted: false, volume: 1, visited: {} };
+  state = state || { active: false, index: 0, playing: false, visited: {} };
 
   var css = document.createElement("link");
   css.rel = "stylesheet";
@@ -30,27 +34,30 @@
   document.head.appendChild(css);
 
   var steps = [];
-  var manifest = {};
-  var audio = null;          // bieżące nagranie — zawsze najwyżej jedno
-  var preloaded = {};        // id → Audio (kolejny krok)
-  var timer = null;
+  var ticker = null;   // odliczanie bieżącego kroku
+  var timer = null;    // pauza przed następnym krokiem
+  var elapsed = 0;     // ms bieżącego kroku (zostaje przy pauzie)
   var spotEl = null;
   var ui = {};
 
-  function fetchJSON(path) {
-    return fetch(base + path, { cache: "no-cache" }).then(function (r) {
-      return r.ok ? r.json() : {};
-    }).catch(function () { return {}; });
+  fetch(base + "demo_script.json", { cache: "no-cache" })
+    .then(function (r) { return r.ok ? r.json() : {}; })
+    .catch(function () { return {}; })
+    .then(function (script) {
+      steps = (script && script.steps) || [];
+      if (!steps.length) return;
+      buildUI();
+      if (state.active) showStep(state.index);
+      else showStart();
+    });
+
+  function stepMs(step) {
+    return Math.max(MIN_STEP_MS, step.text.length * MS_PER_CHAR);
   }
 
-  Promise.all([fetchJSON("demo_script.json"), fetchJSON("audio/manifest.json")]).then(function (res) {
-    steps = (res[0] && res[0].steps) || [];
-    manifest = res[1] || {};
-    if (!steps.length) return;
-    buildUI();
-    if (state.active) showStep(state.index, true);
-    else showStart();
-  });
+  function emit(name, detail) {
+    document.dispatchEvent(new CustomEvent(name, { detail: detail }));
+  }
 
   // --- UI -----------------------------------------------------------------
 
@@ -84,20 +91,9 @@
     ui.prev = button("⏮", "Poprzedni krok", function () { go(state.index - 1); });
     ui.play = button("▶", "Start / pauza", togglePlay);
     ui.next = button("⏭", "Następny krok", function () { go(state.index + 1); });
-    ui.mute = button("🔊", "Wycisz", toggleMute);
-    ui.volume = el("input", "demo-volume");
-    ui.volume.type = "range";
-    ui.volume.min = "0"; ui.volume.max = "1"; ui.volume.step = "0.05";
-    ui.volume.value = String(state.volume);
-    ui.volume.setAttribute("aria-label", "Głośność");
-    ui.volume.addEventListener("input", function () {
-      state.volume = Number(ui.volume.value);
-      if (audio) audio.volume = state.volume;
-      save();
-    });
     ui.count = el("span", "demo-count");
     var close = button("✕", "Zakończ prezentację", stop);
-    [ui.prev, ui.play, ui.next, ui.mute, ui.volume, ui.count].forEach(function (c) { controls.appendChild(c); });
+    [ui.prev, ui.play, ui.next, ui.count].forEach(function (c) { controls.appendChild(c); });
     controls.appendChild(el("span", "demo-spacer"));
     controls.appendChild(close);
 
@@ -107,7 +103,6 @@
     document.body.appendChild(bar);
     document.body.classList.add("demo-on");
     ui.bar = bar;
-    renderMute();
   }
 
   function showStart() {
@@ -124,13 +119,12 @@
       go(0);
     });
     overlay.appendChild(startBtn);
-    overlay.appendChild(el("p", "demo-start-hint", "Około trzech minut, z lektorem. Włącz dźwięk."));
+    overlay.appendChild(el("p", "demo-start-hint", "Około trzech minut, z napisami. Możesz zatrzymać w każdej chwili."));
     document.body.appendChild(overlay);
     startBtn.focus();
   }
 
   function renderPlay() { ui.play.textContent = state.playing ? "⏸" : "▶"; }
-  function renderMute() { ui.mute.textContent = state.muted ? "🔇" : "🔊"; }
   function renderProgress(fraction) {
     var pct = ((state.index + (fraction || 0)) / steps.length) * 100;
     ui.fill.style.width = Math.min(100, pct) + "%";
@@ -166,13 +160,13 @@
 
   function go(i) {
     if (i < 0 || i >= steps.length) return;
-    haltAudio();
+    halt();
     state.index = i;
     save();
-    showStep(i, false);
+    showStep(i);
   }
 
-  function showStep(i, resumed) {
+  function showStep(i) {
     var step = steps[i];
     var target = step.url || state.visited[i];
     if (target && !samePath(target)) {
@@ -182,6 +176,7 @@
     }
     state.visited[i] = location.pathname;
     save();
+    elapsed = 0;
     ui.caption.textContent = step.text;
     renderProgress(0);
     spotlight(find(step.selector));
@@ -190,84 +185,33 @@
       ui.caption.textContent = "Zaloguj się — po zalogowaniu kliknij ▶, prezentacja wróci w tym miejscu.";
     }
     renderPlay();
-    if (state.playing) play(step, resumed);
+    if (state.playing) run(step);
   }
 
-  // --- Dźwięk ---------------------------------------------------------------
+  // --- Czas kroku -----------------------------------------------------------
 
-  function clipUrl(step) {
-    return manifest[step.id] ? base + "audio/" + manifest[step.id] : null;
-  }
-
-  function haltAudio() {
+  function halt() {
+    clearInterval(ticker);
     clearTimeout(timer);
-    timer = null;
-    if (audio) {
-      audio.onended = audio.onerror = audio.ontimeupdate = null;
-      audio.pause();
-      audio = null;
-    }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    ticker = timer = null;
   }
 
-  function play(step, resumed) {
-    haltAudio();
-    var src = clipUrl(step);
-    if (!src) { speak(step, "brak nagrania w manifest.json"); return; }
-    audio = preloaded[step.id] || new Audio(src);
-    delete preloaded[step.id];
-    audio.volume = state.volume;
-    audio.muted = state.muted;
-    audio.ontimeupdate = function () {
-      if (audio && audio.duration) renderProgress(audio.currentTime / audio.duration);
-    };
-    audio.onended = function () { finished(step); };
-    audio.onerror = function () { speak(step, "nie udało się wczytać " + src); };
-    var p = audio.play();
-    if (p && p.catch) p.catch(function (err) { blocked(err, resumed); });
-    preloadNext();
-  }
-
-  function speak(step, reason) {
-    console.warn("[demo] " + step.id + ": " + reason + " — czytam przez speechSynthesis.");
-    haltAudio();
-    if (!window.speechSynthesis) { timer = setTimeout(function () { finished(step); }, 4000); return; }
-    var u = new SpeechSynthesisUtterance(step.text);
-    u.lang = "pl-PL";
-    u.volume = state.muted ? 0 : state.volume;
-    u.onend = function () { finished(step); };
-    u.onerror = function (e) {
-      if (e.error === "not-allowed") blocked(e, true);
-    };
-    window.speechSynthesis.speak(u);
-  }
-
-  // Przeglądarka nie pozwoliła odtworzyć dźwięku bez kliknięcia (np. po
-  // przejściu na nową stronę) — czekamy na ▶.
-  function blocked(err, resumed) {
-    if (err && err.name && err.name !== "NotAllowedError" && err.error !== "not-allowed") return;
-    state.playing = false;
-    save();
-    renderPlay();
-    if (resumed) ui.caption.textContent = steps[state.index].text + "  (kliknij ▶, aby kontynuować)";
-  }
-
-  function preloadNext() {
-    var next = steps[state.index + 1];
-    var src = next && clipUrl(next);
-    if (src && !preloaded[next.id]) {
-      var a = new Audio();
-      a.preload = "auto";
-      a.src = src;
-      preloaded[next.id] = a;
-    }
+  function run(step) {
+    halt();
+    if (elapsed === 0) emit("demo:step", { id: step.id, index: state.index });
+    var total = stepMs(step);
+    ticker = setInterval(function () {
+      elapsed += TICK_MS;
+      renderProgress(Math.min(1, elapsed / total));
+      if (elapsed >= total) finished(step);
+    }, TICK_MS);
   }
 
   function finished(step) {
+    halt();
     renderProgress(1);
     timer = setTimeout(function () {
       if (!state.playing) return;
-      var last = state.index >= steps.length - 1;
       if (step.action === "click") {
         var link = find(step.selector);
         if (link) {
@@ -277,12 +221,13 @@
           return;
         }
       }
-      if (last) {
+      if (state.index >= steps.length - 1) {
         state.playing = false;
         save();
         renderPlay();
         ui.caption.textContent = "Koniec prezentacji. Dziękujemy!";
         spotlight(null);
+        emit("demo:end", {});
         return;
       }
       go(state.index + 1);
@@ -295,30 +240,15 @@
     state.playing = !state.playing;
     save();
     renderPlay();
-    if (!state.playing) {
-      clearTimeout(timer);
-      if (audio) audio.pause();
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-      return;
-    }
-    ui.caption.textContent = steps[state.index].text;
-    if (audio && !audio.ended) {
-      var p = audio.play();
-      if (p && p.catch) p.catch(function (err) { blocked(err, false); });
-    } else {
-      play(steps[state.index], false);
-    }
-  }
-
-  function toggleMute() {
-    state.muted = !state.muted;
-    if (audio) audio.muted = state.muted;
-    save();
-    renderMute();
+    if (!state.playing) { halt(); return; }
+    var step = steps[state.index];
+    ui.caption.textContent = step.text;
+    if (elapsed >= stepMs(step)) finished(step);
+    else run(step);
   }
 
   function stop() {
-    haltAudio();
+    halt();
     spotlight(null);
     try { sessionStorage.removeItem(KEY); } catch (e) { /* tryb prywatny */ }
     state = { active: false };

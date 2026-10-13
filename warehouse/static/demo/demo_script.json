@@ -1,16 +1,5 @@
 {
-  "_info": "Scenariusz prezentacji z lektorem (?demo=1). Tekst kroku = napisy; lektor czyta go po podmianach ze słownika 'pronunciation'. Po zmianie tekstu: python tools/generate_voiceover.py. Pole chapter = początek rozdziału w filmie na YouTube (tools/record_video.py).",
-  "pronunciation": {
-    "miniWMS": "mini wu-em-es",
-    "WMS": "wu-em-es",
-    "HU": "ha-u",
-    "WZ": "wu-zet",
-    "FEFO": "fe-fo",
-    "FIFO": "fi-fo",
-    "QR": "ku-er",
-    "CSV": "ce-es-fau",
-    "PDF": "pe-de-ef"
-  },
+  "_info": "Scenariusz prezentacji z napisami (?demo=1). Tekst kroku = napis; krok trwa tyle, ile czytanie (demo.js: stepMs). Pole chapter = początek rozdziału w filmie na YouTube (tools/record_video.py).",
   "steps": [
     {
       "id": "krok01",
@@ -97,7 +86,7 @@
     },
     {
       "id": "krok12",
-      "chapter": "Rejestr ruchów",
+      "chapter": "Historia ruchów i raporty",
       "url": "/ruchy/",
       "selector": ".table-wrap",
       "action": "navigate",
@@ -105,7 +94,6 @@
     },
     {
       "id": "krok13",
-      "chapter": "Raporty",
       "url": "/raporty/",
       "selector": ".cards",
       "action": "navigate",

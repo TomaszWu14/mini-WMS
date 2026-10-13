@@ -1,4 +1,4 @@
-"""Nagrywa prezentację z lektorem (?demo=1) jako film na YouTube.
+"""Nagrywa prezentację z napisami (?demo=1) jako film na YouTube.
 
     # 1. aplikacja w trybie demo, ze świeżymi danymi:
     DEMO_MODE=1 python manage.py seed_demo --reset
@@ -7,14 +7,14 @@
     python tools/record_video.py
     python tools/record_video.py --chromium /opt/pw-browsers/chromium
 
-Wynik w docs/video/youtube/: film MP4 (1920×1080, H.264 + AAC), napisy SRT,
-miniatura PNG 1280×720 i youtube.md (tytuł, opis z rozdziałami, tagi).
+Wynik w docs/video/youtube/: film MP4 (1920×1080, H.264, cicha ścieżka AAC),
+napisy SRT, miniatura PNG 1280×720 i youtube.md (tytuł, opis z rozdziałami, tagi).
 
-Jak to działa: Playwright odtwarza prezentację w przeglądarce i nagrywa
-obraz; headless Chromium nie nagrywa dźwięku, więc skrypt notuje moment
-startu każdego nagrania (podmienione HTMLMediaElement.play) i ffmpeg nakłada
-te same pliki MP3 w tych miejscach. Rozdziały = kroki z polem "chapter"
-w demo_script.json. Plansza początkowa i końcowa to HTML ze stylami aplikacji.
+Jak to działa: Playwright odtwarza prezentację w przeglądarce i nagrywa obraz,
+a demo.js zgłasza start każdego kroku i koniec (zdarzenia demo:step / demo:end).
+Z tych chwil skrypt tnie nagranie, liczy rozdziały (kroki z polem "chapter"
+w demo_script.json) i napisy. Plansza początkowa i końcowa to HTML ze stylami
+aplikacji.
 """
 
 from __future__ import annotations
@@ -42,38 +42,34 @@ W, H = 1920, 1080
 FPS = 30
 INTRO = 4.0  # s, plansza tytułowa
 OUTRO = 7.0  # s, plansza końcowa
-LEAD = 0.8  # s obrazu przed pierwszym słowem lektora
-TAIL = 2.0  # s po ostatnim nagraniu
+LEAD = 0.8  # s obrazu przed pierwszym krokiem
+TAIL = 2.0  # s po końcu prezentacji
+# Tempo kroku jak w demo.js (stepMs): ok. 15 znaków napisu na sekundę, min. 4 s.
+MS_PER_CHAR = 65
+MIN_STEP_MS = 4000
 
-# Pierwsze wywołanie play() dla pliku z audio/ → window.__demoClip(src, ms).
+# Zdarzenia z demo.js → window.__demoEvent(nazwa, id kroku, ms).
 HOOK = """
-(() => {
-  const play = HTMLMediaElement.prototype.play;
-  HTMLMediaElement.prototype.play = function () {
-    const src = this.currentSrc || this.src || "";
-    if (src.includes("/demo/audio/") && window.__demoClip) window.__demoClip(src, Date.now());
-    return play.apply(this, arguments);
-  };
-})();
+for (const name of ["demo:step", "demo:end"]) {
+  document.addEventListener(name, (e) => {
+    if (window.__demoEvent) window.__demoEvent(name, (e.detail || {}).id || "", Date.now());
+  });
+}
 """
 
 
 # --- Dane ---------------------------------------------------------------------
 
 
+def step_seconds(text: str) -> float:
+    return max(MIN_STEP_MS, len(text) * MS_PER_CHAR) / 1000
+
+
 def load_steps() -> list[dict]:
     script = json.loads((DEMO / "demo_script.json").read_text(encoding="utf-8"))
-    manifest = json.loads(
-        (DEMO / "audio" / "manifest.json").read_text(encoding="utf-8")
-    )
     steps = script["steps"]
     for step in steps:
-        if step["id"] not in manifest:
-            sys.exit(
-                f"Brak nagrania dla {step['id']} — uruchom tools/generate_voiceover.py"
-            )
-        step["clip"] = DEMO / "audio" / manifest[step["id"]]
-        step["duration"] = probe_duration(step["clip"])
+        step["duration"] = step_seconds(step["text"])
     return steps
 
 
@@ -168,7 +164,7 @@ def render_cards(browser, shot: Path, tmp: Path) -> dict[str, Path]:
     intro = brand() + (
         '<p class="lead">Lekki system magazynowy dla małego magazynu — '
         "od przyjęcia palety do wydania.</p>"
-        '<p class="meta">PREZENTACJA Z LEKTOREM · 3 MINUTY · DANE FIKCYJNE</p>'
+        '<p class="meta">PREZENTACJA · 3 MINUTY · DANE FIKCYJNE</p>'
     )
     demo_host = html.escape(PUBLIC_DEMO.removeprefix("https://"))
     repo_host = html.escape(REPO.removeprefix("https://"))
@@ -207,7 +203,7 @@ def render_cards(browser, shot: Path, tmp: Path) -> dict[str, Path]:
 
 
 def record(browser, base_url: str, steps: list[dict], tmp: Path):
-    """Nagrywa prezentację; zwraca (plik webm, {id kroku: sekunda w nagraniu})."""
+    """Nagrywa prezentację; zwraca (plik webm, {id kroku: sekunda}, sekunda końca)."""
     context = browser.new_context(
         viewport={"width": W, "height": H},
         locale="pl-PL",
@@ -215,15 +211,17 @@ def record(browser, base_url: str, steps: list[dict], tmp: Path):
         record_video_size={"width": W, "height": H},
     )
     starts: dict[str, float] = {}
-    by_file = {step["clip"].name: step["id"] for step in steps}
+    ended: list[float] = []
 
-    def on_clip(_source, src: str, ms: float) -> None:
-        step_id = by_file.get(src.rsplit("/", 1)[-1])
-        if step_id and step_id not in starts:
-            starts[step_id] = ms / 1000 - t0
-            print(f"  {step_id} @ {starts[step_id]:6.2f} s")
+    def on_event(_source, name: str, step_id: str, ms: float) -> None:
+        at = ms / 1000 - t0
+        if name == "demo:end":
+            ended.append(at)
+        elif step_id not in starts:
+            starts[step_id] = at
+            print(f"  {step_id} @ {at:6.2f} s")
 
-    context.expose_binding("__demoClip", on_clip)
+    context.expose_binding("__demoEvent", on_event)
     context.add_init_script(HOOK)
     page = context.new_page()
     t0 = time.time()  # nagranie startuje razem ze stroną
@@ -240,9 +238,9 @@ def record(browser, base_url: str, steps: list[dict], tmp: Path):
     video = page.video.path()
     context.close()
     missing = [s["id"] for s in steps if s["id"] not in starts]
-    if missing:
-        sys.exit(f"Nie zarejestrowano startu nagrań: {missing}")
-    return Path(video), starts
+    if missing or not ended:
+        sys.exit(f"Nie zarejestrowano kroków: {missing or 'koniec prezentacji'}")
+    return Path(video), starts, ended[0]
 
 
 def hide_welcome(page) -> None:
@@ -271,12 +269,11 @@ def dashboard_shot(browser, base_url: str, tmp: Path) -> Path:
 
 
 def compose(
-    video: Path, cards: dict[str, Path], steps, starts, out: Path
+    video: Path, cards: dict[str, Path], steps, starts, end: float, out: Path
 ) -> dict[str, float]:
-    """Plansza + nagranie (przycięte) + plansza, z lektorem. Zwraca starty kroków w filmie."""
+    """Plansza + nagranie (przycięte) + plansza. Zwraca starty kroków w filmie."""
     cut_from = starts[steps[0]["id"]] - LEAD
-    last = steps[-1]
-    cut_to = starts[last["id"]] + last["duration"] + TAIL
+    cut_to = end + TAIL
     main = cut_to - cut_from
     total = INTRO + main + OUTRO
     at = {s["id"]: INTRO + starts[s["id"]] - cut_from for s in steps}
@@ -284,8 +281,8 @@ def compose(
     inputs = ["-loop", "1", "-t", str(INTRO), "-i", str(cards["intro"])]
     inputs += ["-i", str(video)]
     inputs += ["-loop", "1", "-t", str(OUTRO), "-i", str(cards["outro"])]
-    for s in steps:
-        inputs += ["-i", str(s["clip"])]
+    # Cicha ścieżka: część odtwarzaczy i YouTube lepiej znoszą plik z audio.
+    inputs += ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
 
     norm = f"scale={W}:{H},fps={FPS},format=yuv420p,setsar=1"
     parts = [
@@ -295,29 +292,10 @@ def compose(
         f"[2:v]{norm},fade=in:st=0:d=0.5[v2]",
         "[v0][v1][v2]concat=n=3:v=1:a=0[v]",
     ]
-    labels = []
-    for i, s in enumerate(steps):
-        ms = round(at[s["id"]] * 1000)
-        parts.append(f"[{3 + i}:a]aresample=48000,adelay={ms}|{ms}[a{i}]")
-        labels.append(f"[a{i}]")
-    parts.append(
-        f"{''.join(labels)}amix=inputs={len(labels)}:normalize=0:duration=longest,"
-        f"apad,atrim=0:{total:.3f}[a]"
-    )
     cmd = ["ffmpeg", "-y", "-v", "error", *inputs, "-filter_complex", ";".join(parts)]
-    cmd += ["-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}"]
+    cmd += ["-map", "[v]", "-map", "3:a", "-t", f"{total:.3f}"]
     cmd += ["-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p"]
-    cmd += [
-        "-c:a",
-        "aac",
-        "-b:a",
-        "160k",
-        "-ar",
-        "48000",
-        "-movflags",
-        "+faststart",
-        str(out),
-    ]
+    cmd += ["-c:a", "aac", "-b:a", "32k", "-movflags", "+faststart", str(out)]
     subprocess.run(cmd, check=True)
     return at
 
@@ -437,17 +415,17 @@ def main(argv=None) -> int:
         browser = p.chromium.launch(
             executable_path=args.chromium,
             # --lang/LANG: polskie formaty w polach daty (dd.mm.rrrr).
-            args=["--autoplay-policy=no-user-gesture-required", "--lang=pl-PL"],
+            args=["--lang=pl-PL"],
             env={**os.environ, "LANG": "pl_PL.UTF-8"},
         )
         print("Zrzut pulpitu i plansze…")
         shot = dashboard_shot(browser, base_url, tmp)
         cards = render_cards(browser, shot, tmp)
         print("Nagrywanie prezentacji (w czasie rzeczywistym, ok. 3 min)…")
-        video, starts = record(browser, base_url, steps, tmp)
+        video, starts, end = record(browser, base_url, steps, tmp)
         browser.close()
         print("Montaż (ffmpeg)…")
-        at = compose(video, cards, steps, starts, mp4)
+        at = compose(video, cards, steps, starts, end, mp4)
         shutil.copy(cards["thumbnail"], args.out / "thumbnail.png")
 
     duration = probe_duration(mp4)

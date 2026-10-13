@@ -1,155 +1,155 @@
 1
-00:00:04,800 --> 00:00:10,011
+00:00:04,800 --> 00:00:08,805
 To jest miniWMS, lekki system magazynowy dla małego magazynu.
 
 2
-00:00:10,011 --> 00:00:14,197
+00:00:08,805 --> 00:00:12,023
 Zastępuje ewidencję prowadzoną na kartce papieru.
 
 3
-00:00:14,197 --> 00:00:21,544
+00:00:12,023 --> 00:00:17,670
 Pokażę, jak paleta przechodzi przez magazyn: od przyjęcia, przez regał, aż do wydania.
 
 4
-00:00:22,245 --> 00:00:25,922
+00:00:18,222 --> 00:00:21,310
 Pulpit pokazuje stan magazynu w jednym miejscu.
 
 5
-00:00:25,922 --> 00:00:32,414
+00:00:21,310 --> 00:00:26,764
 Liczbę palet, palety czekające na ułożenie, zajętość lokalizacji i otwarte wydania.
 
 6
-00:00:32,414 --> 00:00:36,638
+00:00:26,764 --> 00:00:30,312
 Wyróżniony kafelek oznacza, że coś czeka na operatora.
 
 7
-00:00:37,183 --> 00:00:41,311
+00:00:30,827 --> 00:00:34,645
 Mapa obłożenia pokazuje każdą lokalizację jako jedno pole.
 
 8
-00:00:41,311 --> 00:00:44,798
+00:00:34,645 --> 00:00:37,871
 Im ciemniejszy kolor, tym pełniejsza lokalizacja.
 
 9
-00:00:44,798 --> 00:00:48,285
+00:00:37,871 --> 00:00:41,097
 Od razu widać, gdzie jest miejsce na nowe palety.
 
 10
-00:00:49,361 --> 00:00:51,999
+00:00:41,736 --> 00:00:44,104
 Przyjęcie dostawy zaczyna się tutaj.
 
 11
-00:00:51,999 --> 00:00:56,688
+00:00:44,104 --> 00:00:48,313
 Operator wybiera materiał, podaje ilość, partię i datę ważności.
 
 12
-00:00:56,688 --> 00:01:01,743
+00:00:48,313 --> 00:00:52,851
 System sam dzieli dostawę na palety, a każdej nadaje własny numer HU.
 
 13
-00:01:02,509 --> 00:01:06,714
+00:00:53,537 --> 00:00:56,957
 Każda paleta ma swój numer HU i etykietę z kodem QR.
 
 14
-00:01:06,714 --> 00:01:12,052
+00:00:56,957 --> 00:01:01,299
 Lista pokazuje materiał, ilość, datę ważności i miejsce na regale.
 
 15
-00:01:12,052 --> 00:01:16,014
+00:01:01,299 --> 00:01:04,522
 Etykiety drukuje się pojedynczo albo całą partią.
 
 16
-00:01:16,785 --> 00:01:19,769
+00:01:05,172 --> 00:01:07,672
 Pracownik na hali korzysta ze skanera.
 
 17
-00:01:19,769 --> 00:01:26,365
+00:01:07,672 --> 00:01:13,200
 To zwykła strona w przeglądarce telefonu albo kolektora, bez instalowania aplikacji.
 
 18
-00:01:26,365 --> 00:01:29,507
+00:01:13,200 --> 00:01:15,832
 Kamera telefonu czyta kody QR z etykiet.
 
 19
-00:01:30,285 --> 00:01:32,769
+00:01:16,468 --> 00:01:18,770
 Rozmieszczenie palety to dwa skany.
 
 20
-00:01:32,769 --> 00:01:36,956
+00:01:18,770 --> 00:01:22,652
 Najpierw etykieta palety, potem etykieta miejsca na regale.
 
 21
-00:01:36,956 --> 00:01:42,066
+00:01:22,652 --> 00:01:27,388
 System od razu zapisuje ruch i ostrzega, gdy lokalizacja jest już pełna.
 
 22
-00:01:42,729 --> 00:01:45,726
+00:01:28,086 --> 00:01:30,648
 Wydania prowadzi się na dokumentach WZ.
 
 23
-00:01:45,726 --> 00:01:50,874
+00:01:30,648 --> 00:01:35,049
 Dokument zakłada się ręcznie albo importuje zlecenia z pliku Excel.
 
 24
-00:01:50,874 --> 00:01:57,175
+00:01:35,049 --> 00:01:40,436
 Status pokazuje, czy wydanie czeka, jest zrealizowane, spakowane, czy już wysłane.
 
 25
-00:01:57,741 --> 00:02:00,745
+00:01:40,989 --> 00:01:44,989
 Otwórzmy dokument, który czeka na realizację.
 
 26
-00:02:01,461 --> 00:02:07,988
+00:01:45,580 --> 00:01:49,980
 Dla każdej pozycji system podpowiada, z których palet pobrać towar.
 
 27
-00:02:07,988 --> 00:02:14,125
+00:01:49,980 --> 00:01:54,118
 Działa reguła FEFO: najpierw palety z najkrótszą datą ważności.
 
 28
-00:02:14,125 --> 00:02:20,165
+00:01:54,118 --> 00:01:58,190
 Przy tej samej dacie decyduje kolejność przyjęcia, czyli FIFO.
 
 29
-00:02:20,910 --> 00:02:25,469
+00:01:58,893 --> 00:02:02,968
 Spis z natury porównuje policzone ilości ze stanem w systemie.
 
 30
-00:02:25,469 --> 00:02:29,292
+00:02:02,968 --> 00:02:06,386
 Arkusz obejmuje cały magazyn albo jedną lokalizację.
 
 31
-00:02:29,292 --> 00:02:33,997
+00:02:06,386 --> 00:02:10,593
 Po zamknięciu arkusza różnice trafiają do historii jako korekty.
 
 32
-00:02:34,738 --> 00:02:38,585
+00:02:11,217 --> 00:02:14,379
 Każda operacja zostawia ślad w rejestrze ruchów.
 
 33
-00:02:38,585 --> 00:02:42,272
+00:02:14,379 --> 00:02:17,410
 Widać, kto, kiedy i o ile zmienił stan palety.
 
 34
-00:02:42,272 --> 00:02:46,519
+00:02:17,410 --> 00:02:20,902
 Historię można wyeksportować do pliku CSV albo Excel.
 
 35
-00:02:47,215 --> 00:02:52,907
+00:02:21,531 --> 00:02:25,921
 Raporty pokazują zajętość lokalizacji i historię każdego materiału.
 
 36
-00:02:52,907 --> 00:02:57,664
+00:02:25,921 --> 00:02:29,591
 To podstawa decyzji, gdzie składować towar i co zamówić.
 
 37
-00:02:58,331 --> 00:02:59,280
+00:02:30,292 --> 00:02:31,086
 To wszystko.
 
 38
-00:02:59,280 --> 00:03:05,763
+00:02:31,086 --> 00:02:36,511
 miniWMS prowadzi paletę od przyjęcia aż do wydania, a każdy ruch zostaje zapisany.
 
 39
-00:03:05,763 --> 00:03:07,187
+00:02:36,511 --> 00:02:37,702
 Dziękuję za uwagę.
