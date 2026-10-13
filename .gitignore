@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtualenv
 .venv/
@@ -16,29 +21,24 @@ db.sqlite3-journal
 /media/
 /staticfiles/
 
-# Środowisko
+# Sekrety — tylko pliki przykładowe w repo
 .env
+.env.*
+!.env.example
+!.env.*.example
+
+# Zrzuty i kopie baz
+*.sql
+*.dump
+*.bak
 
 # Edytory / OS
 .idea/
 .vscode/
 .DS_Store
 
-# --- kopia do przygotowania wersji publicznej (wymagane minimum) ---
-.env
-.env.*
-!.env.example
-!.env.*.example
-.idea/
-.venv/
-venv/
-__pycache__/
-*.pyc
+# Frontend (gdyby się pojawił)
 node_modules/
-*.sql
-*.dump
-*.bak
-.DS_Store
 
 # Raporty skanów (scripts/security_scan.sh, scripts/mutate.sh)
 reports/
