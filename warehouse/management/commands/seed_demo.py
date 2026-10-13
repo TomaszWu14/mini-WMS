@@ -15,7 +15,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from warehouse import services
@@ -31,6 +31,7 @@ from warehouse.models import (
     Material,
     Profile,
     StockMovement,
+    StocktakeLine,
     StocktakeSheet,
     Unit,
 )
@@ -83,9 +84,36 @@ class Command(BaseCommand):
         # Reset i zasiew razem: równoległe żądania nie zobaczą pustego magazynu.
         with transaction.atomic():
             if reset:
+                self._lock_tables()
                 self._reset(keep_users=keep_users)
             self._seed()
         self.stdout.write(self.style.SUCCESS("Dane demo zasiane."))
+
+    def _lock_tables(self):
+        """PostgreSQL: reset z /demo/przywroc/ idzie przy działającej aplikacji.
+
+        Bez blokady równoległe przyjęcie/wydanie (albo drugi reset z innego
+        workera) wstawia ruch między DELETE-ami → ProtectedError albo deadlock
+        z blokadą HUNumberingConfig. EXCLUSIVE wstrzymuje zapisy do końca
+        transakcji (poniżej 1–2 s), odczyty działają dalej. SQLite i tak
+        szereguje zapisy całej bazy.
+        """
+        if connection.vendor != "postgresql":
+            return
+        models = [
+            HUNumberingConfig,
+            StockMovement,
+            StocktakeLine,
+            StocktakeSheet,
+            IssueLine,
+            IssueDocument,
+            HandlingUnit,
+            Location,
+            Material,
+        ]
+        tables = ", ".join(connection.ops.quote_name(m._meta.db_table) for m in models)
+        with connection.cursor() as cur:
+            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608 (nazwy z modeli)
 
     def _reset(self, keep_users=False):
         StockMovement.objects.all().delete()

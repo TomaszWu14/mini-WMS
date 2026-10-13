@@ -127,8 +127,8 @@ def demo_reset(request):
     """„Przywróć dane demo” — seed_demo --reset --keep-users, najwyżej raz na minutę.
 
     ponytail: blokada w cache domyślnym (LocMem) jest per proces gunicorna —
-    przy N workerach realnie do N resetów na minutę; nieszkodliwe, reset jest
-    idempotentny i trwa ułamek sekundy.
+    przy N workerach do N resetów na minutę; równoległe resety i zapisy
+    szereguje LOCK TABLE w seed_demo (PostgreSQL).
     """
     if not settings.DEMO_MODE:
         raise Http404

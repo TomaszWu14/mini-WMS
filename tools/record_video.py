@@ -23,6 +23,7 @@ import argparse
 import base64
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -435,7 +436,9 @@ def main(argv=None) -> int:
         tmp = Path(d)
         browser = p.chromium.launch(
             executable_path=args.chromium,
-            args=["--autoplay-policy=no-user-gesture-required"],
+            # --lang/LANG: polskie formaty w polach daty (dd.mm.rrrr).
+            args=["--autoplay-policy=no-user-gesture-required", "--lang=pl-PL"],
+            env={**os.environ, "LANG": "pl_PL.UTF-8"},
         )
         print("Zrzut pulpitu i plansze…")
         shot = dashboard_shot(browser, base_url, tmp)

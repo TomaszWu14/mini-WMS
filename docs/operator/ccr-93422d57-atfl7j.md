@@ -20,7 +20,8 @@
 - README: link do `/demo/` i do filmu z lektorem.
 - Technicznie: `tools/record_video.py` nagrywa prezentację w przeglądarce (Playwright) i
   nakłada nagrania lektora (ffmpeg); `seed_demo --reset --keep-users`; reset i zasiew w
-  jednej transakcji; rozdziały filmu w polu `chapter` w `demo_script.json`;
+  jednej transakcji, na PostgreSQL z blokadą tabel magazynu (zapisy innych czekają
+  ułamek sekundy zamiast kończyć się błędem); rozdziały filmu w polu `chapter` w `demo_script.json`;
   `playwright` w `requirements-dev.txt`. Nagrania lektora bez zmian (brak klucza
   ElevenLabs API w środowisku — przegenerowanie z pełnymi ustawieniami głosu: §3).
 

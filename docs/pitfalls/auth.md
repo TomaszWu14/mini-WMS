@@ -33,4 +33,6 @@
     (link podsunięty zalogowanemu adminowi nie zmieni mu sesji). Nie dodawaj tam `next`.
 13. **„Przywróć dane demo” (`demo_reset`) = `seed_demo --reset --keep-users`** dla wszystkich
     odwiedzających naraz. Konta demo zostają (te same `pk`), więc inni nie tracą sesji;
-    blokada 60 s w cache (per proces gunicorna). Bez `--keep-users` reset wylogowuje wszystkich.
+    blokada 60 s w cache (per proces gunicorna); równoległe resety i zapisy szereguje
+    `LOCK TABLE … IN EXCLUSIVE MODE` w `seed_demo` (PostgreSQL). Bez `--keep-users` reset
+    wylogowuje wszystkich.
