@@ -1,3 +1,5 @@
+<img src="docs/brand/logo.png" alt="miniWMS" width="360">
+
 # miniWMS
 
 **Porządkuje przepływ materiałów w małym magazynie, który do tej pory prowadził ewidencję na
