@@ -33,7 +33,7 @@ def import_issue_orders(filename: str, data: bytes, user, default_reference: str
     """Tworzy dokumenty wydania z pliku. Zwraca podsumowanie i błędy."""
     rows = parse_locations_file(filename, data)
 
-    groups: dict[str, list] = {}
+    groups: dict[str, list[tuple[Material, int, str]]] = {}
     order: list[str] = []
     errors: list[str] = []
 
