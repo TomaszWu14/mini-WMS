@@ -1,5 +1,5 @@
 {
-  "_info": "Scenariusz prezentacji z lektorem (?demo=1). Tekst kroku = napisy; lektor czyta go po podmianach ze słownika 'pronunciation'. Po zmianie tekstu: python tools/generate_voiceover.py",
+  "_info": "Scenariusz prezentacji z lektorem (?demo=1). Tekst kroku = napisy; lektor czyta go po podmianach ze słownika 'pronunciation'. Po zmianie tekstu: python tools/generate_voiceover.py. Pole chapter = początek rozdziału w filmie na YouTube (tools/record_video.py).",
   "pronunciation": {
     "miniWMS": "mini wu-em-es",
     "WMS": "wu-em-es",
@@ -14,6 +14,7 @@
   "steps": [
     {
       "id": "krok01",
+      "chapter": "Czym jest miniWMS",
       "url": "/",
       "selector": "h1",
       "action": "navigate",
@@ -21,6 +22,7 @@
     },
     {
       "id": "krok02",
+      "chapter": "Pulpit i mapa obłożenia",
       "url": "/",
       "selector": ".cards",
       "action": "highlight",
@@ -35,6 +37,7 @@
     },
     {
       "id": "krok04",
+      "chapter": "Przyjęcie dostawy",
       "url": "/przyjecie/",
       "selector": ".panel",
       "action": "navigate",
@@ -42,6 +45,7 @@
     },
     {
       "id": "krok05",
+      "chapter": "Palety HU i etykiety QR",
       "url": "/hu/",
       "selector": ".table-wrap",
       "action": "navigate",
@@ -49,6 +53,7 @@
     },
     {
       "id": "krok06",
+      "chapter": "Skaner w telefonie",
       "url": "/skaner/",
       "selector": ".scn-tiles",
       "action": "navigate",
@@ -63,6 +68,7 @@
     },
     {
       "id": "krok08",
+      "chapter": "Wydanie według FEFO",
       "url": "/wydania/",
       "selector": ".table-wrap",
       "action": "navigate",
@@ -83,6 +89,7 @@
     },
     {
       "id": "krok11",
+      "chapter": "Spis z natury",
       "url": "/spis/",
       "selector": ".table-wrap",
       "action": "navigate",
@@ -90,6 +97,7 @@
     },
     {
       "id": "krok12",
+      "chapter": "Rejestr ruchów",
       "url": "/ruchy/",
       "selector": ".table-wrap",
       "action": "navigate",
@@ -97,6 +105,7 @@
     },
     {
       "id": "krok13",
+      "chapter": "Raporty",
       "url": "/raporty/",
       "selector": ".cards",
       "action": "navigate",
@@ -104,6 +113,7 @@
     },
     {
       "id": "krok14",
+      "chapter": "Podsumowanie",
       "url": "/",
       "selector": "h1",
       "action": "navigate",

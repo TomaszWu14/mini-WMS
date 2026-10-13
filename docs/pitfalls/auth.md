@@ -28,3 +28,9 @@
    w środku operacji — API skanera zwraca wtedy HTML logowania, nie JSON.
 11. **Testy: hasher MD5 tylko w `config.settings.test`** (pytest). Nie kopiuj go do
     `dev.py`/`prod.py`.
+12. **`/demo/` loguje kontem demo na GET** (link do README/YouTube) — świadomy wyjątek od
+    „zmiany tylko na POST”, tylko przy `DEMO_MODE` i tylko gdy nikt nie jest zalogowany
+    (link podsunięty zalogowanemu adminowi nie zmieni mu sesji). Nie dodawaj tam `next`.
+13. **„Przywróć dane demo” (`demo_reset`) = `seed_demo --reset --keep-users`** dla wszystkich
+    odwiedzających naraz. Konta demo zostają (te same `pk`), więc inni nie tracą sesji;
+    blokada 60 s w cache (per proces gunicorna). Bez `--keep-users` reset wylogowuje wszystkich.
