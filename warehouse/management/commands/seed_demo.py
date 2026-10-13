@@ -15,7 +15,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from warehouse import services
@@ -31,6 +31,7 @@ from warehouse.models import (
     Material,
     Profile,
     StockMovement,
+    StocktakeLine,
     StocktakeSheet,
     Unit,
 )
@@ -66,21 +67,55 @@ class Command(BaseCommand):
             help="Usuń dane domenowe i konta demo, potem zasiej od nowa "
             "(wymaga DEMO_MODE).",
         )
+        parser.add_argument(
+            "--keep-users",
+            action="store_true",
+            help="Przy --reset zostaw konta demo (zalogowani nie tracą sesji).",
+        )
 
-    def handle(self, *args, reset=False, **options):
+    def handle(self, *args, reset=False, keep_users=False, **options):
         if reset:
             # Bezpiecznik: --reset kasuje WSZYSTKIE dane magazynowe.
             if not settings.DEMO_MODE:
                 raise CommandError("--reset działa tylko przy DEMO_MODE=1.")
-            self._reset()
         elif Material.objects.filter(index__startswith="DEMO-").exists():
             self.stdout.write("Dane demo już istnieją — pomijam (użyj --reset).")
             return
-        self._seed()
+        # Reset i zasiew razem: równoległe żądania nie zobaczą pustego magazynu.
+        with transaction.atomic():
+            if reset:
+                self._lock_tables()
+                self._reset(keep_users=keep_users)
+            self._seed()
         self.stdout.write(self.style.SUCCESS("Dane demo zasiane."))
 
-    @transaction.atomic
-    def _reset(self):
+    def _lock_tables(self):
+        """PostgreSQL: reset z /demo/przywroc/ idzie przy działającej aplikacji.
+
+        Bez blokady równoległe przyjęcie/wydanie (albo drugi reset z innego
+        workera) wstawia ruch między DELETE-ami → ProtectedError albo deadlock
+        z blokadą HUNumberingConfig. EXCLUSIVE wstrzymuje zapisy do końca
+        transakcji (poniżej 1–2 s), odczyty działają dalej. SQLite i tak
+        szereguje zapisy całej bazy.
+        """
+        if connection.vendor != "postgresql":
+            return
+        models = [
+            HUNumberingConfig,
+            StockMovement,
+            StocktakeLine,
+            StocktakeSheet,
+            IssueLine,
+            IssueDocument,
+            HandlingUnit,
+            Location,
+            Material,
+        ]
+        tables = ", ".join(connection.ops.quote_name(m._meta.db_table) for m in models)
+        with connection.cursor() as cur:
+            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608 (nazwy z modeli)
+
+    def _reset(self, keep_users=False):
         StockMovement.objects.all().delete()
         StocktakeSheet.objects.all().delete()  # kaskadowo pozycje
         IssueDocument.objects.all().delete()  # kaskadowo pozycje
@@ -88,16 +123,20 @@ class Command(BaseCommand):
         Location.objects.all().delete()
         Material.objects.all().delete()
         HUNumberingConfig.objects.update(next_number=1)
-        User.objects.filter(username__in=DEMO_ACCOUNTS).delete()
+        if not keep_users:
+            User.objects.filter(username__in=DEMO_ACCOUNTS).delete()
 
-    @transaction.atomic
     def _seed(self):
         rng = random.Random(SEED)
         today = timezone.localdate()
 
         users = {}
         for username, role in DEMO_ACCOUNTS.items():
-            user = User.objects.create_user(username, password=settings.DEMO_PASSWORD)
+            user = User.objects.filter(username=username).first()
+            if user is None:
+                user = User.objects.create_user(
+                    username, password=settings.DEMO_PASSWORD
+                )
             Profile.objects.update_or_create(user=user, defaults={"role": role})
             users[username] = user
         op = users["demo_operator"]

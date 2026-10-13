@@ -12,3 +12,7 @@ pytest-django==4.14.0
 mutmut==3.8.0
 pip-audit==2.10.1
 bandit==1.9.4
+
+# tools/record_video.py (film na YouTube); przeglądarka: `playwright install chromium`
+# albo --chromium <ścieżka>. Wymaga też ffmpeg/ffprobe w PATH.
+playwright==1.63.0

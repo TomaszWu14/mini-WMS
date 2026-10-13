@@ -5,11 +5,14 @@ kartce papieru — dla magazynierów i kierowników.**
 
 ![Rozmieszczanie palety skanerem w telefonie: skan palety, skan miejsca, potwierdzenie](docs/screenshots/demo.gif)
 
-📹 [Prezentacja działania — 2 min, z napisami](docs/video/miniwms-demo.mp4)
+📹 [Prezentacja z lektorem — 3 min](docs/video/youtube/miniwms-youtube.mp4)
+· [krótsza wersja z napisami, bez dźwięku](docs/video/miniwms-demo.mp4)
 
-🌐 **Demo online: <https://miniwms.twapp.pl>** — kliknij **„Wejdź jako demo”** (bez hasła)
-albo zaloguj się: `demo_operator` (Operator) lub `demo_podglad` (Podgląd), hasło `demo1234`.
-Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00 — można klikać śmiało.
+🌐 **Demo online bez logowania: <https://miniwms.twapp.pl/demo/>** — od razu w aplikacji,
+z prezentacją z lektorem. Na ekranie logowania jest też **„Wejdź jako demo”**; można się
+zalogować: `demo_operator` (Operator) lub `demo_podglad` (Podgląd), hasło `demo1234`.
+Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00, a od razu — przyciskiem
+**„Przywróć dane demo”** w banerze. Można klikać śmiało.
 
 ### Od czego zacząć (5 minut)
 

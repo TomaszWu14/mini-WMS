@@ -1,8 +1,10 @@
-"""Tryb demo (DEMO_MODE): konta demo, „Wejdź jako demo”, powitanie, baner;
-do tego limit prób logowania.
+"""Tryb demo (DEMO_MODE): konta demo, „Wejdź jako demo”, link /demo/,
+„Przywróć dane demo”, powitanie, baner; do tego limit prób logowania.
 
 Limit logowań działa zawsze; reszta — tylko przy DEMO_MODE.
 """
+
+import io
 
 from django.conf import settings
 from django.contrib import messages
@@ -11,12 +13,14 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.management import call_command
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .models import Role
+from .roles import operator_required
 from .signals import _client_ip
 
 # Hasło: settings.DEMO_PASSWORD (env, domyślnie jawne „demo1234” z README).
@@ -27,6 +31,7 @@ DEMO_ACCOUNTS = {
 
 LOGIN_RATE_LIMIT = 10  # prób POST
 LOGIN_RATE_WINDOW = 300  # sekund
+DEMO_RESET_COOLDOWN = 60  # sekund między resetami (wspólne dla wszystkich)
 
 
 def is_demo_account(user) -> bool:
@@ -70,14 +75,19 @@ class LoginView(auth_views.LoginView):
         return super().post(request, *args, **kwargs)
 
 
+def _demo_user():
+    """Aktywne konto settings.DEMO_USER — tylko z listy DEMO_ACCOUNTS."""
+    if settings.DEMO_USER not in DEMO_ACCOUNTS:
+        return None
+    return User.objects.filter(username=settings.DEMO_USER, is_active=True).first()
+
+
 @require_POST
 def demo_login(request):
     """„Wejdź jako demo” — loguje kontem settings.DEMO_USER bez wpisywania hasła."""
     if not settings.DEMO_MODE:
         raise Http404
-    user = None
-    if settings.DEMO_USER in DEMO_ACCOUNTS:
-        user = User.objects.filter(username=settings.DEMO_USER, is_active=True).first()
+    user = _demo_user()
     if user is None:
         messages.error(request, "Konto demo nie jest jeszcze utworzone (seed_demo).")
         return redirect("login")
@@ -88,6 +98,49 @@ def demo_login(request):
     ):
         target = "dashboard"
     return redirect(target)
+
+
+@require_GET
+def demo_start(request):
+    """Link /demo/ (README, YouTube, CV): wejście bez logowania + prezentacja.
+
+    Logowanie na GET to wyjątek od reguły „zmiany tylko na POST” — dopuszczalny,
+    bo to jawne, wspólne konto demo i tylko przy DEMO_MODE. Kogoś już
+    zalogowanego nie przelogowujemy (link podsunięty adminowi nie zmieni mu sesji).
+    """
+    if not settings.DEMO_MODE:
+        raise Http404
+    if not request.user.is_authenticated:
+        user = _demo_user()
+        if user is None:
+            messages.error(
+                request, "Konto demo nie jest jeszcze utworzone (seed_demo)."
+            )
+            return redirect("login")
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return redirect("/?demo=1")
+
+
+@operator_required
+@require_POST
+def demo_reset(request):
+    """„Przywróć dane demo” — seed_demo --reset --keep-users, najwyżej raz na minutę.
+
+    ponytail: blokada w cache domyślnym (LocMem) jest per proces gunicorna —
+    przy N workerach do N resetów na minutę; równoległe resety i zapisy
+    szereguje LOCK TABLE w seed_demo (PostgreSQL).
+    """
+    if not settings.DEMO_MODE:
+        raise Http404
+    if not cache.add("demo-reset-lock", 1, DEMO_RESET_COOLDOWN):
+        messages.info(
+            request, "Dane demo przywrócono przed chwilą — spróbuj za minutę."
+        )
+    else:
+        call_command("seed_demo", reset=True, keep_users=True, stdout=io.StringIO())
+        request.session.pop("welcome_dismissed", None)
+        messages.success(request, "Przywrócono dane demo do stanu początkowego.")
+    return redirect("dashboard")
 
 
 @login_required
