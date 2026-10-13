@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="{% static 'warehouse/style.css' %}">
 </head>
 <body>
-{% if demo_mode %}<div class="demo-banner" role="note">Wersja demonstracyjna — dane fikcyjne, przywracane co noc. Możesz klikać śmiało.</div>{% endif %}
+{% if demo_mode %}<div class="demo-banner" role="note">Wersja demonstracyjna — dane fikcyjne, przywracane co noc. Możesz klikać śmiało.{% if is_operator_role %}
+  <form method="post" action="{% url 'demo_reset' %}" class="inline">{% csrf_token %}<button class="demo-reset" type="submit" title="Przywraca palety, wydania i spis do stanu początkowego — dla wszystkich odwiedzających">Przywróć dane demo</button></form>{% endif %}</div>{% endif %}
 {% if user.is_authenticated %}
 {% include "warehouse/_icons.html" %}
 <header class="topbar">

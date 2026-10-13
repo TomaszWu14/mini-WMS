@@ -66,21 +66,28 @@ class Command(BaseCommand):
             help="Usuń dane domenowe i konta demo, potem zasiej od nowa "
             "(wymaga DEMO_MODE).",
         )
+        parser.add_argument(
+            "--keep-users",
+            action="store_true",
+            help="Przy --reset zostaw konta demo (zalogowani nie tracą sesji).",
+        )
 
-    def handle(self, *args, reset=False, **options):
+    def handle(self, *args, reset=False, keep_users=False, **options):
         if reset:
             # Bezpiecznik: --reset kasuje WSZYSTKIE dane magazynowe.
             if not settings.DEMO_MODE:
                 raise CommandError("--reset działa tylko przy DEMO_MODE=1.")
-            self._reset()
         elif Material.objects.filter(index__startswith="DEMO-").exists():
             self.stdout.write("Dane demo już istnieją — pomijam (użyj --reset).")
             return
-        self._seed()
+        # Reset i zasiew razem: równoległe żądania nie zobaczą pustego magazynu.
+        with transaction.atomic():
+            if reset:
+                self._reset(keep_users=keep_users)
+            self._seed()
         self.stdout.write(self.style.SUCCESS("Dane demo zasiane."))
 
-    @transaction.atomic
-    def _reset(self):
+    def _reset(self, keep_users=False):
         StockMovement.objects.all().delete()
         StocktakeSheet.objects.all().delete()  # kaskadowo pozycje
         IssueDocument.objects.all().delete()  # kaskadowo pozycje
@@ -88,16 +95,20 @@ class Command(BaseCommand):
         Location.objects.all().delete()
         Material.objects.all().delete()
         HUNumberingConfig.objects.update(next_number=1)
-        User.objects.filter(username__in=DEMO_ACCOUNTS).delete()
+        if not keep_users:
+            User.objects.filter(username__in=DEMO_ACCOUNTS).delete()
 
-    @transaction.atomic
     def _seed(self):
         rng = random.Random(SEED)
         today = timezone.localdate()
 
         users = {}
         for username, role in DEMO_ACCOUNTS.items():
-            user = User.objects.create_user(username, password=settings.DEMO_PASSWORD)
+            user = User.objects.filter(username=username).first()
+            if user is None:
+                user = User.objects.create_user(
+                    username, password=settings.DEMO_PASSWORD
+                )
             Profile.objects.update_or_create(user=user, defaults={"role": role})
             users[username] = user
         op = users["demo_operator"]
