@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Branch | `claude/new-session-u8tqyj` (nazwa techniczna sesji Claude) |
-| PR | jeszcze nie utworzony (draft po pushu) |
+| PR | #23 (draft) |
 | Data | 2026-10-15 |
 | Ryzyko | niskie — tylko dokumentacja; kod, migracje, konfiguracja i CI bez zmian |
 
