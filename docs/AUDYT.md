@@ -26,16 +26,20 @@ wskazuje plik i linię; to, czego nie sprawdzono, jest wypisane w sekcji 6.
   pokrycia, skany bezpieczeństwa są doradcze i miesięczne.
 - **[SEC]** Fundamenty są solidne (role na serwerze, CSRF, ORM, transakcje z blokadami,
   limit uploadu, neutralizacja formuł CSV, HSTS/nosniff/Referrer-Policy, obraz non-root).
-  Dwa ryzyka **wysokie**: (1) konto z rolą Administrator może przejąć konto superusera
-  (zmiana hasła i dezaktywacja — potwierdzone testem), (2) `docker-compose.yml` ma słabe
-  domyślne sekrety, których `prod.py` nie odrzuca. Osiem ryzyk średnich/niskich w sekcji 3.3.
+  Cztery ryzyka **wysokie** (dwa z nich głównie przez publiczne demo): (1) konto z rolą
+  Administrator może przejąć konto superusera (zmiana hasła i dezaktywacja — potwierdzone
+  testem), (2) słabe domyślne sekrety w `docker-compose.yml` i konta demo zakładane przez
+  `seed_demo` także bez `DEMO_MODE`, (3) nieograniczona liczba palet w przyjęciu — jeden
+  formularz lub jeden wiersz importu może utworzyć miliony palet i zablokować numerację HU
+  dla wszystkich, (4) import XLSX wczytuje cały `sharedStrings.xml` do pamięci mimo limitu
+  5 MB (bomba zip), a uszkodzony plik daje 500. Sześć ryzyk średnich/niskich w sekcji 3.3.
 - **Publiczne demo** (`miniwms.twapp.pl`, rola Operator dla każdego) jest świadomą decyzją,
   ale zwiększa wagę każdego błędu w ścieżkach operatora — to powierzchnia dostępna anonimowo.
 - **Proces:** repozytorium nie ma CONTRIBUTING, SECURITY, CHANGELOG, szablonów issue/PR,
   CODEOWNERS, Dependabota ani pre-commit. Jest za to harness asystenta AI (`.claude/`,
   `docs/pitfalls/`, dokumenty operatora per branch) — do utrzymania.
-- **Pilne do backlogu (pierwsze historyjki):** R1 i R2 z sekcji 3.3, obsługa błędnego XLSX,
-  retencja dziennika logowań.
+- **Pilne do backlogu (pierwsze historyjki):** R1–R4 z sekcji 3.3 (lista w 3.4), retencja
+  dziennika logowań i limiter na `/demo/`.
 
 ---
 
@@ -186,6 +190,7 @@ semgrep, testów na PostgreSQL, testów mutacyjnych.
 | T13 | **Brak wersjonowania i CHANGELOG** — `version = "0.1.0"`, brak tagów/releasów, historia tylko w `docs/operator/*.md` | `pyproject.toml` | audytor/rekruter nie widzi wydań | Keep a Changelog + SemVer, tag przy merge do `main` |
 | T14 | **Nieaktualne drobiazgi w docs:** pitfall views #8 (1177 linii), `wdrozenie.md` „Struktura” bez `scanner_views.py`, `stock_import.py`, `demo.py`; docs/07 „Co dalej” jeden punkt | `docs/pitfalls/views.md`, `docs/wdrozenie.md` | mylące dla nowej osoby | poprawić przy reorganizacji docs |
 | T15 | **Brak `ADMINS`/alertów o błędach 500** — logi JSON na stdout są, ale nikt nie dostaje powiadomienia | `base.py:195` | awaria niezauważona do zgłoszenia użytkownika | Sentry/GlitchTip lub `ADMINS` + `mail_admins`, albo alert w Coolify na restarty |
+| T16 | **Walidacja zakresów i długości:** `IntegerField` bez `max_value`; `int(raw)` w zapisie spisu i `delta` w API inwentaryzacji bez górnej granicy; `int(float(...))` w importach rzuca `OverflowError` (np. `1e999`), którego nie ma w `except (TypeError, ValueError)`; brak walidacji długości kodów (40) i numerów HU (30) w importach; `Content-Disposition` budowany z kodu lokalizacji/numeru HU (znak nowej linii lub `"` z importu → `BadHeaderError`) | `forms.py:111,132,207-213,276,332`, `views.py:370,498,1066`, `scanner_views.py:421`, `imports.py:32,59` | na PostgreSQL wartości > 2^31−1 lub za długie kody kończą się `DataError` → 500 i wycofaniem całego importu; na SQLite przechodzą | `max_value` wszędzie, `except (…, OverflowError)`, `max_length` w importach, `django.utils.http.content_disposition_header()`; testy |
 
 ### 2.5 Ocena
 
@@ -236,42 +241,59 @@ realna, przetestowana (`test_hooks.py`) wartość, którą zespół powinien utr
 
 ### 3.3 Top 10 ryzyk
 
-Waga = wpływ × prawdopodobieństwo w kontekście *realnego wdrożenia u klienta* oraz
-*publicznego demo*. Oznaczenia: **W** wysokie, **Ś** średnie, **N** niskie.
+Waga = wpływ × prawdopodobieństwo w kontekście *realnego wdrożenia u klienta*; tam, gdzie
+*publiczne demo* (anonimowy Operator) zmienia obraz, podano dwie oceny. Oznaczenia:
+**W** wysokie, **Ś** średnie, **N** niskie.
 
 | # | Ryzyko | Waga | Gdzie | Scenariusz | Rekomendacja |
 |---|---|---|---|---|---|
-| **R1** | **Eskalacja: konto z rolą Administrator (nie superuser) może zmienić hasło i dezaktywować konto superusera.** Potwierdzone testem: POST na `/uzytkownicy/<pk superusera>/` z nowym hasłem → 302, nowe hasło działa; z `is_active` pustym → konto wyłączone. | **W** | `views.py:1296-1335` (`user_edit` nie sprawdza `user.is_superuser`) | nielojalny/przejęty Administrator ustawia hasło superuserowi → loguje się do `/admin/` → edytuje lub usuwa ruchy (`StockMovementAdmin` pozwala superuserowi) i dziennik logowań → niszczy ślad audytowy; albo wyłącza jedyne konto serwisowe | w `user_edit`: konto z `is_superuser` edytuje tylko superuser (403 dla roli); test „Administrator nie zmieni superusera”; rozważyć: zmiana hasła wymaga podania własnego hasła |
-| **R2** | **Słabe domyślne sekrety w `docker-compose.yml`:** `DJANGO_SECRET_KEY` domyślnie `zmien-mnie-w-produkcji`, `DJANGO_SUPERUSER_PASSWORD` domyślnie `admin`, `POSTGRES_PASSWORD` domyślnie `wms`. `prod.py` odrzuca tylko prefiks `django-insecure-`, więc wartość domyślna i zaślepka `YOUR_DJANGO_SECRET_KEY_HERE` z `.env.docker.example` **przechodzą**. | **W** | `docker-compose.yml:18,53,65`, `config/settings/prod.py:12` | operator kopiuje `.env.docker.example`, pomija klucz → aplikacja startuje z publicznie znanym kluczem (podpis sesji/CSRF do podrobienia) i kontem `admin/admin` dostępnym z internetu przez Caddy | w compose użyć `${VAR:?…}` jak w wariancie Coolify; w `prod.py` odrzucać klucze < 50 znaków i znane zaślepki (lista + sprawdzenie W009 jako błąd); test ustawień |
-| **R3** | **Publiczne demo = anonimowy dostęp z rolą Operator** do operacji kosztownych bez limitu: import do 500 wierszy (tworzy do 500 HU + ruchów), wydruk do 200 stron PDF, eksport całej historii, 16 endpointów skanera, `demo_reset` uruchamiający `seed_demo` w żądaniu HTTP (cooldown 60 s per worker). Limit prób dotyczy tylko logowania. | **Ś** | `demo.py:126-143`, `views.py:506-533`, `imports.py:119-127`, brak throttlingu | skrypt w pętli: 3 workery × reset co 60 s + importy 500 wierszy + PDF 200 stron → demo niedostępne, rosnące koszty CPU; nie zagraża danym (fikcyjne), zagraża wizerunkowi | rate limit per IP na ścieżkach operatora w demo (cache + dekorator, np. 60 żądań/min), reset tylko z Scheduled Task, mniejsze limity w demo (import 100, PDF 20); monitoring restartów |
-| **R4** | **Import XLSX bez utwardzenia:** typ pliku rozpoznawany po rozszerzeniu, uszkodzony plik → 500 (T1), `openpyxl` w obrazie produkcyjnym **bez `defusedxml`** (dokumentacja openpyxl zaleca; w czystym venv jest tylko jako zależność pip-audit), brak limitu wierszy poza demo (5 MB XLSX = miliony wierszy w jednej transakcji). | **Ś** | `imports.py:89-127`, `requirements.txt` | operator (lub anonim na demo) wgrywa XLSX-bombę albo arkusz z 2 mln wierszy → worker zajęty minutami, transakcja trzyma blokady | `defusedxml` w `requirements.txt`; limit wierszy zawsze (np. 10 000, konfigurowalny); magic bytes `PK\x03\x04` + obsługa wyjątków; test |
-| **R5** | **Uwierzytelnianie poniżej minimum z sekcji 6 promptu:** limit logowań per IP i per proces (3 workery → 30 prób/5 min), brak blokady per konto, brak 2FA dla Administratora i `/admin/`, hasher PBKDF2 (domyślny Django) zamiast argon2/bcrypt; `/admin/` na produkcji (poza demo) dostępny z internetu. | **Ś** | `demo.py:53-75`, `base.py:145` (brak `PASSWORD_HASHERS`), `config/urls.py:50` | atak słownikowy z puli IP na konto `admin` (login znany z `.env.docker.example`): 30 prób/5 min/IP × N adresów; przejęte hasło = pełny dostęp | argon2 (`argon2-cffi`, `PASSWORD_HASHERS`), licznik prób per login w bazie/cache współdzielonym, 2FA (`django-otp`) dla ADMIN i `/admin/`, opcjonalnie allowlista IP dla `/admin/` w Caddy/Traefik |
-| **R6** | **Brak Content-Security-Policy i Permissions-Policy.** 7 inline handlerów `onclick` i inline `window.CSRF` w szablonach utrudniają ścisłe CSP. HSTS 30 dni z `preload=True` (preload wymaga ≥ 1 roku — flaga bez efektu). | **Ś** | `base.py:71-82` (middleware), `prod.py:38-40`, `scanner/base.html` | XSS dziś nie znaleziono, ale bez CSP każdy przyszły błąd szablonu/JS (skaner buduje DOM z odpowiedzi API) ma pełny zasięg: kradzież sesji operatora | `django-csp` z nonce, usunąć inline handlery; `Permissions-Policy: camera=(self), geolocation=()`; HSTS 1 rok albo bez `preload` |
-| **R7** | **RODO — dziennik logowań bez retencji i podstawy:** `LoginEvent` przechowuje IP, user-agent i **dowolny wpisany tekst** w polu login (przy nieudanej próbie może to być hasło wpisane w złe pole) bezterminowo; demo loguje IP każdego odwiedzającego `/demo/`; eksport ruchów zawiera loginy pracowników; brak polityki prywatności, rejestru czynności, procedury usunięcia/eksportu danych osoby. | **Ś** | `signals.py:57-89`, `models.py:510-538`, `views.py:1169-1208`, `demo.py:120` | pracownik żąda informacji/usunięcia — brak procedury; incydent wycieku bazy ujawnia IP i nawyki logowania; organ nadzorczy pyta o podstawę i retencję | retencja (np. 90 dni) komendą `manage.py purge_login_events` + Scheduled Task; nie zapisywać UA albo skracać; w demo nie logować IP; `RODO.md` z podstawą (art. 6 ust. 1 lit. f — bezpieczeństwo) i rejestrem; procedura praw osób |
-| **R8** | **Backup na tym samym serwerze, nieszyfrowany, bez testu odtworzenia:** `pg_dump` → gzip w wolumenie Dockera na hoście bazy, retencja 7 dni, brak kopii off-site, brak alertu gdy backup zawodzi (tylko log), odtworzenie opisane, ale nieprzećwiczone. | **Ś** | `scripts/pg_backup.sh`, `docker-compose*.yml` (usługa `backup`), `COOLIFY.md §10` | awaria dysku/ransomware/błąd operatora `docker volume rm` = utrata bazy i kopii naraz | kopia off-site (rclone → S3/B2/inny host) szyfrowana (`age`/`gpg`), retencja 30 dni, miesięczny test odtworzenia w RUNBOOK, alert przy braku świeżej kopii |
-| **R9** | **Łańcuch dostaw i CI doradcze:** `security.yml` raz w miesiącu, trivy `--exit-code 0`, pip-audit `|| true`; brak Dependabota; brak pre-commit (gitleaks lokalnie); Dockerfile bazuje na tagu `python:3.11-slim` (nie digest); akcje GitHub przypięte do wersji głównych (`@v4`, `@v7`), nie SHA; `pip install --upgrade pip` bez wersji; `Django>=5.2,<5.3` bez locka. | **N/Ś** | `.github/workflows/security.yml`, `Dockerfile:4,18`, `ci.yml` | nowe CVE w zależności niezauważone do 4 tygodni; podmiana tagu akcji/obrazu bazowego | `dependabot.yml` (pip, docker, github-actions), pip-audit blokujący na PR dla `requirements.txt`, trivy blokujący dla CRITICAL, akcje po SHA, lock z hashami (T7), `SECURITY.md` |
-| **R10** | **Świadome wyjątki trybu demo** (do rejestru ryzyk jako zaakceptowane): logowanie na GET `/demo/` (login CSRF — atakujący może zalogować ofiarę na konto demo; brak skutków poza demo), jawne hasło demo w szablonie, `demo_reset` dostępny dla każdego operatora demo, konta demo współdzielone (brak rozliczalności w dzienniku). | **N** | `demo.py:104-121`, `login.html:36-37` | ofiara klika link `/demo/` → jest zalogowana jako `demo_operator`, może wykonać operacje na danych fikcyjnych | zapisać w `RYZYKA.md` jako zaakceptowane z datą przeglądu; `/demo/` tylko gdy `DEMO_MODE` (jest); rozważyć `SameSite=Strict` dla demo |
+| **R1** | **Eskalacja: konto z rolą Administrator (nie superuser) może zmienić hasło i dezaktywować konto superusera.** Potwierdzone testem: POST na `/uzytkownicy/<pk superusera>/` z nowym hasłem → 302, nowe hasło działa; z `is_active` pustym → konto wyłączone. Poza `get_role` nigdzie nie ma sprawdzenia `is_superuser`. | **W** | `views.py:1296-1335` (`user_edit`) | nielojalny/przejęty Administrator ustawia hasło superuserowi → loguje się do `/admin/` → edytuje lub usuwa ruchy (`StockMovementAdmin` pozwala superuserowi) i dziennik logowań → niszczy ślad audytowy; albo wyłącza jedyne konto serwisowe (w demo `/admin/` to 404, więc skutek to lockout) | w `user_edit`: konto z `is_superuser` edytuje tylko superuser (403 dla roli); test „Administrator nie zmieni superusera”; rozważyć potwierdzenie własnym hasłem przy zmianie cudzego |
+| **R2** | **Niebezpieczne wartości domyślne przy wdrożeniu prywatnym.** (a) `docker-compose.yml`: `DJANGO_SECRET_KEY` domyślnie `zmien-mnie-w-produkcji`, `DJANGO_SUPERUSER_PASSWORD` domyślnie `admin`, `POSTGRES_PASSWORD` domyślnie `wms`; `prod.py` odrzuca tylko prefiks `django-insecure-`, więc wartość domyślna i zaślepka `YOUR_DJANGO_SECRET_KEY_HERE` z `.env.docker.example` **przechodzą**. (b) `seed_demo` bez `DEMO_MODE` zakłada konta `demo_operator` (Operator) i `demo_podglad` z hasłem `demo1234` — strażnik `DEMO_MODE` działa tylko przy `--reset`, a `is_demo_account` bez `DEMO_MODE` tych kont nie wyróżnia; README i COOLIFY.md zachęcają do uruchomienia `seed_demo`. | **W** | `docker-compose.yml:18,53,65`, `config/settings/prod.py:12`, `seed_demo.py:79,134-141` | operator kopiuje `.env.docker.example`, pomija klucz → aplikacja startuje z publicznie znanym kluczem (podpis sesji/CSRF do podrobienia) i kontem `admin/admin`; albo „na próbę” uruchamia `seed_demo` na instancji prywatnej → każdy z internetu loguje się `demo_operator/demo1234` i zmienia stany | w compose `${VAR:?…}` jak w wariancie dla Coolify; w `prod.py` odrzucać klucze < 50 znaków i znane zaślepki; `seed_demo` bez `DEMO_MODE` odmawia albo tworzy konta demo z `set_unusable_password()` i ostrzeżeniem; testy ustawień i komendy |
+| **R3** | **Nieograniczona liczba palet w przyjęciu → DoS i globalna blokada numeracji HU.** `ReceiveForm.pallets`/`total_quantity` mają `min_value` bez `max_value`; import przyjęć bierze `palety` z pliku bez limitu (limit 500 wierszy w demo nie pomaga — wystarczy jeden wiersz); `split_quantity` buduje listę długości `pallets`, `receive_material` tworzy HU + ruch na każdą; `generate_hu_number` trzyma `select_for_update` na `HUNumberingConfig` wewnątrz zewnętrznej transakcji do końca żądania. | **W** (demo) / **Ś** | `forms.py:207-213`, `receipt_import.py:54-59`, `services.py:75-85,91-108,119-162` | anonim po `/demo/` wysyła `POST /przyjecie/` z `total_quantity=5000000&pallets=5000000` (albo plik z jednym wierszem `palety=5000000`); worker mieli miliony INSERT-ów do `--timeout 120` i SIGKILL; 3 równoległe żądania = wszystkie workery zajęte; przez ten czas każde inne przyjęcie, import i `seed_demo --reset` czekają na blokadę licznika | `max_value` na `pallets` (np. 500) i ilościach; twardy limit palet na wiersz i HU na plik w imporcie; walidacja przed pierwszym zapisem; test |
+| **R4** | **Import XLSX bez utwardzenia.** Typ pliku po rozszerzeniu; uszkodzony plik → 500 (T1, potwierdzone); **bomba `sharedStrings.xml`**: `load_workbook(read_only=True)` i tak wczytuje cały `xl/sharedStrings.xml` do pamięci (`openpyxl/reader/excel.py:139,291`) zanim `islice` obetnie wiersze, a limit 5 MB dotyczy rozmiaru po kompresji (deflate ~1000:1 → gigabajty XML); `openpyxl` w obrazie produkcyjnym **bez `defusedxml`** (w czystym venv jest tylko jako zależność pip-audit); brak limitu wierszy poza demo. | **W** (demo) / **Ś** | `imports.py:89-127`, `forms.py:20-31`, `requirements.txt` | anonim na demo (albo operator u klienta) wgrywa spreparowany `.xlsx` (1 wiersz, ogromny `sharedStrings.xml`) w pętli → MemoryError/OOM-kill workera, presja na pamięć hosta; 5 MB XLSX z milionami wierszy → transakcja na minuty | przed `load_workbook` otworzyć `zipfile.ZipFile` i odrzucić, gdy suma `file_size` członków > np. 50 MB; `defusedxml` w `requirements.txt`; limit wierszy zawsze (np. 10 000); magic bytes `PK\x03\x04`; `BadZipFile`/`InvalidFileException`/`KeyError` → `ImportError_`; testy |
+| **R5** | **Publiczne demo = anonimowy Operator bez limitów poza logowaniem.** `/demo/` (GET) i `/login/demo/` wołają `login()` z pominięciem limitera `LoginView.post` — każde trafienie klienta bez ciasteczek to nowy wiersz `django_session` i `LoginEvent`, a nigdzie nie ma `clearsessions`; `location_labels` renderuje QR dla wszystkich lokalizacji bez limitu (`hu_labels` ma 200); `hu_list`, `location_list`, `stock_by_location`, `report_locations` bez paginacji; limit 500 wierszy importu jest per plik, bez limitu łącznej liczby obiektów; `demo_reset` uruchamia `seed_demo` z `LOCK TABLE` na 9 tabel w żądaniu HTTP (cooldown 60 s per worker). Świadome wyjątki demo (logowanie na GET = login CSRF, jawne hasło, współdzielone konta bez rozliczalności) — do rejestru jako zaakceptowane. | **Ś** | `demo.py:86-100,104-121,126-143`, `views.py:310-317,375-383,453-474,858-876,1347-1372`, `imports.py:119-127`, `seed_demo.py:116` | bot `GET /demo/` 100 żądań/s → miliony wierszy sesji i dziennika dziennie, dziennik bezużyteczny, backup puchnie (link jest w README i na YouTube); skrypt: 200 importów × 500 lokalizacji → `GET /lokalizacje/etykiety/` zajmuje workera 120 s (wystarczy rola Podgląd); nie zagraża danym (fikcyjne), zagraża dostępności i wizerunkowi | limiter per IP na `/demo/`, `/login/demo/` i ścieżkach operatora w demo; `clearsessions` w harmonogramie; limit etykiet lokalizacji jak `HU_LABELS_LIMIT`; paginacja list; limit łącznej liczby HU/lokalizacji w demo; reset tylko z Scheduled Task; wyjątki w `RYZYKA.md` z datą przeglądu |
+| **R6** | **Uwierzytelnianie poniżej minimum z sekcji 6 promptu:** limit logowań per IP i per proces (3 workery → 30 prób/5 min), brak blokady per konto, brak 2FA dla Administratora i `/admin/`, hasher PBKDF2 (domyślny Django) zamiast argon2/bcrypt; `/admin/` na produkcji (poza demo) dostępny z internetu. | **Ś** | `demo.py:53-75`, `base.py:145` (brak `PASSWORD_HASHERS`), `config/urls.py:50` | atak słownikowy z puli IP na konto `admin` (login znany z `.env.docker.example`): 30 prób/5 min/IP × N adresów; przejęte hasło = pełny dostęp | argon2 (`argon2-cffi`, `PASSWORD_HASHERS`), licznik prób per login w bazie/cache współdzielonym, 2FA (`django-otp`) dla ADMIN i `/admin/`, opcjonalnie allowlista IP dla `/admin/` w Caddy/Traefik |
+| **R7** | **RODO — dziennik logowań bez retencji i podstawy:** `LoginEvent` przechowuje IP, user-agent i **dowolny wpisany tekst** w polu login (przy nieudanej próbie może to być hasło wpisane w złe pole) bezterminowo; demo loguje IP każdego odwiedzającego `/demo/`; eksport ruchów zawiera loginy pracowników; brak `clearsessions`; brak polityki prywatności, rejestru czynności, procedury usunięcia/eksportu danych osoby. | **Ś** | `signals.py:57-89`, `models.py:510-538`, `views.py:1169-1208`, `demo.py:120` | pracownik żąda informacji/usunięcia — brak procedury; wyciek bazy ujawnia IP i nawyki logowania; organ nadzorczy pyta o podstawę i retencję | retencja (np. 90 dni) komendą `manage.py purge_login_events` + Scheduled Task; nie zapisywać UA albo skracać; w demo nie logować IP; `RODO.md` z podstawą (art. 6 ust. 1 lit. f — bezpieczeństwo) i rejestrem; procedura praw osób |
+| **R8** | **Brak Content-Security-Policy i Permissions-Policy.** 7 inline handlerów `onclick` i inline `window.CSRF` w szablonach utrudniają ścisłe CSP. HSTS 30 dni z `preload=True` (preload wymaga ≥ 1 roku — flaga bez efektu). | **Ś** | `base.py:71-82` (middleware), `prod.py:38-40`, `scanner/base.html` | XSS dziś nie znaleziono (autoescape, `textContent` w skanerze), ale bez CSP każdy przyszły błąd szablonu/JS ma pełny zasięg: kradzież sesji operatora | `django-csp` z nonce, usunąć inline handlery; `Permissions-Policy: camera=(self), geolocation=()`; HSTS 1 rok albo bez `preload` |
+| **R9** | **Backup na tym samym serwerze, nieszyfrowany, bez testu odtworzenia:** `pg_dump` → gzip w wolumenie Dockera na hoście bazy, retencja 7 dni, brak kopii off-site, brak alertu gdy backup zawodzi (tylko log), odtworzenie opisane, ale nieprzećwiczone. | **Ś** | `scripts/pg_backup.sh`, oba pliki compose (usługa `backup`), `COOLIFY.md §10` | awaria dysku/ransomware/błąd operatora `docker volume rm` = utrata bazy i kopii naraz | kopia off-site (rclone → S3/B2/inny host) szyfrowana (`age`/`gpg`), retencja 30 dni, miesięczny test odtworzenia w RUNBOOK, alert przy braku świeżej kopii |
+| **R10** | **Łańcuch dostaw i CI doradcze:** `security.yml` raz w miesiącu, trivy `--exit-code 0`, pip-audit `\|\| true`, `bandit[toml]`/`pip-audit` bez wersji, trivy instalowany przez `curl … install.sh \| sh` z gałęzi `main`; `ci.yml` bez top-level `permissions:` (token z domyślnymi uprawnieniami); brak Dependabota; brak pre-commit (gitleaks lokalnie); Dockerfile bazuje na tagu `python:3.11-slim` (nie digest); akcje GitHub przypięte do wersji głównych (`@v4`, `@v7`), nie SHA; `pip install --upgrade pip` bez wersji; `Django>=5.2,<5.3` bez locka. | **N/Ś** | `security.yml:48`, `ci.yml` (brak `permissions`), `Dockerfile:4,18` | nowe CVE w zależności niezauważone do 4 tygodni; podmieniony skrypt instalacyjny lub tag akcji wykonuje się na runnerze z tokenem repo | `dependabot.yml` (pip, docker, github-actions), pip-audit blokujący na PR dla `requirements.txt`, trivy blokujący dla CRITICAL (`aquasecurity/trivy-action@<sha>`), `permissions: contents: read`, akcje po SHA, lock z hashami (T7), `SECURITY.md` |
 
-Poza listą (niskie, do rejestru): `ADMINS` puste → brak alertów o 500 (T15); access log
-gunicorna zapisuje parametry zapytań (`?q=`, `?material=`) — bez danych osobowych, ale
-warto o tym wiedzieć; `healthz` zdradza stan bazy (status 503) — standard; Django 5.2
-bez przypiętej wersji łatki (dobre dla łatek bezpieczeństwa, złe dla reprodukowalności).
+**Poza listą (niskie, do rejestru ryzyk):**
+
+- `Content-Disposition` budowany z `loc.code` / `hu.number` (`views.py:370,498`): kod lokalizacji
+  z importu CSV może zawierać `"` lub znak nowej linii (pole w cudzysłowie; `update_or_create`
+  nie waliduje) → `BadHeaderError` → 500 przy pobraniu etykiety. Fix:
+  `django.utils.http.content_disposition_header()` albo `FileResponse(filename=…)`.
+- Walidacja zakresów i długości (T16): wartości > 2^31−1 i za długie kody dają `DataError`
+  na PostgreSQL (500), `OverflowError` z `int(float("1e999"))` nie jest łapany.
+- `_client_ip` (`signals.py:38-48`) nie waliduje wyniku: przy `TRUSTED_PROXY_COUNT` większym
+  niż realna liczba proxy wartość z `X-Forwarded-For` trafia do pola `inet` → `DataError`
+  w sygnale logowania (500) i spoofowany klucz limitera. Fix: `ipaddress.ip_address()`
+  z fallbackiem na `REMOTE_ADDR`.
+- Kod aplikacji w kontenerze jest zapisywalny przez użytkownika runtime (`Dockerfile:32-40`:
+  `chown -R app:app /app` przed `USER app`) — RCE przez przyszły błąd parsera XLSX/PDF
+  zyskałoby trwałość między restartami. Fix: `/app` root-owned, `chown` tylko `staticfiles`.
+- `ADMINS` puste → brak alertów o 500 (T15); access log gunicorna zapisuje parametry
+  zapytań (`?q=`, `?material=`) — bez danych osobowych; `healthz` zdradza stan bazy
+  (status 503) — standard; Django 5.2 bez przypiętej wersji łatki (dobre dla łatek
+  bezpieczeństwa, złe dla reprodukowalności).
 
 ### 3.4 Pilne poprawki z audytu (kandydaci na pierwsze historyjki backlogu)
 
-1. **R1** — blokada edycji superusera przez rolę Administrator (1 warunek + test). Mała zmiana, wysoka waga.
-2. **R2** — `docker-compose.yml` z `${VAR:?}`; `prod.py` odrzuca słabe/zaślepkowe klucze; test.
-3. **T1/R4** — obsługa uszkodzonego XLSX + `defusedxml` + limit wierszy zawsze; test.
-4. **R7** — retencja dziennika logowań (komenda + harmonogram) i `RODO.md` v0.1.
-5. **R9** — `dependabot.yml`, pip-audit blokujący na PR, `SECURITY.md`.
+1. **R1** — blokada edycji superusera przez rolę Administrator (jeden warunek + test). Mała zmiana, wysoka waga.
+2. **R3** — `max_value` dla palet i ilości w formularzach, limit palet na wiersz i HU na plik w imporcie (kilka linii + test).
+3. **R2** — compose z `${VAR:?}`; `prod.py` odrzuca słabe/zaślepkowe klucze; `seed_demo` bez `DEMO_MODE` nie tworzy kont demo z działającym hasłem; testy.
+4. **T1/R4** — obsługa uszkodzonego XLSX, limit rozmiaru po rozpakowaniu, `defusedxml` w `requirements.txt`, limit wierszy zawsze; testy.
+5. **R7 + R5** — retencja dziennika logowań (komenda + harmonogram), `clearsessions` w harmonogramie, limiter na `/demo/` i `/login/demo/`; `RODO.md` v0.1.
+6. **R10** — `dependabot.yml`, pip-audit blokujący na PR, `permissions: contents: read` w `ci.yml`, `SECURITY.md`.
 
-Pozostałe (R3, R5, R6, R8) wymagają decyzji PO o zakresie i koszcie (sekcja 5).
+Pozostałe (reszta R5, R6, R8, R9, T16) wymagają decyzji PO o zakresie i koszcie (sekcja 5).
 
 ### 3.5 Kandydaci do listy wyjątków (wymagają świadomej akceptacji PO w `RYZYKA.md`)
 
-- Publiczne demo z rolą Operator dla anonimowych (R3, R10).
-- Brak 2FA i `/admin/` z internetu do czasu realnego wdrożenia (R5).
-- Backup tylko lokalny do czasu wdrożenia u klienta (R8).
+- Publiczne demo z rolą Operator dla anonimowych, logowanie na GET `/demo/`, jawne hasło demo (R5).
+- Brak 2FA i `/admin/` z internetu do czasu realnego wdrożenia (R6).
+- Backup tylko lokalny do czasu wdrożenia u klienta (R9).
 
 ---
 
@@ -286,11 +308,11 @@ Maksymalnie 5 naraz, zgodnie z procesem. Odpowiedzi trafią do `docs/analiza/ZAL
 2. **Zakres:** czy „poza zakresem” z docs/01 (ERP, zwroty/anulowanie WZ, blokada palet po
    terminie, rezerwacje, wiele magazynów, atrybuty logistyczne) pozostaje poza zakresem?
    Czy jest lista funkcji, które chcesz dodać w pierwszej kolejności?
-3. **Priorytet bezpieczeństwa:** zgadzasz się, żeby poprawki R1, R2, T1/R4, R7, R9 były
-   pierwszymi historyjkami, przed nowymi funkcjami? Czy coś z 3.5 akceptujesz jako
+3. **Priorytet bezpieczeństwa:** zgadzasz się, żeby poprawki z sekcji 3.4 (R1–R4, R7, R10)
+   były pierwszymi historyjkami, przed nowymi funkcjami? Czy coś z 3.5 akceptujesz jako
    wyjątek (publiczny Operator w demo, brak 2FA do wdrożenia, backup lokalny)?
 4. **Publiczne demo:** zostaje w obecnej formie (anonimowy Operator, reset przyciskiem)?
-   Akceptujesz ryzyko niedostępności demo (R3), czy chcesz limitów (rate limit, mniejsze
+   Akceptujesz ryzyko niedostępności demo (R3–R5), czy chcesz limitów (rate limit, mniejsze
    importy, reset tylko z harmonogramu)?
 5. **Konwencje i porządek:** (a) commity po angielsku w Conventional Commits, dokumentacja
    po polsku — potwierdzasz? (b) istniejące docs/01–07 przenieść do `docs/analiza/` pod
@@ -333,7 +355,34 @@ gita pod kątem wzorców sekretów (klucze AWS/GitHub/Slack/OpenAI-podobne, kluc
 `DJANGO_SECRET_KEY=`, `POSTGRES_PASSWORD=`) — jedyne trafienie to klucz testowy CI w `ci.yml`;
 w historii nigdy nie było plików `.env`, `.pem`, `.key`.
 
+**Niezależny drugi przegląd bezpieczeństwa** (osobny agent z własnym kontekstem, tylko odczyt,
+bez znajomości wstępnych wniosków poza listą ośmiu ustaleń do pominięcia): dostarczył 11
+dodatkowych ustaleń (R3, część R2, R4, R5, R10 i punkty „poza listą”); każde sprawdzono w kodzie
+(numery linii) przed wpisaniem; jego mapę tras zweryfikowano z `urls.py` i dekoratorami
+(załącznik A).
+
 **Nie sprawdzono:** trivy na obrazie, gitleaks na historii (tylko lekki skan wzorców), semgrep,
 pip-audit dla Playwright (narzędzie do nagrywania filmu), testy na PostgreSQL, testy mutacyjne, dynamiczny test publicznego
 demo (nie atakujemy cudzej instancji bez zgody), jakość UX na urządzeniu mobilnym,
 zawartość filmów/zrzutów, konfiguracja samego Coolify/serwera (poza repo).
+
+---
+
+## Załącznik A — mapa tras i ról (pokrycie kontroli dostępu)
+
+Legenda: **P** publiczne, **L** `@login_required` (każda rola), **O** `@operator_required`
+(Operator i Administrator), **A** `@admin_required`. GET = odczyt, POST = zmiana stanu.
+
+| Rola | Trasy |
+|---|---|
+| P | `healthz`; `login/` (POST limitowany 10/5 min/IP); `login/demo/` (POST, tylko `DEMO_MODE`, **bez limitu**); `demo/` (**GET loguje**, tylko `DEMO_MODE`, bez limitu); `logout/` (POST) |
+| L | `/` pulpit; `materialy/`; `lokalizacje/`, `lokalizacje/etykiety/` (**PDF bez limitu**), `lokalizacje/<pk>/etykieta/`; `raporty/`, `raporty/lokalizacje/`, `raporty/material/` (limit 500); `hu/` (bez paginacji), `hu/etykiety/` (limit 200), `hu/<pk>/`, `hu/<pk>/etykieta/`; `wydania/`, `wydania/<pk>/`, `wydania/<pk>/pdf/`; `spis/`, `spis/<pk>/`; `stany/`, `stany/lokalizacje/`, `stany/eksport/<fmt>/`; `ruchy/` (limit 500), `ruchy/eksport/<fmt>/` (bez limitu); `powitanie/ukryj/` (POST) |
+| O | skaner: 8 ekranów i 8 endpointów JSON (`require_GET`/`require_POST`); `materialy/nowy/`; `lokalizacje/nowa/`, `lokalizacje/import/`; `przyjecie/` (**bez limitu palet**), `przyjecie/import/`; `hu/<pk>/alokacja/`, `hu/<pk>/korekta/`; `wydania/nowy/`, `wydania/import/`, `wydania/<pk>/pozycja/`, `…/pozycja/<id>/usun/` (pozycja zawężona do dokumentu), `…/realizuj/`, `…/spakuj/`, `…/wyslij/`; `inwentaryzacja/`; `przepakowanie/`; `spis/nowy/`, `spis/<pk>/zapisz/`, `spis/<pk>/zamknij/`; `stany/import/`; `demo/przywroc/` (POST, tylko `DEMO_MODE`) |
+| A | `uzytkownicy/`, `uzytkownicy/dziennik/` (paginacja 100), `uzytkownicy/nowy/` (może nadać rolę Administrator), `uzytkownicy/<pk>/` (konta demo → 403; **brak strażnika `is_superuser`** — R1); `hu/<pk>/dostawa/` |
+| superuser | `admin/` (tylko gdy nie `DEMO_MODE`; edycja i usuwanie ruchów oraz dziennika logowań) |
+
+Wniosek: wszystkie 47 widoków i 16 endpointów skanera mają dekorator; zmiany stanu tylko na
+POST (GET → render albo redirect); jedyna mutacja na GET to `/demo/`. Brak kontroli
+obiektowej jest zgodny z założeniem jednego magazynu (Z-06). Endpointy do testu „brak
+dostępu dla każdej roli” (wymóg sekcji 6 promptu) — dziś 35 asercji w testach; brakuje
+systematycznej macierzy rola × trasa.
