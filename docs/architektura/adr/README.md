@@ -97,6 +97,7 @@ względem opcji odrzuconych.
 | ID | Tytuł | Status | Data | Plik |
 |---|---|---|---|---|
 | ADR-0001 | Narzędzia jakości i bezpieczeństwa w CI | zaakceptowany (przez zespół [DEV]/[SEC]; do potwierdzenia przez PO — DEC-2, DEC-3) | 2026-10-16 | [0001-narzedzia-jakosci-i-bezpieczenstwa.md](0001-narzedzia-jakosci-i-bezpieczenstwa.md) |
+| ADR-0002 | Cache wspólny dla workerów: DatabaseCache w PostgreSQL | zaakceptowany (PO, 2026-10-16) | 2026-10-16 | [0002-cache-wspolny-w-bazie.md](0002-cache-wspolny-w-bazie.md) |
 
 Powiązania ADR-0001: T4, T5, T6, R10, Z-08, Z-10 ([AUDYT](../../AUDYT.md)).
 

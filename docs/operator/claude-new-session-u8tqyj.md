@@ -67,6 +67,11 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Blokada konta (US-009):** po 10 nieudanych logowaniach w 15 minut na to samo konto (z dowolnych
+  adresów) kolejne próby — także z poprawnym hasłem — kończą się komunikatem „Zbyt wiele nieudanych prób
+  logowania na to konto. Spróbuj ponownie za 15 minut.” Inne konta działają. W dzienniku logowań
+  pojawia się rodzaj „Zablokowana próba”. Limity są teraz wspólne dla wszystkich procesów serwera
+  (wcześniej ~3× luźniejsze). Odblokowanie ręczne: RUNBOOK §8.3a.
 - **Hasła (US-008):** nowe i zmieniane hasła są zapisywane algorytmem argon2. Istniejące konta
   logują się jak dotąd; przy pierwszym udanym logowaniu hasło przechodzi na argon2 (bez działania
   użytkownika). Logowanie trwa ułamek sekundy dłużej. Nowa zależność `argon2-cffi` w obrazie.
@@ -102,12 +107,14 @@
 ### Migracje — na KAŻDEJ bazie
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
-| dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (305 passed, 2 skipped lokalnie; CI na PR) |
-| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
-| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
+| dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracja `0009_loginevent_blocked_kind` |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (316 passed, 2 skipped lokalnie; CI na PR) |
+| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009` zastosowana; tabela `miniwms_cache` istnieje |
+| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009` zastosowana; tabela `miniwms_cache` istnieje |
 
-Nowe migracje w tym branchu: brak. Odwracalne: nie dotyczy.
+Nowe migracje w tym branchu: `warehouse/migrations/0009_loginevent_blocked_kind.py` (US-009) — tylko lista wyborów
+`LoginEvent.kind`, bez zmian w danych. Odwracalna: tak (`python manage.py migrate warehouse 0008`).
+Poza migracjami: tabela cache `miniwms_cache` (`createcachetable`, idempotentne, w `entrypoint.sh`).
 Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 
 ### Zmienne środowiskowe
@@ -130,7 +137,9 @@ wszystkie trzy zmienne), `COOLIFY.md` — nie dotyczy (wariant Coolify już wyma
 ## 4. Plan wycofania
 1. Kod: Coolify → zasób → **Deployments** → poprzedni deployment → **Redeploy**
    (albo revert PR na `main`). Poprzedni obraz zawiera pip — bez wpływu na działanie.
-2. Migracje: nie dotyczy.
+2. Migracje: przed redeployem poprzedniej wersji `python manage.py migrate warehouse 0008` w kontenerze `web`
+   (wpisy „Zablokowana próba” zostaną w tabeli z kodem `BLOCKED` — stara wersja pokaże sam kod). Tabelę
+   `miniwms_cache` można zostawić.
 3. Zmienne środowiskowe: nic do cofania. Jeśli po deployu kontener nie wstaje z
    `ImproperlyConfigured: Ustaw DJANGO_SECRET_KEY…`, ustawić nowy klucz
    (`python -c "import secrets; print(secrets.token_urlsafe(64))"`) i zrobić redeploy — zmiana klucza

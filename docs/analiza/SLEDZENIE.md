@@ -118,8 +118,8 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 |---|---|---|---|
 | SEC-001 | US-008 | `tests_passwords.PasswordHasherTests` (3), `HasherConfigTests` (3); smoke test obrazu w CI | #23 |
 | SEC-002 | — (powiązane: US-041) | `SecurityTests.test_weak_password_rejected_on_create`; `SecurityTests.test_password_similar_to_username_rejected`; `SecurityTests.test_strong_password_accepted_on_create` | historyczny (przed procesem) |
-| SEC-003 | US-009 | `DemoModeViewTests.test_rate_limit_also_without_demo_mode` (limit per proces; globalnego brak) | #23 |
-| SEC-004 | US-009 | brak — do napisania | #23 |
+| SEC-003 | US-009 | `tests_login_limits.SharedCacheTests` (3); `DemoModeViewTests.test_rate_limit_also_without_demo_mode` | #23 |
+| SEC-004 | US-009 | `tests_login_limits.AccountLockoutTests` (8) | #23 |
 | SEC-005 | US-005, US-043 | brak — do napisania (cookie, bezczynność, `clearsessions`) | #23 |
 | SEC-006 | US-010 | brak — do napisania | #23 |
 | SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `DemoResetTests.test_viewer_forbidden`; `tests_access_matrix.AccessMatrixTests.test_role_matrix` | historyczny (przed procesem) |
@@ -173,7 +173,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` (5 testów) — zrobione, #23 |
 | US-008 | Should | SEC-001 | R6 | `tests_passwords.py` (6 testów) — zrobione, #23 |
-| US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` |
+| US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` (11 testów) — zrobione, #23 |
 | US-010 | Should | SEC-006 | R6 | `tests_2fa.py` |
 | US-011 | Should | SEC-022, SEC-024, SEC-025 | R8 | `tests_security_headers.py` |
 | US-012 | Should | NFR-014, NFR-018, NFR-019, SEC-039 | R9 | n/d (RUNBOOK) |

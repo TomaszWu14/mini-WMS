@@ -30,6 +30,8 @@ fi
 # Migracje bazy danych (idempotentne).
 echo "Uruchamiam migracje..."
 python manage.py migrate --noinput
+# US-009: tabela cache wspólnego dla workerów (idempotentne).
+python manage.py createcachetable
 
 # Automatyczne utworzenie konta administratora z zmiennych środowiskowych
 # (idempotentne — nie nadpisuje istniejącego konta).

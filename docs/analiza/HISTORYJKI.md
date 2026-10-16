@@ -232,7 +232,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Administrator** chcę limitu prób logowania liczonego per konto i wspólnie dla wszystkich workerów, aby atak słownikowy z puli adresów IP nie zgadywał hasła. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R6**, §2.4 **T8**; docs/07 „Znane problemy” #1 i „Co dalej” (Redis); D-12 |
 | Wymagania | SEC-003, SEC-004; NFR-013 |
 | Zależności | wybór cache (`DatabaseCache` bez nowej usługi albo Redis) → ADR; PYT-07 (blokada czasowa vs opóźnienie) |
@@ -244,7 +244,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** licznik w cache współdzielonym; **When** 10 nieudanych prób przechodzi przez różne procesy; **Then** 11. dostaje 429 (limit globalny, nie ×3).
 4. **Given** zablokowana próba; **Then** zapis w dzienniku zdarzeń (rodzaj „zablokowane”) bez wpisanego hasła.
 
-**Test do napisania:** `AccountLockoutTests` w `warehouse/tests_login_limits.py` (nowy); istniejące `test_login_rate_limit` i `test_rate_limit_also_without_demo_mode` bez regresji.
+**Testy:** `warehouse/tests_login_limits.py` — `AccountLockoutTests` (8: blokada po 10 próbach z różnych IP także dla poprawnego hasła, logowanie po oknie, login bez wielkości liter, inne konto działa, udane logowanie zeruje licznik, nieistniejące konto — ta sama odpowiedź, wpis „Zablokowana próba” bez hasła, zablokowana próba nie sprawdza hasła), `SharedCacheTests` (3: backend DatabaseCache, licznik w tabeli `miniwms_cache`, nowy klient cache widzi ten sam licznik). Przed poprawką 11 czerwonych; `test_login_rate_limit` i `test_rate_limit_also_without_demo_mode` bez regresji. Decyzje PO 2026-10-16: DatabaseCache (ADR-0002), N_KONTO / W_KONTO = 10 / 15 min, nowy rodzaj zdarzenia BLOCKED (migracja `0009_loginevent_blocked_kind` — tylko lista wyborów, bez zmian w wierszach, odwracalna). PYT-07: blokada czasowa (429), nie opóźnienie. Odbiór [BA] 2026-10-16: kryteria 1–4 spełnione.
 
 ### US-010 — 2FA dla Administratora
 

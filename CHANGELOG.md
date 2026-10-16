@@ -46,9 +46,12 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   IP ani user-agenta. Testy: `warehouse/tests_retention.py`, `DemoEntryRateLimitTests`.
 - **US-008 / R6:** hasła zapisywane algorytmem argon2 (`argon2-cffi`); istniejące hashe PBKDF2 są podnoszone do argon2
   przy następnym udanym logowaniu. Testy: `warehouse/tests_passwords.py`.
+- **US-009 / R6:** po 10 nieudanych logowaniach w 15 minut na dane konto (z dowolnych adresów IP) kolejne próby,
+  także z poprawnym hasłem, dostają 429; zdarzenie „Zablokowana próba” w dzienniku. Liczniki limitów są wspólne dla
+  wszystkich workerów (DatabaseCache, ADR-0002). Migracja `0009` (lista wyborów `LoginEvent.kind`). Testy: `tests_login_limits.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
-  w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008 zrobione).
+  w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).
 
 ## [0.1.0] — 2026-10-13
 

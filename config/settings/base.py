@@ -149,6 +149,18 @@ else:
 DATABASES["default"]["CONN_MAX_AGE"] = int(os.environ.get("DJANGO_CONN_MAX_AGE", "60"))
 
 
+# US-009 / ADR-0002: cache wspólny dla wszystkich workerów gunicorna (limity logowań,
+# wejść demo, blokada resetu demo). Tabelę zakłada `createcachetable` w entrypoint.sh.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "miniwms_cache",
+    }
+}
+# Limit nieudanych logowań na konto (niezależnie od IP) — decyzja PO 2026-10-16.
+LOGIN_ACCOUNT_LIMIT = 10
+LOGIN_ACCOUNT_WINDOW = 15 * 60  # sekund
+
 # US-008 / R6: nowe hasła w argon2; stare hashe PBKDF2 Django podnosi przy
 # kolejnym udanym logowaniu (pierwszy hasher = docelowy, reszta = odczyt).
 PASSWORD_HASHERS = [

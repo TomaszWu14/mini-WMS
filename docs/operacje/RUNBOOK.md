@@ -413,7 +413,7 @@ Czego nie robić: `docker compose down -v`, `docker volume rm`; restartu `db` w 
 3. **Sesje i dziennik logowań:** `python manage.py clearsessions` (usuwa tylko wygasłe) i
    `python manage.py purge_login_events` (wpisy starsze niż 90 dni; `--days N` jednorazowo) w kontenerze `web`.
    Codziennie robią to Scheduled Tasks (COOLIFY.md §10a) oraz start kontenera.
-4. **Dziennik logowań** (po decyzji PO; docelowo komenda retencji z US-005, Z-09: 90 dni): superuser w `/admin/` → Dziennik logowań → filtr po dacie → „Usuń zaznaczone”, albo w `manage.py shell`: `LoginEvent.objects.filter(created_at__lt=<data>).delete()`. Najpierw zabezpiecz ślady, jeśli to incydent (8.3).
+4. **Dziennik logowań poza retencją:** `python manage.py purge_login_events --days N` (np. przy incydencie dyskowym krótsza retencja — decyzja PO). Najpierw zabezpiecz ślady, jeśli to incydent (8.3).
 5. **Miejsce po usunięciu:** zwykły `VACUUM` nie oddaje miejsca systemowi; `VACUUM FULL` blokuje tabelę — tylko w oknie serwisowym.
 6. **Trwale:** powiększ dysk (INFRA); kopia off-site zamiast rosnącego `db_backups` (R9).
 
@@ -438,6 +438,20 @@ Czego nie robić: nie kasować plików w katalogu danych PostgreSQL ani wolumen�
 8. **Komunikacja:** PO decyduje o powiadomieniu użytkowników i o zgłoszeniu (dane osobowe: 72 h). Zapis incydentu (8.0); wniosek do backlogu (R6: 2FA, limit per konto).
 
 Czego nie robić: nie usuwać konta ani wpisów `LoginEvent` przed zabezpieczeniem dowodów; nie resetować hasła przed dezaktywacją i zabezpieczeniem śladów; nie edytować ani usuwać ruchów w `/admin/`.
+
+### 8.3a Zablokowane konto po nieudanych logowaniach (US-009)
+
+| | |
+|---|---|
+| Kto | Administrator aplikacji lub INFRA |
+| Kiedy | użytkownik zgłasza „Zbyt wiele nieudanych prób logowania na to konto”; w dzienniku logowań wpisy „Zablokowana próba” |
+| Status | nieprzećwiczona |
+
+1. **Sprawdź dziennik** (`/uzytkownicy/dziennik/`): seria „Nieudane logowanie” z wielu IP na jeden login = możliwy atak → 8.3.
+2. **Odczekaj 15 min** — blokada wygasa sama (ADR-0002, `LOGIN_ACCOUNT_WINDOW`).
+3. **Odblokowanie od razu:** w kontenerze `web`
+   `python manage.py shell -c "from django.core.cache import cache; cache.clear()"` — czyści wszystkie liczniki
+   (także limity per IP i blokadę resetu demo), nie wylogowuje nikogo.
 
 ### 8.4 Uszkodzenie danych
 

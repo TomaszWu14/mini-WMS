@@ -514,6 +514,7 @@ class LoginEvent(models.Model):
         LOGIN = "LOGIN", "Logowanie"
         LOGOUT = "LOGOUT", "Wylogowanie"
         FAILED = "FAILED", "Nieudane logowanie"
+        BLOCKED = "BLOCKED", "Zablokowana próba"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

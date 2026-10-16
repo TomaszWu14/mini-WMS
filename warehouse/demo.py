@@ -4,6 +4,7 @@
 Limit logowań działa zawsze; reszta — tylko przy DEMO_MODE.
 """
 
+import hashlib
 import io
 
 from django.conf import settings
@@ -19,9 +20,9 @@ from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import Role
+from .models import LoginEvent, Role
 from .roles import operator_required
-from .signals import _client_ip
+from .signals import _client_ip, log_client
 
 # Hasło: settings.DEMO_PASSWORD (env, domyślnie jawne „demo1234” z README).
 DEMO_ACCOUNTS = {
@@ -64,6 +65,16 @@ def _over_limit(prefix: str, request, limit: int, window: int) -> bool:
     return hits > limit
 
 
+def account_key(username) -> str:
+    """Klucz licznika nieudanych logowań konta (login bez wielkości liter)."""
+    digest = hashlib.sha256(str(username).strip().lower().encode()).hexdigest()
+    return f"login-acct:{digest[:32]}"
+
+
+def account_locked(username) -> bool:
+    return cache.get(account_key(username), 0) >= settings.LOGIN_ACCOUNT_LIMIT
+
+
 def _too_many(message: str) -> HttpResponse:
     return HttpResponse(message, status=429, content_type="text/plain; charset=utf-8")
 
@@ -92,6 +103,22 @@ class LoginView(auth_views.LoginView):
         if _over_limit("login-rl", request, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW):
             return _too_many(
                 "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut."
+            )
+        # US-009: blokada konta po LOGIN_ACCOUNT_LIMIT nieudanych próbach z dowolnych
+        # IP — także poprawne hasło dostaje 429 do końca okna. Ta sama odpowiedź dla
+        # istniejących i nieistniejących loginów (bez ujawniania kont).
+        username = request.POST.get("username", "")
+        if username and account_locked(username):
+            ip, user_agent = log_client(request)
+            LoginEvent.objects.create(
+                username=str(username)[:150],
+                kind=LoginEvent.Kind.BLOCKED,
+                ip=ip,
+                user_agent=user_agent,
+            )
+            return _too_many(
+                "Zbyt wiele nieudanych prób logowania na to konto. "
+                "Spróbuj ponownie za 15 minut."
             )
         return super().post(request, *args, **kwargs)
 
