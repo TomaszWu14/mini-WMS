@@ -1,6 +1,6 @@
 # Pułapki: widoki, formularze, skaner
 
-1. **Operacje zmieniające stan tylko na POST.** Konwencja w `views.py`: widok sprawdza
+1. **Operacje zmieniające stan tylko na POST.** Konwencja w `warehouse/views/`: widok sprawdza
    `if request.method == "POST":`, a GET kończy się `redirect` bez zmian (np.
    `issue_line_delete`, `issue_execute`). Nie wykonuj zmian na GET — link w mailu/prefetch
    przeglądarki by je odpalił.
@@ -21,8 +21,11 @@
    wierszy.
 7. **CSV: separator zgadywany** (`;` vs `,` po próbce) i nagłówki zamieniane na lowercase —
    nowe kolumny w importach porównuj po `strip().lower()`.
-8. **`views.py` ma 1405 linii** (T2 w audycie). Nowe ekrany dokładaj do osobnego modułu (jak
-   `scanner_views.py`), nie do `views.py`.
+8. **Widoki to pakiet `warehouse/views/` (US-017, ADR-0006)** — moduł na obszar (`dashboard`, `masterdata`,
+   `receiving`, `handling_units`, `issues`, `stock`, `stocktake`, `movements`, `users`, `reports`); skaner w
+   `scanner_views.py`. Nowy widok: moduł obszaru + re-eksport w `views/__init__.py` (`urls.py` używa
+   `views.<nazwa>`) + wiersz w `tests_urls.EXPECTED` i w macierzy dostępu. `patch()` w testach — na module
+   (`warehouse.views.masterdata.X`), nie na pakiecie.
 9. **Eksporty (`stock_export`, `movement_export`) budują wiersze w pamięci.** Przy dużej
    historii ruchów filtruj zakres dat zanim dodasz nowe kolumny.
 9a. **Liczby i teksty od użytkownika (US-013):** ilość → `max_value=services.MAX_QUANTITY` w formularzu, w API skanera

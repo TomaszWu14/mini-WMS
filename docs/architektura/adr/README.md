@@ -101,6 +101,7 @@ względem opcji odrzuconych.
 | ADR-0003 | Weryfikacja dwuetapowa (TOTP) przez `django-otp` | zaakceptowany (zespół; tryb dobrowolny — Z-39 do potwierdzenia przez PO) | 2026-10-16 | [0003-2fa-totp-django-otp.md](0003-2fa-totp-django-otp.md) |
 | ADR-0004 | CSP z nonce: własny middleware zamiast `django-csp` | zaakceptowany (zespół) | 2026-10-16 | [0004-csp-z-nonce-wlasny-middleware.md](0004-csp-z-nonce-wlasny-middleware.md) |
 | ADR-0005 | Backup poza serwerem: age + rclone + heartbeat | zaakceptowany (PO, 2026-10-16) | 2026-10-16 | [0005-backup-off-site-age-rclone.md](0005-backup-off-site-age-rclone.md) |
+| ADR-0006 | Podział `views.py` na pakiet `warehouse/views/` | zaakceptowany ([DEV]) | 2026-10-16 | [0006-podzial-views-na-pakiet.md](0006-podzial-views-na-pakiet.md) |
 
 Powiązania ADR-0001: T4, T5, T6, R10, Z-08, Z-10 ([AUDYT](../../AUDYT.md)).
 
@@ -137,7 +138,7 @@ i priorytety ustala Product Owner; poniżej pytanie, na które ADR ma odpowiedzi
 | Kandydat | Źródło | Pytanie decyzyjne | Opcje wstępne | Wymaga decyzji PO? |
 |---|---|---|---|---|
 | **Cache współdzielony** | T8, R6 (US-009) | czym zastąpić LocMem per proces dla limitu logowań i blokady resetu demo, by limit nie rósł z liczbą workerów i dało się wprowadzić blokadę per konto | `DatabaseCache` (bez nowej usługi) · Redis (nowy kontener) · zostawić LocMem z udokumentowanym ×N | tak (koszt utrzymania nowej usługi) |
-| **Podział `views.py`** | T2 (US-017) | jak rozbić plik 1405 linii bez zmiany URL-i i bez blokowania równoległych prac | pakiet `views/` (`dashboard`, `issues`, `users`, `exports`) · moduły obok `views.py` · bez zmian | nie (decyzja techniczna), ale termin koliduje z innymi PR |
+| **Podział `views.py`** — ADR-0006 | T2 (US-017) | jak rozbić plik 1405 linii bez zmiany URL-i i bez blokowania równoległych prac | pakiet `views/` (`dashboard`, `issues`, `users`, `exports`) · moduły obok `views.py` · bez zmian | nie (decyzja techniczna), ale termin koliduje z innymi PR |
 | **Lock zależności** | T7, R10 (US-020) | jak uzyskać powtarzalny build i jedno źródło prawdy o zależnościach | `pip-compile --generate-hashes` · `uv lock` · Poetry; `pyproject.toml` jako źródło, Dockerfile instaluje z locka; współpraca z Dependabotem | nie |
 | **CSP i nagłówki** | R8 (US-011) | jak wprowadzić Content-Security-Policy mimo inline `onclick` i `window.CSRF` | `django-csp` z nonce · przeniesienie handlerów do plików JS · `Permissions-Policy: camera=(self)`; HSTS 1 rok albo bez `preload` | nie |
 | **2FA i argon2** | R6, DEC-4 (US-008, US-010) | jak podnieść uwierzytelnianie Administratora i `/admin/` | `argon2-cffi` jako hasher · `django-otp` dla ADMIN i `/admin/` · allowlista IP dla `/admin/` na proxy | tak (wpływ na użytkowników, zależy od decyzji o wdrożeniu) |

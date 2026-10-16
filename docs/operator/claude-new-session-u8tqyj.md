@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Kod widoków (US-017):** `warehouse/views.py` rozbity na pakiet `warehouse/views/` — bez zmian w działaniu, adresach
+  i uprawnieniach; nic do zrobienia przy wdrożeniu.
 - **Demo (US-016):** znika przycisk „Przywróć dane demo” (i `POST /demo/przywroc/`). Przyjęcia i importy w demo
   odmawiają powyżej 2000 palet / 500 lokalizacji („Limit demo…”), zapisy powyżej 60 na 5 min z jednego IP → 429.
   **Akcja w Coolify (demo):** Scheduled Task `reset-demo` — Command zmienić na
@@ -145,7 +147,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (411 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (412 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

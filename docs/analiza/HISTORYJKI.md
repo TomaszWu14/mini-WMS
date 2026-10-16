@@ -390,7 +390,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[DEV]** chcę podzielić `views.py` (1405 linii, 47 widoków) na moduły, aby zmiany były tańsze, a review czytelne. |
 | MoSCoW · rozmiar | Should · L |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T2**; pitfalls/views #8 |
 | Wymagania | NFR-027; SEC-007 (bez regresji) |
 | Zależności | **po** US-007 (siatka bezpieczeństwa) i po US-001…US-005 (te same pliki — konflikty) |
@@ -402,7 +402,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** każdy widok; **Then** ma te same dekoratory roli co wcześniej (macierz).
 4. **Given** pitfalls/views; **Then** punkt #8 zaktualizowany (T14).
 
-**Test do napisania:** `test_url_names_unchanged` w `warehouse/tests_urls.py` (nowy; snapshot nazw i ścieżek).
+**Testy:** `warehouse/tests_urls.py` — `test_url_names_unchanged` (migawka 72 tras: nazwa → wzorzec adresu i nazwa widoku; zapisana i zielona **przed** podziałem, commit `cbf9e71`). Podział mechaniczny skryptem wg sekcji `# --- …`; porównanie AST: 61 definicji identycznych, łącznie z dekoratorami ról (kryterium 3). Macierz dostępu US-007 zielona. Odstępstwo od kryterium 2: w 2 testach zmieniono 3 cele `patch()` z `warehouse.views.X` na moduł (`views.handling_units`, `views.masterdata`) — asercje bez zmian; `patch` musi celować tam, gdzie widok czyta nazwę. ADR-0006. Odbiór [BA] 2026-10-16: kryteria 1, 3, 4 spełnione; 2 — z opisanym odstępstwem.
 
 ### US-018 — Domknięcie WZ w warstwie usług
 

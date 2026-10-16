@@ -107,7 +107,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-024 | US-019 | n/d — kroki CI (ruff, mypy, bandit) | #23 |
 | NFR-025 | US-020 | n/d — build obrazu w CI | #23 |
 | NFR-026 | US-018, US-030, US-038 | `ConcurrentIssueTests` (PostgreSQL); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests` | historyczny (przed procesem; #13) |
-| NFR-027 | US-017, US-029 | n/d — metryka rozmiaru pliku | #23 |
+| NFR-027 | US-017, US-029 | `tests_urls.UrlSnapshotTests`; porównanie AST przy podziale (ADR-0006) | #23 |
 | NFR-028 | — | n/d — kroki CI (`check`, build obrazu) | historyczny (przed procesem) |
 
 ---
@@ -181,7 +181,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-014 | Should | SEC-041 | „poza listą” | `tests_open_decisions.py` (+4 testy) — zrobione, #23 |
 | US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` (13 testów) — zrobione, #23 |
 | US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` (15 testów) — zrobione, #23 |
-| US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` |
+| US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` (migawka tras) + macierz US-007 — zrobione, #23 |
 | US-018 | Should | NFR-026, FR-017 | T3 | `tests_services_fixes.py`, `tests_concurrency_pg.py` |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | n/d (CI) |
 | US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | n/d (CI) |

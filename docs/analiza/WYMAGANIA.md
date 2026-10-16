@@ -127,7 +127,7 @@ Wartości pochodzą z kodu, konfiguracji i audytu; „źródło” wskazuje, sk�
 | NFR-024 | utrzymanie | Statyczna analiza w CI. | ruff, ruff format, mypy całego kodu, bandit przechodzą lokalnie; CI mierzy mypy w 3 plikach. | częściowo (naprawa w toku: ADR-0001/CI) | T4 |
 | NFR-025 | utrzymanie | Odtwarzalny build. | Brak lockfile (`Django>=5.2,<5.3`); zależności w dwóch miejscach. | brak (SHA akcji w toku: ADR-0001/CI; lockfile nie) | T7 |
 | NFR-026 | zgodność (integralność) | Spójność danych przy współbieżności. | Transakcje + `select_for_update` (D-05), `CheckConstraint` ilość ≥ 0, cały zestaw testów na PostgreSQL 16 w CI. | spełnione | D-05, docs/07, `tests_concurrency_pg.py` |
-| NFR-027 | utrzymanie | Utrzymywalność kodu widoków. | `views.py` 1405 linii, 47 widoków. | częściowo | T2 |
+| NFR-027 | utrzymanie | Utrzymywalność kodu widoków. | pakiet `warehouse/views/`: 10 modułów po 76–257 linii (ADR-0006). | spełnione — US-017 | T2 |
 | NFR-028 | zgodność | Platforma. | Django 5.2 LTS; PostgreSQL 16 (prod), SQLite (lokalnie); obraz dwuetapowy, non-root, `HEALTHCHECK`. | spełnione | AUDYT §2.1 |
 
 ---

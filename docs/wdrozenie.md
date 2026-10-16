@@ -103,7 +103,7 @@ config/         # ustawienia (settings/base|dev|prod), URL-e, /healthz
 warehouse/
   models.py     # Material, Location, HandlingUnit, IssueDocument, StockMovement, ...
   services.py   # logika: przyjęcie, alokacja, korekta, picking (FEFO→FIFO)
-  views.py      # ekrany operatora
+  views/        # ekrany operatora — moduł na obszar (ADR-0006)
   forms.py      # formularze
   imports.py    # import lokalizacji CSV/XLSX
   exports.py    # eksport CSV/XLSX

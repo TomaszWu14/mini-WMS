@@ -57,8 +57,8 @@ administratora infrastruktury / PO”.
 | Limit prób logowania | 10 prób POST / 300 s na IP (po przekroczeniu: 429) | `demo.py` |
 | Upload (importy) | 5 MB w formularzu; `DATA_UPLOAD_MAX_MEMORY_SIZE` 6 MB (`DJANGO_MAX_UPLOAD_BYTES`) | `forms.py`, `base.py` |
 | Limit wierszy importu w demo | 500 (`DEMO_IMPORT_MAX_ROWS`); poza demo brak limitu (R4) | `base.py`, `imports.py` |
-| Wydruk etykiet HU | 200 na partię (D-11) | `views.py` (`HU_LABELS_LIMIT`) |
-| Lista ruchów | 500 najnowszych, bez filtra dat (T9) | `views.py` |
+| Wydruk etykiet HU | 200 na partię (D-11) | `views/handling_units.py` (`HU_LABELS_LIMIT`) |
+| Lista ruchów | 500 najnowszych, bez filtra dat (T9) | `views/movements.py` |
 | Połączenia z bazą | `CONN_MAX_AGE` 60 s (`DJANGO_CONN_MAX_AGE`) | `base.py` |
 | Cooldown resetu demo | 60 s (per proces) | `demo.py` |
 | HSTS | 30 dni (`DJANGO_HSTS_SECONDS`), z `includeSubDomains` i flagą `preload` (preload wymaga ≥ 1 roku — R8) | `prod.py` |
@@ -169,7 +169,7 @@ flowchart LR
     end
     subgraph http["Warstwa HTTP, warehouse/"]
         wurls["urls.py"]
-        views["views.py"]
+        views["views/ (10 modułów)"]
         scanner["scanner_views.py"]
         demo["demo.py"]
         forms["forms.py"]
@@ -231,7 +231,7 @@ flowchart LR
 | `config/wsgi.py`, `asgi.py` | punkty wejścia serwera (używany: WSGI/gunicorn) | — | 16 / 16 |
 | `warehouse/models.py` | 12 modeli (10 domenowych oraz `Profile` i `LoginEvent`); constrainty; właściwości liczone (`occupancy`, `outstanding`, `shortage`) | — | 538 |
 | `warehouse/services.py` | **cała logika zmieniająca stan**: przyjęcie, alokacja, korekta, przepakowanie, picking FEFO→FIFO, realizacja/pakowanie/wysyłka WZ, spis; numeracja; `WMSError` | `models` | 693 |
-| `warehouse/views.py` | ekrany panelu (~47 widoków): pulpit, listy, formularze, raporty, eksporty, PDF, użytkownicy; łapie `WMSError` i pokazuje komunikat | `services`, `forms`, importy, `exports`, `labels`, `documents`, `roles`, `demo` | 1405 |
+| `warehouse/views/` | ekrany panelu (~47 widoków) w 10 modułach wg obszaru (ADR-0006): pulpit, dane podstawowe, przyjęcie, HU, wydania, stany, spis, ruchy, użytkownicy, raporty; łapie `WMSError` i pokazuje komunikat | `services`, `forms`, importy, `exports`, `labels`, `documents`, `roles`, `demo`, `pagination` | 76–257 na moduł |
 | `warehouse/scanner_views.py` | 8 ekranów skanera i 8 endpointów JSON ([API.md](API.md)) | `services`, `roles`, `models` | 452 |
 | `warehouse/forms.py` | formularze i walidacja wejścia (limit uploadu 5 MB przez `_MaxSizeFileMixin`) | `models` | 352 |
 | `warehouse/imports.py` | import lokalizacji; wspólne parsowanie CSV/XLSX (`parse_locations_file`, `parse_int_cell`); `ImportError_` | `models` | 160 |
@@ -253,7 +253,7 @@ Zasady zależności (do pilnowania w review):
 
 1. Nowa operacja zmieniająca stan trafia do `services.py`, a nie do widoku ([db.md #1](../pitfalls/db.md)).
 2. `models.py` nie importuje z `services`, `views` ani `forms`.
-3. Nowy widok ma dekorator roli ([auth.md #1](../pitfalls/auth.md)); nowe ekrany dokładamy do osobnego modułu, nie do `views.py` ([views.md #8](../pitfalls/views.md)).
+3. Nowy widok ma dekorator roli ([auth.md #1](../pitfalls/auth.md)); nowy ekran trafia do modułu swojego obszaru w `views/` i do re-eksportu w `views/__init__.py` ([views.md #8](../pitfalls/views.md)).
 4. Importy wołają `services.receive_material` / `allocate_hu` itd., nie zapisują `HandlingUnit` samodzielnie.
 
 ---
@@ -377,7 +377,7 @@ architektury. Każda jest kandydatem na ADR lub historyjkę ([adr/README.md](adr
 
 | ID | Ograniczenie | Skutek | Kierunek | Powiązanie |
 |---|---|---|---|---|
-| **T2** | `views.py` ma 1405 linii i ~47 widoków (pulpit, wydania, użytkownicy, eksporty w jednym pliku) | koszt zmian, konflikty, trudny review | pakiet `views/` (`dashboard`, `issues`, `users`, `exports`) bez zmiany URL-i | US-017; kandydat na ADR „podział views” |
+| **T2** | `views.py` ma 1405 linii i ~47 widoków (pulpit, wydania, użytkownicy, eksporty w jednym pliku) | koszt zmian, konflikty, trudny review | pakiet `views/` (`dashboard`, `issues`, `users`, `exports`) bez zmiany URL-i | US-017 — zrobione (ADR-0006, #23) |
 | **T3** | `api_pick` ustawia `ZREALIZOWANY` po ostatnim pobraniu **poza** `services.py`, bez blokady dokumentu | łamie D-05; logika domknięcia WZ w dwóch miejscach | przenieść do `services` (np. `complete_if_picked`) pod `select_for_update` | US-018 |
 | **T7** | zależności w `pyproject.toml` i `requirements.txt` utrzymywane ręcznie, bez lockfile; `Django>=5.2,<5.3`; `pip install --upgrade pip` w Dockerfile | niereprodukowalny build | `pip-compile` z hashami albo `uv lock`; Dockerfile instaluje z locka | US-020; kandydat na ADR „lock zależności” |
 | **T8** | cache LocMem per proces dla limitu logowań i blokady resetu demo | limit ×3 przy 3 workerach; blokada resetu nie jest globalna | `DatabaseCache` (bez nowej usługi) albo Redis, gdy workerów przybędzie | US-009; kandydat na ADR „cache współdzielony”; R6 |
