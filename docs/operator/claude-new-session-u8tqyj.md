@@ -5,7 +5,7 @@
 | Branch | `claude/new-session-u8tqyj` (nazwa techniczna sesji Claude) |
 | PR | #23 (draft) |
 | Data | 2026-10-16 |
-| Ryzyko | średnie — trzy poprawki bezpieczeństwa zmieniają zachowanie (US-001, US-002, US-003 — wdrożenie bez sekretów nie wstaje); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
+| Ryzyko | średnie — cztery poprawki bezpieczeństwa zmieniają zachowanie (US-001…US-004; US-003 — wdrożenie bez sekretów nie wstaje); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
 
 ## 1. Co zmieniono
 - **Zmiany widoczne dla użytkowników:**
@@ -17,6 +17,11 @@
     Import przyjęć: najwyżej 2 000 palet w pliku; import stanów: najwyżej 2 000 wierszy. Plik ponad
     limit jest odrzucany w całości z komunikatem „Podziel plik; nic nie zapisano”. Liczby spoza
     zakresu w pliku dają komunikat przy wierszu zamiast błędu serwera.
+  - (US-004) Import XLSX: plik, który nie jest prawdziwym XLSX (np. CSV z rozszerzeniem `.xlsx`)
+    albo jest uszkodzony, daje komunikat „Plik nie jest poprawnym XLSX…” zamiast błędu serwera.
+    XLSX, który po rozpakowaniu przekracza 50 MB, jest odrzucany. Każdy import (lokalizacje,
+    stany, przyjęcia, wydania) obejmuje najwyżej 10 000 wierszy także poza demo; w demo — 500
+    jak dotąd.
 - **Zmiany dla administratora infrastruktury (US-003):**
   - Produkcja (`DJANGO_DEBUG=0`) nie startuje, gdy `DJANGO_SECRET_KEY` ma mniej niż 50 znaków, jest
     zaślepką (`zmien-mnie-w-produkcji`, `YOUR_DJANGO_SECRET_KEY_HERE`) albo zaczyna się od
@@ -71,6 +76,8 @@
 | 5 | admin infrastruktury | Coolify → kontener `web` → Logs | po deployu sprawdzić start | migracje bez zmian, `Startuję gunicorn`, brak błędów o `pip` ani `ImproperlyConfigured` |
 | 9 | admin infrastruktury | Coolify (demo) → kontener `web` → Terminal | `python manage.py seed_demo --reset` | dane demo przywrócone jak dotąd |
 | 10 | admin infrastruktury | dowolna maszyna z Dockerem, katalog repo, bez `.env` | `docker compose config` | błąd „required variable DJANGO_SECRET_KEY is missing…” |
+| 12 | Operator | `/lokalizacje/import/` | wgrać plik CSV przemianowany na `.xlsx` | komunikat „Plik nie jest poprawnym XLSX…”, brak zmian |
+| 13 | Operator | `/stany/import/` | wgrać zwykły XLSX z kilkoma wierszami | import jak dotąd |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
 ## 3. Checklista wdrożenia
@@ -79,7 +86,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (262 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (275 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 
@@ -91,6 +98,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 |---|---|---|---|
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
+| — (zależność) | nowa: `defusedxml==0.7.1` w `requirements.txt` | instalowana w obrazie | ☐ nie dotyczy (rebuild obrazu) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
 Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma

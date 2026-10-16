@@ -88,7 +88,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-005 | — | `HULabelsLimitTests` | historyczny (przed procesem; #13) |
 | NFR-006 | US-015 | brak — do napisania | #23 |
 | NFR-007 | US-004, US-043 | brak — do napisania (limit 5 MB bez testu) | historyczny (przed procesem) |
-| NFR-008 | US-004 | `DemoImportLimitTests` (tylko limit wierszy w demo) | #23 |
+| NFR-008 | US-004 | `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests` (poza demo) | #23 |
 | NFR-009 | US-002, US-013 | brak — do napisania | #23 |
 | NFR-010 | US-015 | `SecurityTests.test_login_log_pagination` (tylko dziennik logowań) | #23 |
 | NFR-011 | US-028 | brak — do napisania | #23 |
@@ -134,9 +134,9 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-016 | US-043 | `HardeningTests.test_csv_export_neutralizes_formula_injection` (funkcja `_safe_cell`; ścieżka XLSX bez testu) | historyczny (przed procesem) |
 | SEC-017 | US-013 | brak — do napisania | #23 |
 | SEC-018 | US-043 | brak — do napisania | historyczny (przed procesem) |
-| SEC-019 | US-004 | brak — do napisania | #23 |
+| SEC-019 | US-004 | `tests_imports_hardening.BrokenXlsxViewTests`, `LibraryErrorTests`, `DefusedXmlTests` | #23 |
 | SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
-| SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests` (fragmenty: etykiety HU, wiersze w demo) | #23 |
+| SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook` | #23 |
 | SEC-022 | US-011 | n/d — `check --deploy` w CI; test nagłówków do napisania | #23 |
 | SEC-023 | US-043 | brak — do napisania (`check --deploy` w CI nie jest testem odpowiedzi) | historyczny (przed procesem) |
 | SEC-024 | US-011 | brak — do napisania | #23 |
@@ -168,7 +168,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-001 | Must | FR-023, FR-024, SEC-009 | R1 | `tests_security.SuperuserProtectionTests` — zrobione, #23 |
 | US-002 | Must | FR-001, FR-005, NFR-003, NFR-009, SEC-015, SEC-021 | R3 | `tests_input_limits` (13 testów) — zrobione, #23 |
 | US-003 | Must | SEC-026, SEC-027 | R2 | `tests_deploy_settings.py`, `tests_demo.py`, krok CI compose — zrobione, #23 |
-| US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` |
+| US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (13 testów) — zrobione, #23 |
 | US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py`, `tests_demo_entry.py` |
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` |

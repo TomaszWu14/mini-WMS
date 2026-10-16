@@ -122,7 +122,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Operator** chcę, aby uszkodzony lub złośliwy plik XLSX kończył się czytelnym komunikatem, a nie błędem 500 ani wyczerpaniem pamięci, aby import był bezpieczny także na publicznym demo. |
 | MoSCoW · rozmiar | Must · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T1**, §3.3 **R4** (W na demo / Ś), §3.4 pkt 4; `imports.py:89-127`, `views.py:344,429,808,886`, `forms.py:20-31` |
 | Wymagania | SEC-019, SEC-021; NFR-007, NFR-008; także: FR-005, NFR-003 |
 | Zależności | wartości L_ROZP i L_WIERSZE (PYT-02); `defusedxml` w `requirements.txt` (lock — US-020) |
@@ -136,7 +136,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 5. **Given** środowisko produkcyjne (`requirements.txt`); **Then** `defusedxml` jest zainstalowany w przypiętej wersji, a openpyxl go wykrywa (np. `openpyxl.xml.DEFUSEDXML is True` — do potwierdzenia przez [DEV]).
 6. **Given** błędy `BadZipFile`, `InvalidFileException`, `KeyError` z biblioteki; **When** import; **Then** każdy zamieniony na `ImportError_` z komunikatem, nigdy 500.
 
-**Test do napisania:** `warehouse/tests_imports_hardening.py` (nowy): `test_non_zip_xlsx_rejected_on_all_importers`, `test_zip_bomb_rejected_before_load_workbook`, `test_row_limit_enforced_outside_demo`, `test_defusedxml_available`. Wartości w zapisie wykładniczym — US-013.
+**Testy:** `warehouse/tests_imports_hardening.py` — `BrokenXlsxViewTests` (4: plik bez sygnatury ZIP i ucięty ZIP na wszystkich czterech importach, bomba dekompresyjna odrzucona bez wywołania `load_workbook`, poprawny XLSX nadal działa), `LibraryErrorTests` (3), `RowLimitTests` (4: XLSX i CSV poza demo, wartość graniczna, limit demo bez zmian), `DefusedXmlTests` (2). Przed poprawką 20 sprawdzeń (z podtestami) czerwonych. Wartości: L_WIERSZE = 10 000 (`IMPORT_MAX_ROWS`), L_ROZP = 50 MB (`IMPORT_MAX_UNCOMPRESSED_BYTES`) — Z-23, do potwierdzenia przez PO. Kryterium 5: `openpyxl.xml.DEFUSEDXML is True`, `defusedxml==0.7.1` w `requirements.txt` i `pyproject.toml`. Odbiór [BA] 2026-10-16: kryteria 1–6 spełnione. Wartości w zapisie wykładniczym — US-013.
 
 ### US-005 — Retencja dziennika logowań, czyszczenie sesji, limiter wejść demo
 

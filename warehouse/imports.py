@@ -8,7 +8,10 @@ Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
 
 import csv
 import io
+import zipfile
+import zlib
 from itertools import islice
+from xml.etree.ElementTree import ParseError
 
 from django.conf import settings
 from django.db import transaction
@@ -86,25 +89,67 @@ def _rows_from_csv(data: bytes):
         yield {(k or "").strip().lower(): v for k, v in row.items()}
 
 
+# Wyjątki, którymi openpyxl/zipfile/XML sygnalizują uszkodzony lub wrogi plik
+# (defusedxml rzuca podklasy ValueError). Inne błędy to bugi — nie maskujemy ich.
+_XLSX_ERRORS = (
+    zipfile.BadZipFile,
+    KeyError,
+    ValueError,
+    EOFError,
+    zlib.error,
+    ParseError,
+)
+_XLSX_BROKEN = (
+    "Plik nie jest poprawnym XLSX — zapisz go ponownie w Excelu albo użyj CSV."
+)
+
+
+def _check_xlsx_archive(data: bytes) -> None:
+    """Odrzuca plik przed `load_workbook`: brak sygnatury ZIP, uszkodzone archiwum
+    albo za duża suma rozmiarów po rozpakowaniu. `zipfile` nie rozpakuje członka
+    ponad zadeklarowany `file_size`, więc suma deklaracji ogranicza pamięć."""
+    if not data.startswith(b"PK\x03\x04"):
+        raise ImportError_(_XLSX_BROKEN)
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            total = sum(info.file_size for info in zf.infolist())
+    except (zipfile.BadZipFile, zlib.error, EOFError, ValueError) as exc:
+        raise ImportError_(_XLSX_BROKEN) from exc
+    limit = settings.IMPORT_MAX_UNCOMPRESSED_BYTES
+    if total > limit:
+        raise ImportError_(
+            f"Plik XLSX po rozpakowaniu przekracza {limit // (1024 * 1024)} MB — "
+            "podziel go na mniejsze albo użyj CSV."
+        )
+
+
 def _rows_from_xlsx(data: bytes):
     from openpyxl import load_workbook
+    from openpyxl.utils.exceptions import InvalidFileException
 
-    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
-    ws = wb.active
-    rows = ws.iter_rows(values_only=True)
+    _check_xlsx_archive(data)
     try:
-        header = next(rows)
-    except StopIteration:
-        return
-    headers = [str(h).strip().lower() if h is not None else "" for h in header]
-    for row in rows:
-        if row is None or all(c is None for c in row):
-            continue
-        # Wiersze krótsze od nagłówka (puste komórki z prawej) nie mogą rzucać
-        # IndexError i wywracać całego importu — brakujące kolumny → None.
-        yield {
-            headers[i]: (row[i] if i < len(row) else None) for i in range(len(headers))
-        }
+        wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        ws = wb.active
+        if ws is None:
+            raise ImportError_(_XLSX_BROKEN)
+        rows = ws.iter_rows(values_only=True)
+        try:
+            header = next(rows)
+        except StopIteration:
+            return
+        headers = [str(h).strip().lower() if h is not None else "" for h in header]
+        for row in rows:
+            if row is None or all(c is None for c in row):
+                continue
+            # Wiersze krótsze od nagłówka (puste komórki z prawej) nie mogą rzucać
+            # IndexError i wywracać całego importu — brakujące kolumny → None.
+            yield {
+                headers[i]: (row[i] if i < len(row) else None)
+                for i in range(len(headers))
+            }
+    except (InvalidFileException, *_XLSX_ERRORS) as exc:
+        raise ImportError_(_XLSX_BROKEN) from exc
 
 
 def parse_locations_file(filename: str, data: bytes):
@@ -116,14 +161,17 @@ def parse_locations_file(filename: str, data: bytes):
         gen = _rows_from_xlsx(data)
     else:
         raise ImportError_("Obsługiwane formaty to .csv oraz .xlsx.")
-    if not settings.DEMO_MODE:
-        return list(gen)
-    # Demo: czytamy najwyżej limit+1 wierszy — mały XLSX potrafi rozpakować się
-    # do milionów wierszy, a publiczne konto demo nie może zabić procesu.
-    limit = settings.DEMO_IMPORT_MAX_ROWS
+    # Czytamy najwyżej limit+1 wierszy — mały XLSX potrafi rozpakować się do
+    # milionów wierszy, a jeden plik nie może zająć całej pamięci procesu.
+    if settings.DEMO_MODE:
+        limit = settings.DEMO_IMPORT_MAX_ROWS
+        message = f"W wersji demo import obejmuje najwyżej {limit} wierszy."
+    else:
+        limit = settings.IMPORT_MAX_ROWS
+        message = f"Import obejmuje najwyżej {limit} wierszy — podziel plik; nic nie zapisano."
     rows = list(islice(gen, limit + 1))
     if len(rows) > limit:
-        raise ImportError_(f"W wersji demo import obejmuje najwyżej {limit} wierszy.")
+        raise ImportError_(message)
     return rows
 
 

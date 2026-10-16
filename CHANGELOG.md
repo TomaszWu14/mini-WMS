@@ -34,9 +34,12 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   znaków ani ze znaną zaślepką; prywatny `docker-compose.yml` wymaga `DJANGO_SECRET_KEY`, `DJANGO_SUPERUSER_PASSWORD` i `POSTGRES_PASSWORD`
   (bez wartości domyślnych); `entrypoint.sh` nie zakłada superusera z hasłem `admin`, zaślepką ani hasłem
   odrzucanym przez walidatory Django, nie startuje, gdy istniejący superuser ma hasło `admin` albo hasło bazy jest zaślepką; `seed_demo` odmawia bez `DEMO_MODE=1`. Testy: `warehouse/tests_deploy_settings.py`, krok CI dla compose.
+- **US-004 / R4:** import XLSX sprawdza sygnaturę ZIP i sumę rozmiarów po rozpakowaniu (najwyżej 50 MB) przed
+  otwarciem pliku; uszkodzony plik daje komunikat zamiast błędu 500; limit 10 000 wierszy obowiązuje także poza demo;
+  `defusedxml` w zależnościach produkcyjnych. Testy: `warehouse/tests_imports_hardening.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
-  w `docs/analiza/HISTORYJKI.md` (US-001, US-002, US-003 zrobione).
+  w `docs/analiza/HISTORYJKI.md` (US-001…US-004 zrobione).
 
 ## [0.1.0] — 2026-10-13
 

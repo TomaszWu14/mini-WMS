@@ -14,7 +14,9 @@
    `vendor/jsQR.js` (10k linii) czytaj grepem, nie w całości.
 5. **Upload: limit 5 MB w `_MaxSizeFileMixin`** (`forms.py`) + `DATA_UPLOAD_MAX_MEMORY_SIZE`
    6 MB. Każdy nowy formularz z plikiem musi dziedziczyć mixin.
-6. **XLSX to zip** — 5 MB może rozpakować się do setek MB w `openpyxl.load_workbook`
+6. **XLSX to zip** — 5 MB może rozpakować się do setek MB w `openpyxl.load_workbook`. Każdy import
+   idzie przez `parse_locations_file` (`imports.py`): sygnatura ZIP, limit po rozpakowaniu
+   (`IMPORT_MAX_UNCOMPRESSED_BYTES`), limit wierszy (`IMPORT_MAX_ROWS`) — nowy import też ma przez nią iść
    (`imports.py`). Nie zdejmuj `read_only=True`; przy nowych importach ograniczaj liczbę
    wierszy.
 7. **CSV: separator zgadywany** (`;` vs `,` po próbce) i nagłówki zamieniane na lowercase —

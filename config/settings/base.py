@@ -49,6 +49,10 @@ if DEMO_MODE:
 DEMO_USER = os.environ.get("DEMO_USER", "demo_operator")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
 DEMO_IMPORT_MAX_ROWS = 500
+# US-004 / R4: limity każdego importu CSV/XLSX poza demo (Z-23: L_WIERSZE, L_ROZP).
+IMPORT_MAX_ROWS = 10_000
+# Suma rozmiarów plików w archiwum XLSX po rozpakowaniu (zip bomb).
+IMPORT_MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 
 # Liczba zaufanych proxy przed aplikacją (Traefik/Caddy = 1). 0 = nagłówek
 # X-Forwarded-For jest ignorowany, IP klienta to REMOTE_ADDR. Od tego zależy
