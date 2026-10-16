@@ -57,7 +57,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **PO** chcę, aby konto z rolą Administrator nie mogło zmienić hasła ani dezaktywować konta superusera, aby nikt poza superuserem nie przejął `/admin/` i nie zniszczył śladu audytowego. |
 | MoSCoW · rozmiar | Must · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R1** (waga W, potwierdzone testem), §3.4 pkt 1; `views.py:1296-1335` (`user_edit`); pitfalls/auth #8 |
 | Wymagania | SEC-009 (odmowa jest źródłem zdarzenia dla US-022); także: FR-023, FR-024 |
 | Zależności | — (PYT-06 dotyczy tylko zakresu GET) |
@@ -70,7 +70,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 4. **Given** superuser; **When** POST edycji dowolnego konta, także innego superusera; **Then** 302 i zmiana zapisana (brak regresji).
 5. **Given** Administrator A; **When** POST edycji konta Operatora; **Then** 302 (brak regresji względem `UserManagementTests.test_edit_user_role_and_password`).
 
-**Test do napisania:** klasa `SuperuserProtectionTests` w `warehouse/tests_security.py` (nowy): `test_admin_cannot_change_superuser_password`, `test_admin_cannot_deactivate_superuser`, `test_admin_cannot_open_superuser_edit`, `test_superuser_can_edit_superuser`.
+**Testy:** `warehouse/tests_security.py` `SuperuserProtectionTests` (7 testów: hasło, dezaktywacja, rola, GET, lista bez linku, superuser edytuje superusera, Administrator edytuje Operatora). Odbiór [BA] 2026-10-16: kryteria 1–5 spełnione.
 
 ### US-002 — Limity liczby palet i ilości w przyjęciu i imporcie
 

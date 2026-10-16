@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
@@ -1295,6 +1296,13 @@ def user_create(request):
 @admin_required
 def user_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
+    # US-001 / R1: konto superusera (dostęp do /admin/, edycja ruchów i dziennika)
+    # zmienia tylko superuser — inaczej rola Administrator przejęłaby je resetem hasła.
+    if user.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied(
+            "Konto superusera może edytować tylko superuser (panel /admin/ "
+            "albo `manage.py changepassword`)."
+        )
     if is_demo_account(user):
         return HttpResponseForbidden(
             "Konta demo są chronione — w trybie demo nie można zmieniać ich "

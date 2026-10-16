@@ -39,7 +39,7 @@ Decyzja: **otwarte**, **mitygacja w US-xxx**, **do akceptacji PO**, **zaakceptow
 
 | ID | Ryzyko | Źródło | Wpływ | Praw. | Ocena | Decyzja | Właściciel | Przegląd | Uwagi |
 |---|---|---|---|---|---|---|---|---|---|
-| RR-01 | Konto z rolą Administrator może zmienić hasło i dezaktywować konto superusera, przejmując `/admin/` i ślad audytowy. | R1 · TM-35 | 3 | 2 | 6 (W) | mitygacja w US-001 | [DEV] | 2026-11-15 | potwierdzone testem; poprawka to jeden warunek w `user_edit`; w demo skutek to lockout |
+| RR-01 | Konto z rolą Administrator może zmienić hasło i dezaktywować konto superusera, przejmując `/admin/` i ślad audytowy. | R1 · TM-35 | 3 | 2 | 6 (W) | zmitygowane w US-001 (#23) — do weryfikacji po wdrożeniu | [DEV] | 2026-11-15 | potwierdzone testem; poprawka to jeden warunek w `user_edit`; w demo skutek to lockout |
 | RR-02 | Wdrożenie z `docker-compose.yml` startuje z publicznie znanymi sekretami (`admin` / `admin`, domyślny klucz i hasło bazy, zaślepki z `.env.docker.example`). | R2a · TM-50 | 3 | 2 | 6 (W) | mitygacja w US-003 | [DEV] | 2026-11-15 | wariant Coolify ma `${VAR:?}`; sam klucz nie pozwala podrobić sesji (są w bazie), wektorem jest konto `admin` |
 | RR-03 | `seed_demo` uruchomiony bez `DEMO_MODE` zakłada `demo_operator` i `demo_podglad` z hasłem `demo1234` na instancji prywatnej. | R2b · TM-49 | 3 | 2 | 6 (W) | mitygacja w US-003 | [DEV] | 2026-11-15 | README i `COOLIFY.md` zachęcają do `seed_demo` |
 | RR-04 | Jedno przyjęcie lub jeden wiersz importu z milionami palet zajmuje workery i blokuje numerację HU wszystkim. | R3 · TM-12, TM-26 | 2 | 3 | 6 (W) | mitygacja w US-002 | [DEV] | 2026-11-15 | wysokie przez demo (anonim); u klienta Ś (2 × 2 = 4) |
