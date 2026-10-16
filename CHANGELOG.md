@@ -33,7 +33,7 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-003 / R2:** wdrożenie produkcyjne nie startuje z kluczem `DJANGO_SECRET_KEY` krótszym niż 50 znaków, z niską różnorodnością
   znaków ani ze znaną zaślepką; prywatny `docker-compose.yml` wymaga `DJANGO_SECRET_KEY`, `DJANGO_SUPERUSER_PASSWORD` i `POSTGRES_PASSWORD`
   (bez wartości domyślnych); `entrypoint.sh` nie zakłada superusera z hasłem `admin`, zaślepką ani hasłem
-  odrzucanym przez walidatory Django; `seed_demo` odmawia bez `DEMO_MODE=1`. Testy: `warehouse/tests_deploy_settings.py`, krok CI dla compose.
+  odrzucanym przez walidatory Django, nie startuje, gdy istniejący superuser ma hasło `admin` albo hasło bazy jest zaślepką; `seed_demo` odmawia bez `DEMO_MODE=1`. Testy: `warehouse/tests_deploy_settings.py`, krok CI dla compose.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001, US-002, US-003 zrobione).

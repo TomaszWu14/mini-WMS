@@ -8,6 +8,9 @@ if [ -n "$DATABASE_URL" ]; then
 import os, time, sys
 from urllib.parse import urlparse
 url = urlparse(os.environ["DATABASE_URL"])
+# US-003: zaślepka hasła bazy z .env.docker.example nie może trafić do produkcji.
+if (url.password or "").startswith("YOUR_"):
+    sys.exit("POSTGRES_PASSWORD to zaślepka z .env.docker.example — ustaw losowe hasło.")
 if url.scheme.startswith("postgres"):
     import socket
     host, port = url.hostname, url.port or 5432
@@ -56,6 +59,13 @@ if not User.objects.filter(username=u).exists():
     )
     print(f"Utworzono administratora: {u}")
 else:
+    # US-003: konto z dawnym domyślnym hasłem (compose sprzed US-003) blokuje start.
+    existing = User.objects.get(username=u)
+    if any(existing.check_password(w) for w in ("admin", "YOUR_DJANGO_SUPERUSER_PASSWORD_HERE")):
+        raise SystemExit(
+            f"Konto {u} ma domyślne hasło — zmień je przed startem: "
+            f"docker compose run --rm --entrypoint python web manage.py changepassword {u}"
+        )
     print("Administrator już istnieje — pomijam.")
 PY
 fi

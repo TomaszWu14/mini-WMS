@@ -29,7 +29,11 @@
     równe dotychczasowemu hasłu (domyślnie było `wms`), inaczej `web` nie połączy się z bazą.
   - `entrypoint.sh` przy **pierwszym** zakładaniu superusera odrzuca hasło `admin`, zaślepkę
     `YOUR_…` i hasła niespełniające walidatorów Django — kontener kończy pracę z komunikatem
-    `DJANGO_SUPERUSER_PASSWORD odrzucone: …`. Istniejące konto nie jest sprawdzane ani zmieniane.
+    `DJANGO_SUPERUSER_PASSWORD odrzucone: …`.
+  - **Instalacje LAN sprzed tej zmiany:** jeśli istniejący superuser nadal ma hasło `admin`
+    (dawna wartość domyślna), kontener **nie wystartuje** i wypisze polecenie naprawy:
+    `docker compose run --rm --entrypoint python web manage.py changepassword <login>`, potem
+    `docker compose up -d`. Hasło bazy równe zaślepce `YOUR_POSTGRES_PASSWORD_HERE` też blokuje start.
   - `python manage.py seed_demo` bez `DEMO_MODE=1` kończy się błędem i nie zakłada kont demo.
     Instancja demo (`DEMO_MODE=1`, zadanie `reset-demo`) działa bez zmian.
 - **Dokumentacja procesu i produktu** (wszystko w statusie „szkic 0.1 — do akceptacji PO”):
@@ -67,6 +71,7 @@
 | 5 | admin infrastruktury | Coolify → kontener `web` → Logs | po deployu sprawdzić start | migracje bez zmian, `Startuję gunicorn`, brak błędów o `pip` ani `ImproperlyConfigured` |
 | 9 | admin infrastruktury | Coolify (demo) → kontener `web` → Terminal | `python manage.py seed_demo --reset` | dane demo przywrócone jak dotąd |
 | 10 | admin infrastruktury | dowolna maszyna z Dockerem, katalog repo, bez `.env` | `docker compose config` | błąd „required variable DJANGO_SECRET_KEY is missing…” |
+| 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
 ## 3. Checklista wdrożenia
 
@@ -74,7 +79,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (258 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (262 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 

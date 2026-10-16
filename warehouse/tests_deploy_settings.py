@@ -135,3 +135,34 @@ class EntrypointSuperuserPasswordTests(TestCase):
         with redirect_stdout(StringIO()):
             self._run("Mocne-Haslo-Startowe-2026")
         self.assertTrue(User.objects.get(username="boot_admin").is_superuser)
+
+    def test_existing_superuser_with_default_password_stops_start(self):
+        User.objects.create_superuser("boot_admin", "", "admin")
+        with self.assertRaises(SystemExit) as cm:
+            self._run("Mocne-Haslo-Startowe-2026")
+        self.assertIn("changepassword boot_admin", str(cm.exception))
+
+    def test_existing_superuser_with_own_password_starts(self):
+        User.objects.create_superuser("boot_admin", "", "Inne-Mocne-Haslo-2026")
+        with redirect_stdout(StringIO()) as out:
+            self._run("Mocne-Haslo-Startowe-2026")
+        self.assertIn("już istnieje", out.getvalue())
+
+
+class EntrypointDatabasePasswordTests(SimpleTestCase):
+    """US-003: entrypoint odmawia startu z zaślepką hasła bazy z .env.docker.example."""
+
+    def _run_db_wait(self, url):
+        text = (ROOT / "entrypoint.sh").read_text(encoding="utf-8")
+        snippet = text.split("<<'PY'\n")[1].split("\nPY\n")[0]
+        with patch.dict(os.environ, {"DATABASE_URL": url}):
+            # exec wyłącznie kodu z entrypoint.sh w repo (nie danych z zewnątrz).
+            exec(snippet, {})  # noqa: S102  # nosec B102  # nosemgrep
+
+    def test_placeholder_db_password_stops_start(self):
+        with self.assertRaises(SystemExit) as cm:
+            self._run_db_wait("postgres://wms:YOUR_POSTGRES_PASSWORD_HERE@db:5432/wms")
+        self.assertIn("POSTGRES_PASSWORD", str(cm.exception))
+
+    def test_url_without_placeholder_passes(self):
+        self._run_db_wait("sqlite:///tmp/x.sqlite3")
