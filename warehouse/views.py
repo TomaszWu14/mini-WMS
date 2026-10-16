@@ -1432,7 +1432,7 @@ def report_locations(request):
         "empty": total - occupied,
         "free_slots": free_slots,
     }
-    page, page_query = paginate(request, locs)
+    page, page_query = paginate(request, locs, count=total)
     rows = [
         {"loc": loc, "active": loc.active, "free": max(0, loc.capacity - loc.active)}
         for loc in page

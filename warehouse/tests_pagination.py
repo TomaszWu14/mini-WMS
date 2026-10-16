@@ -156,3 +156,19 @@ class LocationLabelsLimitTests(_Base):
     def test_labels_link_carries_list_filters(self):
         resp = self.client.get("/lokalizacje/", {"type": LocationType.PICKING})
         self.assertContains(resp, "/lokalizacje/etykiety/?type=PICKING")
+
+
+class ReportQueryCountTests(_Base):
+    """Przegląd [DB] US-015: raport nie liczy COUNT po JOIN — liczba z podsumowania."""
+
+    def test_report_page_reuses_summary_total(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as ctx:
+            resp = self.client.get("/raporty/lokalizacje/", {"page": 2})
+        self.assertEqual(len(resp.context["rows"]), N + 1 - PAGE_SIZE)
+        counts = [
+            q["sql"] for q in ctx.captured_queries if "COUNT(*)" in q["sql"].upper()
+        ]
+        self.assertFalse(any("handlingunit" in sql.lower() for sql in counts), counts)
