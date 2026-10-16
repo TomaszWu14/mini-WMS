@@ -122,9 +122,9 @@ Wartości pochodzą z kodu, konfiguracji i audytu; „źródło” wskazuje, sk�
 | NFR-019 | dostępność | Cele odtwarzania. | RPO ≤ 24 h wynika z interwału backupu; RTO nie określony; odtworzenie nieprzećwiczone. | do potwierdzenia (PYT-03) | R9, COOLIFY.md §10 |
 | NFR-020 | utrzymanie | Logi aplikacji. | JSON na stdout w produkcji, tekst w dev; zbiera je Coolify/Docker. | spełnione | `base.py:195`, `config/log.py` |
 | NFR-021 | utrzymanie | Powiadomienie o błędach 500. | Brak (`ADMINS` puste). | brak | T15 |
-| NFR-022 | utrzymanie | Pokrycie testami. | ≥ 80 % ogółem i ≥ 90 % dla `services.py` (Z-08). Stan: 81 % / 91 % (views 70 %, exports 53 %); CI progu nie pilnuje. | częściowo (naprawa w toku: ADR-0001/CI) | Z-08, DEC-3, T5 |
-| NFR-023 | utrzymanie | Szybki feedback z testów. | `pytest` ≈ 8 s (226 testów, SQLite, MD5 w `config.settings.test`); CI przez `manage.py test` ≈ 5 min. | częściowo (naprawa w toku: ADR-0001/CI) | AUDYT §2.2, T6 |
-| NFR-024 | utrzymanie | Statyczna analiza w CI. | ruff, ruff format, mypy całego kodu, bandit przechodzą lokalnie; CI mierzy mypy w 3 plikach. | częściowo (naprawa w toku: ADR-0001/CI) | T4 |
+| NFR-022 | utrzymanie | Pokrycie testami. | ≥ 80 % ogółem i ≥ 90 % dla `services.py` (Z-08); CI pilnuje progu (`fail_under`, `--include=warehouse/services.py --fail-under=90`), raport jako artefakt. Stan: 91 % / 92 %. | spełnione — US-019 | Z-08, DEC-3, T5 |
+| NFR-023 | utrzymanie | Szybki feedback z testów. | `pytest` ≈ 25 s (421 testów, SQLite); CI uruchamia `pytest -q` (SQLite + PostgreSQL 16) — kilka minut na cały pipeline. | spełnione — US-019 | AUDYT §2.2, T6 |
+| NFR-024 | utrzymanie | Statyczna analiza w CI. | CI: ruff, ruff format, mypy całego kodu z `check_untyped_defs` (kod aplikacji), bandit, semgrep. | spełnione — US-019 | T4 |
 | NFR-025 | utrzymanie | Odtwarzalny build. | Brak lockfile (`Django>=5.2,<5.3`); zależności w dwóch miejscach. | brak (SHA akcji w toku: ADR-0001/CI; lockfile nie) | T7 |
 | NFR-026 | zgodność (integralność) | Spójność danych przy współbieżności. | Transakcje + `select_for_update` (D-05), `CheckConstraint` ilość ≥ 0, cały zestaw testów na PostgreSQL 16 w CI. | spełnione | D-05, docs/07, `tests_concurrency_pg.py` |
 | NFR-027 | utrzymanie | Utrzymywalność kodu widoków. | pakiet `warehouse/views/`: 10 modułów po 76–257 linii (ADR-0006). | spełnione — US-017 | T2 |

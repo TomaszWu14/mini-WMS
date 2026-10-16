@@ -429,18 +429,18 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[DEV]** chcę, aby CI sprawdzało typy w całym kodzie, pilnowało progu pokrycia i uruchamiało testy przez pytest, aby regresje były widoczne w kilka minut. |
 | MoSCoW · rozmiar | Should · S |
-| Status | **w toku: ADR-0001/CI** |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T4, T5, T6**; Z-08, DEC-3 |
 | Wymagania | NFR-022, NFR-023, NFR-024 |
 | Zależności | ADR-0001 |
 
 **Kryteria akceptacji**
 
-1. **Given** PR z błędem typu w `warehouse/views.py`; **When** CI; **Then** krok `mypy warehouse config` jest czerwony.
+1. **Given** PR z błędem typu w `warehouse/views.py`; **When** CI; **Then** krok `mypy warehouse config` jest czerwony (od US-017 widoki to pakiet `warehouse/views/`).
 2. **Given** PR obniżający pokrycie poniżej 80 % ogółem lub 90 % dla `services.py`; **When** CI; **Then** krok pokrycia jest czerwony; raport jest artefaktem.
 3. **Given** CI; **Then** testy idą przez `pytest -q` z `config.settings.test` (SQLite i PostgreSQL), w tym `tests_concurrency_pg`.
 
-**Test do napisania:** n/d — weryfikacja przebiegiem CI (PR kontrolny).
+**Weryfikacja:** kroki CI istniały od ADR-0001 (mypy `warehouse config`, `coverage run -m pytest` z progami 80 % / 90 % `services.py` i artefaktem, `pytest -q` na SQLite i PostgreSQL 16 z `tests_concurrency_pg`). **Luka znaleziona przy kryterium 1:** widoki nie mają adnotacji typów, a mypy domyślnie pomija ciała takich funkcji — celowy błąd `bad: int = "x"` w `views/stock.py` przechodził mypy. Naprawa: `check_untyped_defs = true` dla kodu aplikacji (testy na liście w override), 37 zgłoszeń poprawionych bez zmiany działania; ten sam błąd daje teraz `error: Incompatible types in assignment` (sprawdzone lokalnie, mypy 1.13.0 jak w CI). Kryterium 2: pokrycie 91 % ogółem / 92 % `services.py`; `coverage report --fail-under=99` kończy się kodem 2 (krok czerwony). Test `warehouse/tests_tooling.py` (3): `check_untyped_defs` włączone, każdy plik `tests*.py` na liście override, próg ≥ 80 %. PR kontrolny nie jest potrzebny — weryfikacja lokalna tymi samymi wersjami narzędzi. Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione.
 
 ### US-020 — Lock zależności i dalsze utwardzenie łańcucha dostaw
 

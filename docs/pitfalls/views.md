@@ -39,5 +39,8 @@
     (`page_query`), szablon `{% include "warehouse/_pagination.html" %}`. Queryset z `annotate(Count…)` gubi
     `Meta.ordering` (GROUP BY) — dodaj `order_by` po unikalnym polu. Wydruk zbiorczy PDF: `count()` i limit
     (`HU_LABELS_LIMIT`, `LOCATION_LABELS_LIMIT`) przed generowaniem; eksporty CSV/XLSX nie są stronicowane.
+9c. **mypy sprawdza ciała widoków (US-019).** `check_untyped_defs = true`: `.first()` / `.get()` zwraca Optional —
+    zawężaj (`if obj is not None`), `messages.error(request, str(err))`, `content_disposition_header(...) or "inline"`.
+    Nowy plik `tests_*.py` dopisz do override w `pyproject.toml` (pilnuje `tests_tooling`).
 10. **Teksty UI po polsku**, komunikaty z numerem dokumentu/HU (`f"Dokument {doc.number} …"`)
     — trzymaj ten styl.

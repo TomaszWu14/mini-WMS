@@ -40,7 +40,8 @@ usługi (SaaS SAST, Snyk, Semgrep AppSec Platform).
 
 1. `ci.yml` (każdy push i PR), job po jobie, blokujące o ile nie zaznaczono inaczej:
    1. **lint** — `ruff check`, `ruff format --check`.
-   2. **typecheck** — `mypy warehouse config`.
+   2. **typecheck** — `mypy warehouse config` z `check_untyped_defs` dla kodu aplikacji (od US-019: bez tego mypy
+      pomijał ciała funkcji bez adnotacji, czyli wszystkie widoki).
    3. **test** — `check`, `check --deploy`, `makemigrations --check`, `coverage run -m pytest`,
       próg 80 % ogółem i 90 % `services.py`; artefakt `reports-coverage` (XML + HTML).
       **test-postgres** — ten sam zestaw na PostgreSQL 16 (test wyścigu).
