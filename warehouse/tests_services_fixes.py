@@ -356,3 +356,27 @@ class CompleteIfPickedTests(BaseSetup):
         self.assertTrue(resp.json()["document"]["completed"])
         doc.refresh_from_db()
         self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+
+    def test_scanner_closes_fully_picked_open_document(self):
+        """Przegląd [DB] US-018: WZ w pełni pobrany, ale otwarty (przerwane domknięcie)."""
+        from .models import Profile, Role
+
+        Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
+        self.client.force_login(self.user)
+        doc, line = self._doc(2)
+        hu = self._hu()
+        services.pick_from_hu(
+            hu=hu, quantity=2, user=self.user, document=doc, line=line
+        )
+        self.assertEqual(
+            IssueDocument.objects.get(pk=doc.pk).status, IssueStatus.OTWARTY
+        )
+        resp = self.client.post(
+            "/skaner/api/pick/",
+            {"hu": hu.number, "quantity": "1", "document": str(doc.pk)},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(resp.json()["document"]["completed"])
+        self.assertEqual(
+            IssueDocument.objects.get(pk=doc.pk).status, IssueStatus.ZREALIZOWANY
+        )

@@ -329,11 +329,15 @@ def api_pick(request):
                 },
                 status=400,
             )
+        # Przegląd [DB] US-018: pobranie i domknięcie to dwie transakcje — gdyby
+        # domknięcie się nie wykonało, skaner domyka WZ przy kolejnej próbie.
+        services.complete_if_picked(doc)
         return JsonResponse(
             {
                 "ok": False,
                 "error": f"Materiał {hu.material.index} nie jest na tym "
                 f"zleceniu albo już skompletowany.",
+                "document": _doc_payload(doc),
             },
             status=400,
         )
