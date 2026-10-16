@@ -134,8 +134,8 @@ class LocationLabelsLimitTests(_Base):
 
     def test_over_limit_redirects_without_pdf(self):
         with (
-            patch("warehouse.views.LOCATION_LABELS_LIMIT", 10),
-            patch("warehouse.views.location_labels_pdf") as pdf,
+            patch("warehouse.views.masterdata.LOCATION_LABELS_LIMIT", 10),
+            patch("warehouse.views.masterdata.location_labels_pdf") as pdf,
         ):
             resp = self.client.get(
                 "/lokalizacje/etykiety/", {"type": LocationType.ZAPAS}, follow=True

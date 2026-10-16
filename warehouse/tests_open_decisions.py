@@ -62,7 +62,7 @@ class HUNumberCaseTests(_HUSetup):
 
 class HULabelsLimitTests(_HUSetup):
     def test_over_limit_redirects_with_message_instead_of_truncating(self):
-        with patch("warehouse.views.HU_LABELS_LIMIT", 1):
+        with patch("warehouse.views.handling_units.HU_LABELS_LIMIT", 1):
             resp = self.client.get("/hu/etykiety/", {"q": "HU-A"}, follow=True)
         self.assertEqual(resp.redirect_chain[0][0], "/hu/?q=HU-A")
         self.assertContains(resp, "Wybrano 2 palet")
