@@ -15,8 +15,9 @@
 5. **`_client_ip` ufa `X-Forwarded-For` tylko przy `TRUSTED_PROXY_COUNT` > 0** (`signals.py`)
    i bierze N-ty wpis od końca. Nowe proxy przed aplikacją (np. Cloudflare przed Traefikiem)
    = podbij `DJANGO_TRUSTED_PROXY_COUNT`, inaczej wszyscy dzielą IP proxy i jeden limit.
-6. **Limity logowań (per IP i per konto) i wejść demo są w DatabaseCache** (ADR-0002, tabela `miniwms_cache`) —
-   wspólne dla workerów. `dev.py` ma LocMem; testy POST na `/login/` czyszczą cache (`cache.clear()`). Dawniej: per proces — przy 3 workerach realnie
+6. **Blokada konta: `warehouse/login_limits.py`** (tabela `LoginFailureCounter`, login normalizowany NFKC +
+   casefold) — każda nowa ścieżka logowania musi przejść przez `login_guard` (`/login/`, `/admin/login/`).
+   Limity per IP i wejść demo są w DatabaseCache (ADR-0002) — wspólne dla workerów. `dev.py` ma LocMem; testy POST na `/login/` czyszczą cache (`cache.clear()`). Dawniej: per proces — przy 3 workerach realnie
    ~30 prób/5 min. Działa zawsze (nie tylko w demo) — testy POST na `/login/` czyszczą cache.
 7. **„Wejdź jako demo” (`demo.demo_login`) loguje bez hasła** — tylko przy `DEMO_MODE` i tylko
    kontem z `DEMO_ACCOUNTS` (`DEMO_USER` spoza listy = odmowa). Nie rozszerzaj listy o konto z

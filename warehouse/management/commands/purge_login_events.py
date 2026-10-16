@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
+from warehouse.login_limits import purge_expired
 from warehouse.models import LoginEvent
 
 MAX_DAYS = 36_500  # 100 lat; więcej przepełnia datetime (OverflowError)
@@ -31,6 +32,8 @@ class Command(BaseCommand):
             raise CommandError(f"--days musi być liczbą dni od 1 do {MAX_DAYS}.")
         cutoff = timezone.now() - timedelta(days=days)
         deleted, _ = LoginEvent.objects.filter(created_at__lt=cutoff).delete()
+        counters = purge_expired()
         self.stdout.write(
-            f"Usunięto {deleted} wpisów dziennika logowań starszych niż {days} dni."
+            f"Usunięto {deleted} wpisów dziennika logowań starszych niż {days} dni"
+            f" i {counters} wygasłych liczników prób."
         )

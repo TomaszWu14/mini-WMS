@@ -6,7 +6,6 @@ from django.contrib.auth.signals import (
     user_logged_out,
     user_login_failed,
 )
-from django.core.cache import cache
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -66,24 +65,11 @@ def log_client(request):
     return _client_ip(request), _user_agent(request)
 
 
-def _count_account_failure(username):
-    """US-009: licznik nieudanych logowań konta, wspólny dla workerów (cache w bazie)."""
-    from .demo import account_key  # import cykliczny: demo importuje signals
-
-    key = account_key(username)
-    cache.add(key, 0, settings.LOGIN_ACCOUNT_WINDOW)
-    try:
-        cache.incr(key)
-    except ValueError:  # klucz wygasł między add a incr
-        cache.set(key, 1, settings.LOGIN_ACCOUNT_WINDOW)
-
-
 @receiver(user_logged_in)
 def on_logged_in(sender, request, user, **kwargs):
-    from .demo import account_key
+    from .login_limits import account_reset
 
-    # Udane logowanie przed blokadą zeruje licznik konta.
-    cache.delete(account_key(user.get_username()))
+    account_reset(user.get_username())  # udane logowanie przed blokadą zeruje licznik
     ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         user=user,
@@ -111,8 +97,9 @@ def on_login_failed(sender, credentials, request=None, **kwargs):
     # .get(key, "") nie chroni, gdy klucz istnieje z wartością None — wtedy
     # zwraca None i None[:150] rzuca TypeError, wywracając ścieżkę logowania.
     raw_username = (credentials or {}).get("username") or ""
-    if raw_username:
-        _count_account_failure(raw_username)
+    from .login_limits import account_failed
+
+    account_failed(raw_username)  # US-009: licznik konta (atomowy, w bazie)
     ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         username=str(raw_username)[:150],

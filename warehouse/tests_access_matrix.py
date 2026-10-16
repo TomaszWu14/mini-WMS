@@ -26,6 +26,7 @@ MATRIX = {
     "healthz": PUBLIC,
     "login": PUBLIC,
     "logout": PUBLIC,
+    "admin_login_guard": PUBLIC,  # /admin/login/ z limitem (US-009)
     "demo_login": PUBLIC,  # tylko DEMO_MODE (inaczej 404)
     "demo_start": PUBLIC,  # tylko DEMO_MODE (inaczej 404)
     # każdy zalogowany (także Podgląd)

@@ -151,6 +151,27 @@ class EnrollmentTests(_Base):
         self.assertFalse(TOTPDevice.objects.get(user=self.admin).confirmed)
 
 
+class EnrollmentSecretTests(_Base):
+    """Uwaga [SEC] US-010: podejrzany sekret nie przeżywa ponownego otwarcia strony."""
+
+    def test_each_visit_generates_new_secret(self):
+        self._login()
+        self.client.get("/2fa/")
+        first = TOTPDevice.objects.get(user=self.admin).key
+        resp = self.client.get("/2fa/")
+        self.assertEqual(TOTPDevice.objects.filter(user=self.admin).count(), 1)
+        self.assertNotEqual(TOTPDevice.objects.get(user=self.admin).key, first)
+        self.assertIn("no-store", resp["Cache-Control"])
+
+    def test_next_with_query_preserved(self):
+        self._enroll()
+        self._login()
+        resp = self.client.get("/ruchy/?type=PRZYJECIE&page=2")
+        self.assertIn(
+            "next=%2Fruchy%2F%3Ftype%3DPRZYJECIE%26page%3D2", resp["Location"]
+        )
+
+
 class ResetCommandTests(_Base):
     def test_reset_after_lost_device(self):
         """Kryterium 3: reset poleceniem → samo hasło, potem nowe urządzenie."""

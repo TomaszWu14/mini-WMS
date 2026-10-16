@@ -160,6 +160,8 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "miniwms_cache",
+        # Domyślne 300 wpisów pozwalało zalać tabelę i wyrzucić liczniki limitów (culling).
+        "OPTIONS": {"MAX_ENTRIES": 100_000},
     }
 }
 # Limit nieudanych logowań na konto (niezależnie od IP) — decyzja PO 2026-10-16.

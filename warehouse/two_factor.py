@@ -17,8 +17,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.safestring import mark_safe
+from django.views.decorators.cache import never_cache
 from django_otp import login as otp_login
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
@@ -50,9 +51,8 @@ class TwoFactorRequiredMiddleware:
             and not self._allowed(request.path)
             and confirmed_device(user) is not None
         ):
-            return redirect(
-                f"{reverse('two_factor_verify')}?next={request.get_full_path()}"
-            )
+            query = urlencode({"next": request.get_full_path()})
+            return redirect(f"{reverse('two_factor_verify')}?{query}")
         return self.get_response(request)
 
     def _allowed(self, path):
@@ -95,10 +95,11 @@ def _safe_next(request, default="dashboard"):
 
 def _record_failed_code(request):
     """Nieudany kod = nieudane logowanie: licznik konta (US-009) i dziennik."""
-    from .signals import _count_account_failure, log_client
+    from .login_limits import account_failed
+    from .signals import log_client
 
     username = request.user.get_username()
-    _count_account_failure(username)
+    account_failed(username)
     ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         user=request.user,
@@ -109,10 +110,12 @@ def _record_failed_code(request):
     )
 
 
+@never_cache
 @login_required
 def two_factor_verify(request):
     """Drugi krok logowania: kod TOTP."""
-    from .demo import DEMO_TOO_MANY_ACCOUNT, _too_many, account_locked
+    from .demo import DEMO_TOO_MANY_ACCOUNT, _too_many
+    from .login_limits import account_locked
 
     device = confirmed_device(request.user)
     if device is None or request.user.is_verified():
@@ -144,14 +147,21 @@ def _qr_svg(url: str) -> str:
     return buf.getvalue().decode()
 
 
+@never_cache
 @admin_required
 def two_factor_setup(request):
     """Włączenie 2FA: kod QR → pierwszy kod z aplikacji potwierdza urządzenie."""
     if confirmed_device(request.user) is not None:
         return render(request, "warehouse/two_factor_setup.html", {"enabled": True})
-    device, _ = TOTPDevice.objects.get_or_create(
-        user=request.user, confirmed=False, defaults={"name": "aplikacja"}
-    )
+    pending = TOTPDevice.objects.filter(user=request.user, confirmed=False)
+    device = pending.first() if request.method == "POST" else None
+    if device is None:
+        # Każde wyświetlenie strony = nowy klucz: sekret podejrzany kiedyś (np. przez
+        # przejętą sesję) nie zostanie później potwierdzony przez właściciela.
+        pending.delete()
+        device = TOTPDevice.objects.create(
+            user=request.user, confirmed=False, name="aplikacja"
+        )
     form = TokenForm(request.POST if request.method == "POST" else None)
     if request.method == "POST":
         if form.is_valid() and device.verify_token(form.cleaned_data["token"]):

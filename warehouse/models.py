@@ -537,3 +537,18 @@ class LoginEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} {self.username} ({self.created_at:%Y-%m-%d %H:%M})"
+
+
+class LoginFailureCounter(models.Model):
+    """US-009: nieudane logowania na konto w bieżącym oknie (klucz = skrót loginu)."""
+
+    key = models.CharField("skrót loginu", max_length=64, primary_key=True)
+    count = models.PositiveIntegerField("nieudane próby", default=0)
+    window_start = models.DateTimeField("początek okna")
+
+    class Meta:
+        verbose_name = "licznik nieudanych logowań"
+        verbose_name_plural = "liczniki nieudanych logowań"
+
+    def __str__(self):
+        return f"{self.key[:8]}… {self.count} od {self.window_start:%Y-%m-%d %H:%M}"

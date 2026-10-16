@@ -450,8 +450,8 @@ Czego nie robić: nie usuwać konta ani wpisów `LoginEvent` przed zabezpieczeni
 1. **Sprawdź dziennik** (`/uzytkownicy/dziennik/`): seria „Nieudane logowanie” z wielu IP na jeden login = możliwy atak → 8.3.
 2. **Odczekaj 15 min** — blokada wygasa sama (ADR-0002, `LOGIN_ACCOUNT_WINDOW`).
 3. **Odblokowanie od razu:** w kontenerze `web`
-   `python manage.py shell -c "from django.core.cache import cache; cache.clear()"` — czyści wszystkie liczniki
-   (także limity per IP i blokadę resetu demo), nie wylogowuje nikogo.
+   `python manage.py shell -c "from warehouse.login_limits import account_reset; account_reset('<login>')"` —
+   zeruje licznik tego konta. Limit per IP (10 prób / 5 min): `... -c "from django.core.cache import cache; cache.clear()"`.
 
 ### 8.3b Utrata telefonu z aplikacją 2FA (US-010)
 

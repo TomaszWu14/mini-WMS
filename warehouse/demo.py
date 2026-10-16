@@ -20,6 +20,7 @@ from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
+from .login_limits import account_locked
 from .models import LoginEvent, Role
 from .roles import operator_required
 from .signals import _client_ip, log_client
@@ -55,24 +56,19 @@ def demo_context(request):
 
 
 def _over_limit(prefix: str, request, limit: int, window: int) -> bool:
-    """Licznik żądań na IP w oknie `window` s; True, gdy przekroczono `limit`."""
-    key = f"{prefix}:{_client_ip(request)}"
+    """Licznik żądań na IP w oknie `window` s; True, gdy przekroczono `limit`.
+
+    IP w kluczu jest skrótem — tabela cache i jej kopie zapasowe nie trzymają
+    jawnych adresów (SEC-035).
+    """
+    ip_digest = hashlib.sha256(str(_client_ip(request)).encode()).hexdigest()[:32]
+    key = f"{prefix}:{ip_digest}"
     cache.add(key, 0, window)
     try:
         hits = cache.incr(key)
     except ValueError:  # klucz wygasł między add a incr
         hits = 1
     return hits > limit
-
-
-def account_key(username) -> str:
-    """Klucz licznika nieudanych logowań konta (login bez wielkości liter)."""
-    digest = hashlib.sha256(str(username).strip().lower().encode()).hexdigest()
-    return f"login-acct:{digest[:32]}"
-
-
-def account_locked(username) -> bool:
-    return cache.get(account_key(username), 0) >= settings.LOGIN_ACCOUNT_LIMIT
 
 
 def _too_many(message: str) -> HttpResponse:
@@ -103,24 +99,40 @@ class LoginView(auth_views.LoginView):
     template_name = "warehouse/login.html"
 
     def post(self, request, *args, **kwargs):
-        if _over_limit("login-rl", request, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW):
-            return _too_many(
-                "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut."
-            )
-        # US-009: blokada konta po LOGIN_ACCOUNT_LIMIT nieudanych próbach z dowolnych
-        # IP — także poprawne hasło dostaje 429 do końca okna. Ta sama odpowiedź dla
-        # istniejących i nieistniejących loginów (bez ujawniania kont).
-        username = request.POST.get("username", "")
-        if username and account_locked(username):
-            ip, user_agent = log_client(request)
-            LoginEvent.objects.create(
-                username=str(username)[:150],
-                kind=LoginEvent.Kind.BLOCKED,
-                ip=ip,
-                user_agent=user_agent,
-            )
-            return _too_many(DEMO_TOO_MANY_ACCOUNT)
-        return super().post(request, *args, **kwargs)
+        return login_guard(request) or super().post(request, *args, **kwargs)
+
+
+def login_guard(request):
+    """Wspólna bramka POST logowania (`/login/` i `/admin/login/`): limit per IP,
+    potem blokada konta (US-009). Zwraca odpowiedź 429 albo None.
+
+    Blokada daje 429 także dla poprawnego hasła, do końca okna; ta sama odpowiedź
+    dla istniejących i nieistniejących loginów (bez ujawniania kont).
+    """
+    if _over_limit("login-rl", request, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW):
+        return _too_many("Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut.")
+    username = request.POST.get("username", "")
+    if account_locked(username):
+        ip, user_agent = log_client(request)
+        LoginEvent.objects.create(
+            username=str(username)[:150],
+            kind=LoginEvent.Kind.BLOCKED,
+            ip=ip,
+            user_agent=user_agent,
+        )
+        return _too_many(DEMO_TOO_MANY_ACCOUNT)
+    return None
+
+
+def admin_login(request, extra_context=None):
+    """`/admin/login/` z tą samą bramką co `/login/` (przegląd [SEC] US-009)."""
+    from django.contrib import admin
+
+    if request.method == "POST":
+        blocked = login_guard(request)
+        if blocked is not None:
+            return blocked
+    return admin.site.login(request, extra_context)
 
 
 def _demo_user():
