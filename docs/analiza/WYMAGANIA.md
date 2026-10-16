@@ -106,11 +106,11 @@ Wartości pochodzą z kodu, konfiguracji i audytu; „źródło” wskazuje, sk�
 | NFR-003 | wydajność | Żądanie mieści się w limicie czasu workera. | gunicorn: 3 workery, timeout 120 s; pojedyncze żądanie może go przekroczyć (R3, R5). | częściowo | `entrypoint.sh:54-57`, R3, R5 |
 | NFR-004 | wydajność | Lista ruchów i raport historii materiału są ucinane. | 500 wierszy (bez filtra dat). | spełnione | `views.py:1162,1387` |
 | NFR-005 | wydajność | Zbiorczy wydruk etykiet palet ma limit. | ≤ 200 etykiet; powyżej komunikat „Zawęź filtr”. | spełnione | `views.py:502`, D-11; `HULabelsLimitTests` |
-| NFR-006 | wydajność | Wydruk etykiet lokalizacji ma limit. | Brak limitu (cel: jak dla palet — propozycja audytu). | brak | R5 |
+| NFR-006 | wydajność | Wydruk etykiet lokalizacji ma limit. | Limit 200 etykiet na wydruk (`LOCATION_LABELS_LIMIT`, jak dla palet); powyżej komunikat „Zawęź filtr”. | spełnione — US-015 | R5 |
 | NFR-007 | wydajność / bezpieczeństwo | Rozmiar pliku importu jest ograniczony. | ≤ 5 MB; `DATA_UPLOAD_MAX_MEMORY_SIZE` 6 MB. | spełnione | `forms.py:23`, `base.py:189` |
 | NFR-008 | wydajność / bezpieczeństwo | Rozmiar XLSX po rozpakowaniu i liczba wierszy importu są ograniczone. | Wiersze: 500 tylko w demo (`DEMO_IMPORT_MAX_ROWS`), poza demo bez limitu. Po rozpakowaniu: bez limitu. Propozycja audytu: ≤ 50 MB po rozpakowaniu, ≤ 10 000 wierszy (PYT-02). | brak | `base.py:51`, `imports.py:123`, R4 |
 | NFR-009 | wydajność / bezpieczeństwo | Liczba palet i ilości w jednym przyjęciu mają górną granicę. | Brak (`min_value` bez `max_value`); propozycja audytu: palety ≤ 500 (PYT-02). | brak | `forms.py:207-213`, R3, T16 |
-| NFR-010 | wydajność | Listy HU, lokalizacji, stanów i raport lokalizacji są stronicowane. | Brak paginacji; dziennik logowań 100 wierszy/stronę. | brak | R5 |
+| NFR-010 | wydajność | Listy HU, lokalizacji, stanów i raport lokalizacji są stronicowane. | 100 wierszy na stronę (`warehouse/pagination.py`) na listach HU, lokalizacji, stanów wg lokalizacji, raporcie lokalizacji i dzienniku logowań. | spełnione — US-015 | R5 |
 | NFR-011 | wydajność | Eksport nie wyczerpuje pamięci przy dużej historii. | Wiersze budowane w pamięci, bez filtra dat. | częściowo | T9, pitfalls/views #9 |
 | NFR-012 | bezpieczeństwo | Sesja wygasa po bezczynności. | 30 min (`DJANGO_SESSION_AGE=1800`), każde żądanie odświeża licznik. | spełnione | `base.py:185-186` |
 | NFR-013 | bezpieczeństwo | Limit prób logowania. | 10 prób POST / 300 s / IP; licznik w pamięci procesu (3 workery → realnie ≈ 30). | częściowo | `demo.py:32-33`, T8, D-12 |
@@ -217,7 +217,7 @@ Kolumna „Status” = stan wg audytu.
 |---|---|---|---|---|
 | SEC-039 | Backup: kopia off-site, szyfrowana, z testem odtworzenia i alertem. | **Given** backup nocny; **When** zakończony; **Then** szyfrowana kopia jest poza hostem bazy; **When** miesięczny test odtworzenia; **Then** baza wstaje na środowisku testowym (zapis w RUNBOOK); **Given** brak świeżej kopii powyżej progu; **Then** alert. | częściowo — lokalny, nieszyfrowany, nieprzećwiczony (R9) | US-012 |
 | SEC-040 | Limit żądań na anonimowych wejściach demo (`/demo/`, `/login/demo/`). | **Given** `DEMO_MODE`; **When** > K żądań w oknie W z jednego IP; **Then** 429 bez nowej sesji i bez `LoginEvent`. | brak (R5) | US-005, US-016 |
-| SEC-041 | IP klienta tylko od zaufanego proxy i zwalidowany. | **Given** `TRUSTED_PROXY_COUNT=1` i `X-Forwarded-For` z wartością niebędącą IP; **When** logowanie; **Then** fallback na `REMOTE_ADDR`, bez `DataError`. | częściowo — D-12 działa (`ClientIPTests`), walidacji formatu brak | US-014 |
+| SEC-041 | IP klienta tylko od zaufanego proxy i zwalidowany. | **Given** `TRUSTED_PROXY_COUNT=1` i `X-Forwarded-For` z wartością niebędącą IP; **When** logowanie; **Then** fallback na `REMOTE_ADDR`, bez `DataError`. | spełnione — `ClientIPTests`, `ClientIPLoginTests` (US-014) | US-014 |
 | SEC-042 | Zaakceptowane wyjątki bezpieczeństwa zapisane w rejestrze z datą przeglądu. | **Given** `RYZYKA.md`; **Then** każdy wyjątek (publiczny Operator w demo, logowanie GET `/demo/`, jawne hasło demo, brak 2FA do wdrożenia, backup lokalny) ma uzasadnienie, właściciela, datę przeglądu i akceptację PO. | brak (AUDYT §3.5) | US-024 |
 
 ---

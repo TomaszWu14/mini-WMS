@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Listy i etykiety lokalizacji (US-015):** listy HU, lokalizacji, „Stan wg lokalizacji” i raport zajętości pokazują
+  po 100 wierszy z przyciskami stron (filtry zostają). Lista lokalizacji ma pole kodu i wybór typu. „Drukuj etykiety”
+  na liście lokalizacji drukuje lokalizacje z bieżącego filtra, najwyżej 200 — przy większej liczbie komunikat „Zawęź filtr”.
+  Bez migracji i nowych zmiennych.
 - **Adres IP za proxy (US-014):** jeśli proxy przekaże w `X-Forwarded-For` coś, co nie jest adresem IP, aplikacja
   użyje adresu połączenia (proxy) zamiast błędu przy logowaniu. Bez zmian dla poprawnej konfiguracji.
 - **Walidacja danych (US-013):** każda ilość (korekta, pozycja WZ, przepakowanie, spis, skaner) najwyżej
@@ -124,6 +128,8 @@
 | 22 | admin infrastruktury | Coolify → `backup` → Logs (po ustawieniu §5.0) | Restart kontenera `backup` | `OK -> /backups/wms-…`, `off-site OK -> offsite:…`; zielony ping w Healthchecks |
 | 23 | PO | komputer z kluczem prywatnym | pobrać plik `.age` z bucketu, `age -d -i miniwms-backup.key … > kopia.sql.gz`, `gunzip -t kopia.sql.gz` | odszyfrowanie i test OK; wpis w RUNBOOK §5.4 |
 | 24 | Operator | `/hu/<id>/korekta/` | wpisać nową ilość 2000000 | błąd przy polu „Nowa ilość”, stan bez zmian |
+| 25 | Podgląd | `/lokalizacje/` (ponad 200 lokalizacji) | „🏷 Drukuj etykiety” bez filtra; potem wybrać typ / wpisać początek kodu i powtórzyć | najpierw komunikat „Wybrano N lokalizacji — limit… Zawęź filtr”; po zawężeniu PDF |
+| 26 | Podgląd | `/hu/` (ponad 100 palet) | ustawić filtr statusu, przejść „Następna →” | strona 2 z tym samym filtrem; licznik „Strona 2 z N” |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -133,7 +139,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (388 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (401 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

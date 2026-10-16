@@ -86,11 +86,11 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-003 | US-002, US-004, US-015 | brak — do napisania (limit czasu to konfiguracja gunicorna) | #23 |
 | NFR-004 | US-028 | brak — do napisania (`ViewLayerTests.test_movement_list_renders_and_filters` nie sprawdza limitu 500) | historyczny (przed procesem) |
 | NFR-005 | — | `HULabelsLimitTests` | historyczny (przed procesem; #13) |
-| NFR-006 | US-015 | brak — do napisania | #23 |
+| NFR-006 | US-015 | `tests_pagination.LocationLabelsLimitTests` | #23 |
 | NFR-007 | US-004, US-043 | brak — do napisania (limit 5 MB bez testu) | historyczny (przed procesem) |
 | NFR-008 | US-004 | `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests` (poza demo) | #23 |
 | NFR-009 | US-002, US-013 | `tests_input_validation.ImportNumberTests`, `ImportLengthTests` | #23 |
-| NFR-010 | US-015 | `SecurityTests.test_login_log_pagination` (tylko dziennik logowań) | #23 |
+| NFR-010 | US-015 | `tests_pagination.PaginationTests`, `ReportQueryCountTests`; `SecurityTests.test_login_log_pagination` | #23 |
 | NFR-011 | US-028 | brak — do napisania | #23 |
 | NFR-012 | US-005, US-043 | brak — do napisania (wygasanie sesji po 30 min) | historyczny (przed procesem) |
 | NFR-013 | US-009 | `DemoModeViewTests.test_login_rate_limit`; `DemoModeViewTests.test_rate_limit_also_without_demo_mode` | historyczny (przed procesem; #13) |
@@ -136,7 +136,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-018 | US-043 | brak — do napisania | historyczny (przed procesem) |
 | SEC-019 | US-004 | `tests_imports_hardening.BrokenXlsxViewTests`, `LibraryErrorTests`, `DefusedXmlTests` | #23 |
 | SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
-| SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook` | #23 |
+| SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook`; `tests_pagination.LocationLabelsLimitTests` | #23 |
 | SEC-022 | US-011 | `tests_security_headers.SecurityHeadersTests`, `TemplateScanTests`; `check --deploy` w CI | #23 |
 | SEC-023 | US-043 | brak — do napisania (`check --deploy` w CI nie jest testem odpowiedzi) | historyczny (przed procesem) |
 | SEC-024 | US-011 | `SecurityHeadersTests.test_permissions_policy` | #23 |
@@ -179,7 +179,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-012 | Should | NFR-014, NFR-018, NFR-019, SEC-039 | R9 | `tests_backup_script.py` (9) + ćwiczenie w CI — zrobione, #23; ćwiczenie produkcyjne — INFRA |
 | US-013 | Should | FR-001, FR-004, FR-005, FR-018, NFR-009, SEC-015, SEC-017 | T16 | `tests_input_validation.py` (14 testów) — zrobione, #23 |
 | US-014 | Should | SEC-041 | „poza listą” | `tests_open_decisions.py` (+4 testy) — zrobione, #23 |
-| US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` |
+| US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` (13 testów) — zrobione, #23 |
 | US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` |
 | US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` |
 | US-018 | Should | NFR-026, FR-017 | T3 | `tests_services_fixes.py`, `tests_concurrency_pg.py` |

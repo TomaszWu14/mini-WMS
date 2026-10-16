@@ -32,5 +32,9 @@
 10a. **CSP (US-011, ADR-0004): bez `on*=`, `javascript:` i skryptów inline bez nonce.** Skrypt w szablonie:
     `<script nonce="{{ csp_nonce }}">`; potwierdzenia, auto-wysyłka, menu — `data-confirm`, `data-autosubmit`,
     `data-nav-toggle`, `data-history-back` (`static/warehouse/ui.js`). Zewnętrzne CDN są zablokowane.
+9b. **Listy stronicuj przez `paginate()` (`warehouse/pagination.py`, US-015)** — 100 wierszy, linki stron niosą filtry
+    (`page_query`), szablon `{% include "warehouse/_pagination.html" %}`. Queryset z `annotate(Count…)` gubi
+    `Meta.ordering` (GROUP BY) — dodaj `order_by` po unikalnym polu. Wydruk zbiorczy PDF: `count()` i limit
+    (`HU_LABELS_LIMIT`, `LOCATION_LABELS_LIMIT`) przed generowaniem; eksporty CSV/XLSX nie są stronicowane.
 10. **Teksty UI po polsku**, komunikaty z numerem dokumentu/HU (`f"Dokument {doc.number} …"`)
     — trzymaj ten styl.

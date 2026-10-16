@@ -352,7 +352,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Podgląd** chcę list podzielonych na strony i limitu wydruku etykiet lokalizacji, aby przeglądanie i drukowanie nie zajmowały workera na minuty. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R5** (część): `views.py:310-317,375-383,453-474,858-876` |
 | Wymagania | SEC-021; NFR-006, NFR-010; także: NFR-003 |
 | Zależności | — |
@@ -363,7 +363,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** rekordów > ROZMIAR_STRONY; **When** GET `/hu/`, `/lokalizacje/`, `/stany/lokalizacje/`, `/raporty/lokalizacje/`; **Then** strona zawiera ≤ ROZMIAR_STRONY wierszy i nawigację stron; filtry działają.
 3. **Given** lista stronicowana; **When** eksport CSV / XLSX; **Then** zawiera wszystkie rekordy filtra, nie tylko bieżącą stronę.
 
-**Test do napisania:** `PaginationTests`, `LocationLabelsLimitTests` w `warehouse/tests_pagination.py` (nowy).
+**Testy:** `warehouse/tests_pagination.py` — `PaginationTests` (6: ≤ 100 wierszy i nawigacja na 4 listach, druga strona, śmieci w `page` → 200, filtry w linkach stron, filtr zawęża do jednej strony, podsumowanie raportu ze wszystkich lokalizacji), `ExportCompletenessTests` (2), `LocationLabelsLimitTests` (4: > limitu → przekierowanie „Zawęź filtr” bez PDF, limit 200, zawężony filtr → PDF, link wydruku niesie filtry listy), `ReportQueryCountTests` (1, z przeglądu [DB]). Wspólny helper `warehouse/pagination.py` (`PAGE_SIZE = 100`); lista lokalizacji dostała filtry typu i kodu — te same filtry obowiązują przy zbiorczym wydruku etykiet (`LOCATION_LABELS_LIMIT = 200`). Dziennik logowań przeszedł na ten sam helper. Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione (eksporty CSV/XLSX nie są stronicowane).
 
 ### US-016 — Demo: limity obiektów, limiter ścieżek operatora, reset z harmonogramu
 
