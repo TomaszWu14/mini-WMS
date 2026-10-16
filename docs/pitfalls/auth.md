@@ -23,6 +23,9 @@
    uprawnieniami administratora.
 8. **Konta demo chroni `is_demo_account` tylko w `user_edit`.** Nowy widok zmieniający
    hasło/rolę/status musi to sprawdzić osobno (inaczej publiczne demo da się zablokować).
+8a. **2FA (US-010): `TwoFactorRequiredMiddleware`** przepuszcza konto z potwierdzonym TOTP i niezweryfikowaną sesją
+   tylko na `two_factor_verify`, `logout`, `healthz` i pliki statyczne. Nowa trasa potrzebna przed podaniem
+   kodu → dopisz do `ALLOWED_NAMES`. Reset po utracie telefonu: `manage.py reset_2fa <login>`.
 9. **Admin Django jest wyłączony przy `DEMO_MODE=1`** (`config/urls.py`). Funkcje
    serwisowe dodawaj jako komendę `manage.py`, nie jako akcję admina.
 10. **Sesja wygasa po 30 min bezczynności** (`SESSION_COOKIE_AGE=1800`,

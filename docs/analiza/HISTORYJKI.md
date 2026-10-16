@@ -252,7 +252,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Administrator** chcę logować się z drugim składnikiem (TOTP), aby przejęte hasło nie dawało dostępu do kont i `/admin/`. |
 | MoSCoW · rozmiar | Should (warunkowo: DEC-4) · L |
-| Status | do zrobienia — start po decyzji PO (PYT-08) |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R6**; prompt PO sekcja 6 („2FA dla adminów opcjonalnie”); DEC-4 |
 | Wymagania | SEC-006 |
 | Zależności | US-008, US-022; ADR (np. `django-otp`); procedura resetu w RUNBOOK |
@@ -264,7 +264,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** utrata urządzenia; **When** superuser resetuje 2FA poleceniem `manage.py` (procedura w RUNBOOK); **Then** Administrator rejestruje nowe urządzenie.
 4. **Given** Operator lub Podgląd; **Then** logowanie bez zmian.
 
-**Test do napisania:** `AdminTwoFactorTests` w `warehouse/tests_2fa.py` (nowy).
+**Testy:** `warehouse/tests_2fa.py` — `AdminTwoFactorTests` (7: samo hasło → przekierowanie na kod dla widoków admina, pulpitu i operacji; `/admin/` wymaga kodu; poprawny kod → dostęp i powrót pod `next`; zewnętrzny `next` ignorowany; 10 błędnych kodów → 429 i wpisy „Nieudane logowanie”; wylogowanie bez kodu; Administrator bez 2FA bez zmian), `OtherRolesTests` (2: Operator i Podgląd bez zmian, Operator nie włączy 2FA), `EnrollmentTests` (2: QR i pierwszy kod włączają 2FA, błędny kod nie włącza), `ResetCommandTests` (2: `reset_2fa` po utracie telefonu, nieznany login). Macierz dostępu (US-007) uzupełniona o `two_factor_setup` (A) i `two_factor_verify` (L). Decyzja PO 2026-10-16: wdrażamy 2FA (PYT-08). Założenie Z-39 (do potwierdzenia): 2FA **dobrowolne** dla Administratora. Biblioteka: `django-otp` (ADR-0003). Odbiór [BA] 2026-10-16: kryteria 1–4 spełnione.
 
 ### US-011 — CSP, Permissions-Policy, HSTS
 

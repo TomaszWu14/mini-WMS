@@ -64,7 +64,7 @@ Numery linii dotyczą stanu `main` @ `f5be158` z audytu; zmiany wykonywane równ
 | 4.1.5 | 1 | Kontrola dostępu domyślnie odmawia, także przy wyjątku | ⚠️ | `PermissionDenied` → 403 (`roles.py:38-41`), lecz nowy widok bez dekoratora jest publiczny; brak testu macierzowego; TM-10 | RR-24 (Should) |
 | 4.2.1 | 1 | Brak dostępu do cudzych obiektów przez zmianę identyfikatora (IDOR) | n/d | jeden magazyn, jedna firma (Z-06); TM-17 | wraca przy drugim magazynie |
 | 4.2.2 | 1 | Silna ochrona przed CSRF | ✅ | `CsrfViewMiddleware` (`base.py:78`), tokeny w formularzach i `X-CSRFToken`; wyjątek `GET /demo/` (W-1) | — |
-| 4.3.1 | 1 | Interfejsy administracyjne chronione uwierzytelnianiem wieloskładnikowym | ❌ | `/admin/` bez 2FA; w demo wyłączony (`config/urls.py:48-50`); TM-36, W-2 | R6 (Should) |
+| 4.3.1 | 1 | Interfejsy administracyjne chronione uwierzytelnianiem wieloskładnikowym | ⚠️ | 2FA TOTP dla Administratora i `/admin/` (US-010, ADR-0003) — **dobrowolne** (Z-39); w demo `/admin/` wyłączony | wymuszenie — decyzja PO |
 
 ### V5 — Walidacja, sanityzacja i kodowanie
 

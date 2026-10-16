@@ -511,3 +511,7 @@ ul.radio label { display: inline; font-weight: 600; }
   cursor: pointer;
 }
 .demo-reset:hover { background: rgba(92, 36, 8, 0.08); }
+
+/* US-010: kod QR rejestracji 2FA */
+.qr-2fa { max-width: 220px; margin: 12px 0; background: #fff; padding: 8px; }
+.qr-2fa svg { width: 100%; height: auto; display: block; }

@@ -85,6 +85,9 @@ def _demo_entry_limited(request) -> bool:
     )
 
 
+DEMO_TOO_MANY_ACCOUNT = (
+    "Zbyt wiele nieudanych prób logowania na to konto. Spróbuj ponownie za 15 minut."
+)
 DEMO_TOO_MANY = (
     "Zbyt wiele wejść do demo z tego adresu. Spróbuj ponownie za kilka minut."
 )
@@ -116,10 +119,7 @@ class LoginView(auth_views.LoginView):
                 ip=ip,
                 user_agent=user_agent,
             )
-            return _too_many(
-                "Zbyt wiele nieudanych prób logowania na to konto. "
-                "Spróbuj ponownie za 15 minut."
-            )
+            return _too_many(DEMO_TOO_MANY_ACCOUNT)
         return super().post(request, *args, **kwargs)
 
 

@@ -72,6 +72,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
     "warehouse",
 ]
 
@@ -84,6 +86,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # US-010: sesja zna stan 2FA; konto z TOTP po samym haśle → ekran kodu.
+    "django_otp.middleware.OTPMiddleware",
+    "warehouse.two_factor.TwoFactorRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -160,6 +165,9 @@ CACHES = {
 # Limit nieudanych logowań na konto (niezależnie od IP) — decyzja PO 2026-10-16.
 LOGIN_ACCOUNT_LIMIT = 10
 LOGIN_ACCOUNT_WINDOW = 15 * 60  # sekund
+
+# US-010: nazwa wydawcy w aplikacji uwierzytelniającej.
+OTP_TOTP_ISSUER = "mini-WMS"
 
 # US-008 / R6: nowe hasła w argon2; stare hashe PBKDF2 Django podnosi przy
 # kolejnym udanym logowaniu (pierwszy hasher = docelowy, reszta = odczyt).

@@ -1,0 +1,28 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Weryfikacja dwuetapowa — mini-WMS{% endblock %}
+{% block content %}
+<h1>Weryfikacja dwuetapowa (2FA)</h1>
+<div class="panel form-narrow">
+{% if enabled %}
+  <p><span class="badge badge-ZMAGAZYNOWANY">włączona</span> Przy każdym logowaniu po haśle podajesz kod z aplikacji.</p>
+  <p class="muted">Zmiana telefonu lub utrata urządzenia: superuser wykonuje <code>python manage.py reset_2fa {{ user.username }}</code>, potem rejestrujesz aplikację ponownie na tej stronie.</p>
+{% else %}
+  <ol>
+    <li>Zeskanuj kod QR aplikacją uwierzytelniającą (Google Authenticator, Aegis, 1Password…).</li>
+    <li>Wpisz 6-cyfrowy kod, który pokaże aplikacja.</li>
+  </ol>
+  <div class="qr-2fa">{{ qr_svg }}</div>
+  <p class="muted">Nie możesz zeskanować? Wpisz ręcznie klucz: <code>{{ secret }}</code></p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="field">
+      <label for="{{ form.token.id_for_label }}">{{ form.token.label }}</label>
+      {{ form.token }}
+      {{ form.token.errors }}
+    </div>
+    <button class="btn" type="submit">Włącz 2FA</button>
+  </form>
+{% endif %}
+</div>
+{% endblock %}

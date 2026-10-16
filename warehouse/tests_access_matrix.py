@@ -96,6 +96,9 @@ MATRIX = {
     "login_log": ADMIN,
     "user_create": ADMIN,
     "user_edit": ADMIN,
+    "two_factor_setup": ADMIN,
+    # drugi krok logowania (US-010) — każdy zalogowany; bez urządzenia przekierowuje
+    "two_factor_verify": LOGGED_IN,
 }
 
 # Nieistniejące obiekty: kontrola roli działa przed pobraniem obiektu, a dla roli

@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **2FA dla Administratora (US-010):** na **Użytkownicy → Moja weryfikacja dwuetapowa** (`/2fa/`)
+  Administrator skanuje kod QR aplikacją (Google Authenticator, Aegis…) i wpisuje pierwszy kod. Od
+  tej pory po haśle aplikacja pyta o 6-cyfrowy kod (także przed `/admin/`). Włączenie jest dobrowolne;
+  Operator i Podgląd logują się jak dotąd. Utrata telefonu: RUNBOOK §8.3b (`manage.py reset_2fa`).
 - **Blokada konta (US-009):** po 10 nieudanych logowaniach w 15 minut na to samo konto (z dowolnych
   adresów) kolejne próby — także z poprawnym hasłem — kończą się komunikatem „Zbyt wiele nieudanych prób
   logowania na to konto. Spróbuj ponownie za 15 minut.” Inne konta działają. W dzienniku logowań
@@ -99,6 +103,8 @@
 | 14 | admin infrastruktury | Coolify (prod i demo) → Scheduled Tasks | dodać `purge-login-events` i `clearsessions` wg COOLIFY.md §10a, uruchomić ręcznie „Execute now” | log „Usunięto N wpisów…”, brak błędów |
 | 15 | anonim (przeglądarka prywatna) | demo: `/demo/` | odświeżyć 11 razy w ciągu minuty (wylogowując się) | 11. raz: „Zbyt wiele wejść do demo…” |
 | 16 | Administrator | demo: `/uzytkownicy/dziennik/` | spojrzeć na nowe wpisy | kolumny IP i przeglądarka puste |
+| 18 | Administrator | `/2fa/` | zeskanować QR, wpisać kod; wylogować się i zalogować | po haśle ekran „Weryfikacja dwuetapowa”; po kodzie pełny dostęp |
+| 19 | superuser | kontener `web` → Terminal | `python manage.py reset_2fa <login>` | „Usunięto 1 urządzeń 2FA…”; logowanie samym hasłem |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -108,11 +114,12 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracja `0009_loginevent_blocked_kind` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (316 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (329 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009` zastosowana; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009` zastosowana; tabela `miniwms_cache` istnieje |
 
-Nowe migracje w tym branchu: `warehouse/migrations/0009_loginevent_blocked_kind.py` (US-009) — tylko lista wyborów
+Nowe migracje w tym branchu: biblioteki `otp_totp` 0001–0003 (US-010, nowa tabela urządzeń 2FA) oraz
+`warehouse/migrations/0009_loginevent_blocked_kind.py` (US-009) — tylko lista wyborów
 `LoginEvent.kind`, bez zmian w danych. Odwracalna: tak (`python manage.py migrate warehouse 0008`).
 Poza migracjami: tabela cache `miniwms_cache` (`createcachetable`, idempotentne, w `entrypoint.sh`).
 Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
@@ -122,7 +129,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 |---|---|---|---|
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
-| — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
+| — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0`, `django-otp==1.7.4` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
 Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma
@@ -137,7 +144,8 @@ wszystkie trzy zmienne), `COOLIFY.md` — nie dotyczy (wariant Coolify już wyma
 ## 4. Plan wycofania
 1. Kod: Coolify → zasób → **Deployments** → poprzedni deployment → **Redeploy**
    (albo revert PR na `main`). Poprzedni obraz zawiera pip — bez wpływu na działanie.
-2. Migracje: przed redeployem poprzedniej wersji `python manage.py migrate warehouse 0008` w kontenerze `web`
+2. Migracje: przed redeployem poprzedniej wersji `python manage.py migrate otp_totp zero` (usuwa urządzenia 2FA)
+   i `python manage.py migrate warehouse 0008` w kontenerze `web`
    (wpisy „Zablokowana próba” zostaną w tabeli z kodem `BLOCKED` — stara wersja pokaże sam kod). Tabelę
    `miniwms_cache` można zostawić.
 3. Zmienne środowiskowe: nic do cofania. Jeśli po deployu kontener nie wstaje z

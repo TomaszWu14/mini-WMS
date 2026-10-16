@@ -1,0 +1,20 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Weryfikacja dwuetapowa — mini-WMS{% endblock %}
+{% block content %}
+<h1>Weryfikacja dwuetapowa</h1>
+<div class="panel form-narrow">
+  <p>Wpisz 6-cyfrowy kod z aplikacji uwierzytelniającej (np. Google Authenticator, Aegis, 1Password).</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {{ form.non_field_errors }}
+    <div class="field">
+      <label for="{{ form.token.id_for_label }}">{{ form.token.label }}</label>
+      {{ form.token }}
+      {{ form.token.errors }}
+    </div>
+    <button class="btn" type="submit">Potwierdź</button>
+  </form>
+  <p class="muted">Nie masz telefonu? Poproś superusera o reset 2FA (RUNBOOK §8.3b).</p>
+</div>
+{% endblock %}

@@ -453,6 +453,19 @@ Czego nie robić: nie usuwać konta ani wpisów `LoginEvent` przed zabezpieczeni
    `python manage.py shell -c "from django.core.cache import cache; cache.clear()"` — czyści wszystkie liczniki
    (także limity per IP i blokadę resetu demo), nie wylogowuje nikogo.
 
+### 8.3b Utrata telefonu z aplikacją 2FA (US-010)
+
+| | |
+|---|---|
+| Kto | superuser (w kontenerze `web`) |
+| Kiedy | Administrator z włączonym 2FA nie ma dostępu do aplikacji uwierzytelniającej |
+| Status | nieprzećwiczona |
+
+1. **Potwierdź tożsamość** osoby zgłaszającej poza aplikacją (telefon, osobiście) — reset 2FA to obejście drugiego składnika.
+2. W kontenerze `web`: `python manage.py reset_2fa <login>` — usuwa urządzenia TOTP konta, wypisuje ich liczbę.
+3. Administrator loguje się hasłem i od razu rejestruje nowe urządzenie: **Użytkownicy → Moja weryfikacja dwuetapowa** (`/2fa/`).
+4. Jeśli telefon mógł trafić w obce ręce — zmień też hasło konta (8.3).
+
 ### 8.4 Uszkodzenie danych
 
 | | |

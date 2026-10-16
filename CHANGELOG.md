@@ -7,6 +7,8 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 ## [Unreleased]
 
 ### Added
+- **US-010:** weryfikacja dwuetapowa (TOTP) dla Administratora — włączana na `/2fa/` (Użytkownicy → Moja weryfikacja
+  dwuetapowa), wymagana po haśle przy każdym logowaniu, także dla `/admin/`; reset `manage.py reset_2fa <login>` (ADR-0003).
 - Audyt stanu repozytorium z trzech perspektyw ([BA] / [DEV] / [SEC]) z top 10 ryzyk i mapą tras — `docs/AUDYT.md` (#23).
 - Rejestr założeń „do potwierdzenia” — `docs/analiza/ZALOZENIA.md` (#23).
 - Dokumentacja procesu zespołowego: `CONTRIBUTING.md` (Definition of Ready/Done, konwencje), `SECURITY.md`,

@@ -262,7 +262,7 @@ do czasu odpowiedzi (pozycje z numerem Z-nn są w [ZALOZENIA.md](ZALOZENIA.md)).
 | PYT-05 | `seed_demo` bez `DEMO_MODE`: odmowa czy konta z nieużywalnym hasłem (`set_unusable_password()`)? | SEC-027, US-003 | odmowa |
 | PYT-06 | Administrator wchodzący na konto superusera: 403 także na GET czy podgląd tylko do odczytu? Czy zmiana cudzego hasła wymaga potwierdzenia własnym hasłem? | SEC-009, US-001 | 403 na GET i POST; bez potwierdzenia hasłem |
 | PYT-07 | Limit per konto: blokada czasowa (ryzyko zablokowania cudzego konta) czy rosnące opóźnienie? Jakie N i okno? | SEC-004, US-009 | blokada czasowa, okno 5 min |
-| PYT-08 | Czy wdrażamy 2FA, dla kogo (Administrator / wszyscy / tylko `/admin/`) i kiedy? | SEC-006, US-010, DEC-4 | po decyzji o wdrożeniu u klienta |
+| PYT-08 | Czy wdrażamy 2FA, dla kogo (Administrator / wszyscy / tylko `/admin/`) i kiedy? | SEC-006, US-010, DEC-4 | **odpowiedziane 2026-10-16:** wdrażamy (US-010); tryb dobrowolny dla Administratora — Z-39 do potwierdzenia |
 | PYT-09 | Dziennik logowań: czy zapisywać user-agent (skracać / wcale)? Jak traktować „wpisany login”, którego nie ma w bazie? Czy retencja kopii zapasowych (7 / 30 dni) wystarcza wobec prawa do usunięcia? | SEC-032, SEC-035, US-005, US-022 | retencja 90 dni (Z-09); UA bez zmian do decyzji |
 | PYT-10 | Kto jest administratorem danych, czy jest IOD? Czy prawa osób obsługujemy procedurą ręczną, czy narzędziem? Czy kolumna „Kto” w eksporcie ruchów jest potrzebna? | SEC-037, SEC-038, US-023, US-027 | procedura ręczna w `RODO.md` |
 | PYT-11 | Czy `/admin/` Django ma pozwalać superuserowi edytować i usuwać ruchy (`StockMovement`) oraz dziennik logowań? | SEC-034 | bez zmian do decyzji |
