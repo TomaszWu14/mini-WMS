@@ -5,10 +5,18 @@
 | Branch | `claude/new-session-u8tqyj` (nazwa techniczna sesji Claude) |
 | PR | #23 (draft) |
 | Data | 2026-10-16 |
-| Ryzyko | niskie–średnie — logika aplikacji bez zmian (dwa komentarze w kodzie); zmienia się obraz Dockera (bez pip/setuptools/wheel w runtime) i CI (nowe joby blokujące) |
+| Ryzyko | średnie — dwie poprawki bezpieczeństwa zmieniają zachowanie (US-001, US-002); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
 
 ## 1. Co zmieniono
-- Zmiany widoczne dla użytkowników magazynu: nie dotyczy.
+- **Zmiany widoczne dla użytkowników:**
+  - (US-001) Administrator, który nie jest superuserem, nie może już edytować konta superusera ani
+    konta z dostępem do panelu `/admin/` — dostaje stronę „Brak uprawnień”, a na liście użytkowników
+    zamiast „Edytuj” widzi kreskę. Hasło superusera zmienia superuser (`/admin/` albo
+    `python manage.py changepassword <login>` w kontenerze).
+  - (US-002) Przyjęcie: najwyżej 500 palet i 1 000 000 sztuk na raz — powyżej formularz pokazuje błąd.
+    Import przyjęć: najwyżej 2 000 palet w pliku; import stanów: najwyżej 2 000 wierszy. Plik ponad
+    limit jest odrzucany w całości z komunikatem „Podziel plik; nic nie zapisano”. Liczby spoza
+    zakresu w pliku dają komunikat przy wierszu zamiast błędu serwera.
 - **Dokumentacja procesu i produktu** (wszystko w statusie „szkic 0.1 — do akceptacji PO”):
   `docs/AUDYT.md` (stan wyjściowy, ryzyka R1–R10, pytania), `CONTRIBUTING.md` (role, 7 kroków,
   Definition of Ready/Done, konwencje, narzędzia), `SECURITY.md`, `CHANGELOG.md`, szablony issue
@@ -38,6 +46,9 @@
 | 2 | — | GitHub → Actions → `security` → Run workflow | uruchomić ręcznie | 4 joby kończą się sukcesem (doradcze), artefakty `weekly-*` |
 | 3 | — | GitHub → podgląd `README.md` | kliknąć kilka linków z sekcji „Proces zespołowy” | dokumenty otwierają się, diagramy Mermaid renderują się (C4 w ARCHITEKTURA, DFD w THREAT_MODEL) |
 | 4 | `demo_operator` (Operator) | demo po deployu: `/skaner/` → Rozmieszczanie | zeskanować paletę i lokalizację | działa jak przed zmianą (obraz bez pip nie wpływa na aplikację) |
+| 6 | konto z rolą Administrator (nie superuser) | `/uzytkownicy/` | spojrzeć na wiersz superusera; wejść ręcznie na `/uzytkownicy/<id superusera>/` | brak przycisku „Edytuj”; strona „Brak uprawnień” |
+| 7 | `demo_operator` (Operator) | `/przyjecie/` | wpisać 501 palet | błąd przy polu „Liczba palet”; żadna paleta nie powstaje |
+| 8 | `demo_operator` (Operator) | `/przyjecie/` | 10 szt. na 2 palety | przyjęcie przechodzi jak dotąd |
 | 5 | admin infrastruktury | Coolify → kontener `web` → Logs | po deployu sprawdzić start | migracje bez zmian, `Startuję gunicorn`, brak błędów o `pip` |
 
 ## 3. Checklista wdrożenia
