@@ -3,7 +3,17 @@
 {% block content %}
 <h1>Lokalizacje</h1>
 <div class="toolbar">
-  <a class="btn btn-secondary" href="{% url 'location_labels' %}" target="_blank">🏷 Drukuj etykiety</a>
+  <form method="get" class="inline" style="display:flex; gap:8px; flex-wrap:wrap">
+    <input type="text" name="q" value="{{ query }}" placeholder="Kod lokalizacji…" style="width:200px">
+    <select name="type">
+      <option value="">— wszystkie typy —</option>
+      {% for value, label in types %}
+        <option value="{{ value }}" {% if value == type %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Filtruj</button>
+  </form>
+  <a class="btn btn-secondary" href="{% url 'location_labels' %}?{{ page_query }}" target="_blank">🏷 Drukuj etykiety</a>
   <div class="spacer"></div>
   {% if is_operator_role %}
     <a class="btn btn-secondary" href="{% url 'location_import' %}">⬆ Import CSV/XLSX</a>
@@ -29,4 +39,5 @@
   </tbody>
 </table>
 </div>
+{% include "warehouse/_pagination.html" with count_label="lokalizacji" %}
 {% endblock %}

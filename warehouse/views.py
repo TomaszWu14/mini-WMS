@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.http import Http404, HttpResponse, HttpResponseForbidden
@@ -50,6 +49,7 @@ from .models import (
     IssueLine,
     IssueStatus,
     Location,
+    LocationType,
     LoginEvent,
     Material,
     MovementType,
@@ -59,6 +59,7 @@ from .models import (
     StocktakeSheet,
     StocktakeStatus,
 )
+from .pagination import paginate
 from .receipt_import import import_receipts
 from .roles import admin_required, operator_required
 from .services import WMSError
@@ -308,15 +309,43 @@ def material_create(request):
 # --- Lokalizacje -------------------------------------------------------------
 
 
+LOCATION_LABELS_LIMIT = 200  # US-015, L_ETYKIET_LOK — jak HU_LABELS_LIMIT (D-11)
+
+
+def _filtered_locations(request):
+    """Filtry listy lokalizacji — te same dla listy i zbiorczego wydruku etykiet."""
+    loc_type = request.GET.get("type", "").strip()
+    query = request.GET.get("q", "").strip()
+    locations = Location.objects.all()
+    if loc_type:
+        locations = locations.filter(type=loc_type)
+    if query:
+        locations = locations.filter(code__icontains=query)
+    return locations, loc_type, query
+
+
 @login_required
 def location_list(request):
-    locations = Location.objects.annotate(
+    locations, loc_type, query = _filtered_locations(request)
+    locations = locations.annotate(
         active_hus=Count(
             "handling_units",
             filter=~Q(handling_units__status=HUStatus.PUSTY),
         )
+    ).order_by("code")  # GROUP BY pomija Meta.ordering — stronicowanie wymaga porządku
+    page, page_query = paginate(request, locations)
+    return render(
+        request,
+        "warehouse/location_list.html",
+        {
+            "locations": page,
+            "page_obj": page,
+            "page_query": page_query,
+            "type": loc_type,
+            "query": query,
+            "types": LocationType.choices,
+        },
     )
-    return render(request, "warehouse/location_list.html", {"locations": locations})
 
 
 @operator_required
@@ -377,10 +406,16 @@ def location_label(request, pk):
 
 @login_required
 def location_labels(request):
-    locations = Location.objects.all()
-    loc_type = request.GET.get("type", "").strip()
-    if loc_type:
-        locations = locations.filter(type=loc_type)
+    locations, _, _ = _filtered_locations(request)
+    # US-015: jak przy HU — nie obcinamy po cichu, prosimy o zawężenie filtra.
+    count = locations.count()
+    if count > LOCATION_LABELS_LIMIT:
+        messages.error(
+            request,
+            f"Wybrano {count} lokalizacji — limit jednego wydruku to "
+            f"{LOCATION_LABELS_LIMIT}. Zawęź filtr.",
+        )
+        return redirect(f"{reverse('location_list')}?{request.GET.urlencode()}")
     pdf = location_labels_pdf(locations)
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = content_disposition_header(
@@ -468,11 +503,14 @@ def hu_list(request):
             | Q(material__index__icontains=query)
             | Q(location__code__icontains=query)
         )
+    page, page_query = paginate(request, hus)
     return render(
         request,
         "warehouse/hu_list.html",
         {
-            "handling_units": hus,
+            "handling_units": page,
+            "page_obj": page,
+            "page_query": page_query,
             "status": status,
             "query": query,
             "statuses": HUStatus.choices,
@@ -881,10 +919,16 @@ def stock_by_location(request):
             | Q(number__icontains=query)
         )
     hus = hus.order_by("location__code", "material__index", "number")
+    page, page_query = paginate(request, hus)
     return render(
         request,
         "warehouse/stock_by_location.html",
-        {"handling_units": hus, "query": query},
+        {
+            "handling_units": page,
+            "page_obj": page,
+            "page_query": page_query,
+            "query": query,
+        },
     )
 
 
@@ -1278,10 +1322,11 @@ def user_list(request):
 @admin_required
 def login_log(request):
     qs = LoginEvent.objects.select_related("user")
-    paginator = Paginator(qs, 100)
-    page = paginator.get_page(request.GET.get("page"))
+    page, page_query = paginate(request, qs)
     return render(
-        request, "warehouse/login_log.html", {"events": page, "page_obj": page}
+        request,
+        "warehouse/login_log.html",
+        {"events": page, "page_obj": page, "page_query": page_query},
     )
 
 
@@ -1373,26 +1418,29 @@ def report_locations(request):
     locs = Location.objects.annotate(
         active=Count("handling_units", filter=~Q(handling_units__status=HUStatus.PUSTY))
     ).order_by("code")
-    rows = []
-    occupied = free_slots = empty_locs = 0
-    for loc in locs:
-        free = max(0, loc.capacity - loc.active)
-        free_slots += free
-        if loc.active > 0:
+    # US-015: podsumowanie liczone ze wszystkich lokalizacji (dwie liczby na wiersz),
+    # tabela — tylko bieżąca strona.
+    total = occupied = free_slots = 0
+    for capacity, active in locs.values_list("capacity", "active"):
+        total += 1
+        free_slots += max(0, capacity - active)
+        if active > 0:
             occupied += 1
-        else:
-            empty_locs += 1
-        rows.append({"loc": loc, "active": loc.active, "free": free})
     summary = {
-        "total": len(rows),
+        "total": total,
         "occupied": occupied,
-        "empty": empty_locs,
+        "empty": total - occupied,
         "free_slots": free_slots,
     }
+    page, page_query = paginate(request, locs)
+    rows = [
+        {"loc": loc, "active": loc.active, "free": max(0, loc.capacity - loc.active)}
+        for loc in page
+    ]
     return render(
         request,
         "warehouse/report_locations.html",
-        {"rows": rows, "summary": summary},
+        {"rows": rows, "summary": summary, "page_obj": page, "page_query": page_query},
     )
 
 

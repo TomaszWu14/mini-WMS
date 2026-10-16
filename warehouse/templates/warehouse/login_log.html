@@ -28,18 +28,5 @@
 </table>
 </div>
 
-{% if page_obj.paginator.num_pages > 1 %}
-<div class="toolbar" style="margin-top:12px">
-  {% if page_obj.has_previous %}
-    <a class="btn btn-sm btn-secondary" href="?page={{ page_obj.previous_page_number }}">← Nowsze</a>
-  {% endif %}
-  <div class="spacer"></div>
-  <span class="muted">Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
-    ({{ page_obj.paginator.count }} zdarzeń)</span>
-  <div class="spacer"></div>
-  {% if page_obj.has_next %}
-    <a class="btn btn-sm btn-secondary" href="?page={{ page_obj.next_page_number }}">Starsze →</a>
-  {% endif %}
-</div>
-{% endif %}
+{% include "warehouse/_pagination.html" with count_label="zdarzeń" prev_label="Nowsze" next_label="Starsze" %}
 {% endblock %}
