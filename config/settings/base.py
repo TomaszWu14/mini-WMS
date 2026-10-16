@@ -91,6 +91,8 @@ MIDDLEWARE = [
     "warehouse.two_factor.TwoFactorRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # US-011: CSP z nonce i Permissions-Policy (ADR-0004).
+    "warehouse.csp.SecurityHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -108,6 +110,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "warehouse.context_processors.role_flags",
                 "warehouse.demo.demo_context",
+                "warehouse.csp.csp_context",
             ],
         },
     },
@@ -167,6 +170,9 @@ CACHES = {
 # Limit nieudanych logowań na konto (niezależnie od IP) — decyzja PO 2026-10-16.
 LOGIN_ACCOUNT_LIMIT = 10
 LOGIN_ACCOUNT_WINDOW = 15 * 60  # sekund
+
+# US-011: CSP egzekwowana; awaryjnie tryb raportowania (DJANGO_CSP_REPORT_ONLY=1).
+CSP_REPORT_ONLY = env_bool("DJANGO_CSP_REPORT_ONLY", False)
 
 # US-010: nazwa wydawcy w aplikacji uwierzytelniającej.
 OTP_TOTP_ISSUER = "mini-WMS"

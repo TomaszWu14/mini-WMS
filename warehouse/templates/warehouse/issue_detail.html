@@ -42,7 +42,7 @@
         <td class="text-right">
           {% if is_operator_role and doc.status == "OTWARTY" %}
             <form method="post" action="{% url 'issue_line_delete' doc.pk line.pk %}" class="inline"
-                  onsubmit="return confirm('Usunąć pozycję?')">
+                  data-confirm="Usunąć pozycję?">
               {% csrf_token %}
               <button class="btn btn-sm btn-danger" type="submit">Usuń</button>
             </form>
@@ -85,19 +85,19 @@
 
 <div class="toolbar" style="margin-top:18px">
   <form method="post" action="{% url 'issue_execute' doc.pk %}"
-        onsubmit="return confirm('Zrealizować wydanie i zdjąć stany?')">
+        data-confirm="Zrealizować wydanie i zdjąć stany?">
     {% csrf_token %}
     <button class="btn" type="submit">✅ Realizuj wydanie</button>
   </form>
   <form method="post" action="{% url 'issue_execute' doc.pk %}"
-        onsubmit="return confirm('Zamknąć zlecenie wydając tylko dostępny stan (z brakami)?')">
+        data-confirm="Zamknąć zlecenie wydając tylko dostępny stan (z brakami)?">
     {% csrf_token %}
     <input type="hidden" name="partial" value="1">
     <button class="btn btn-secondary" type="submit">⚠ Zamknij z brakami</button>
   </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   function refresh() {
     var mode = document.querySelector('input[name="mode"]:checked');

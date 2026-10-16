@@ -137,10 +137,10 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-019 | US-004 | `tests_imports_hardening.BrokenXlsxViewTests`, `LibraryErrorTests`, `DefusedXmlTests` | #23 |
 | SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
 | SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook` | #23 |
-| SEC-022 | US-011 | n/d — `check --deploy` w CI; test nagłówków do napisania | #23 |
+| SEC-022 | US-011 | `tests_security_headers.SecurityHeadersTests`, `TemplateScanTests`; `check --deploy` w CI | #23 |
 | SEC-023 | US-043 | brak — do napisania (`check --deploy` w CI nie jest testem odpowiedzi) | historyczny (przed procesem) |
-| SEC-024 | US-011 | brak — do napisania | #23 |
-| SEC-025 | US-011 | brak — do napisania | #23 |
+| SEC-024 | US-011 | `SecurityHeadersTests.test_permissions_policy` | #23 |
+| SEC-025 | US-011 | `HstsSettingsTests.test_prod_hsts` | #23 |
 | SEC-026 | US-003 | `tests_deploy_settings.ProdSecretKeyTests` (7); `ComposeSecretsTests`; `EntrypointSuperuserPasswordTests`; krok CI walidujący compose bez sekretów | #23 |
 | SEC-027 | US-003 | `tests_deploy_settings.SeedDemoModeTests` (2); `SeedDemoTests.test_reset_refused_without_demo_mode` | #23 |
 | SEC-028 | US-006 | n/d — CI (gitleaks, bandit) | #23 |
@@ -175,7 +175,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-008 | Should | SEC-001 | R6 | `tests_passwords.py` (6 testów) — zrobione, #23 |
 | US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` (11 testów) — zrobione, #23 |
 | US-010 | Should | SEC-006 | R6 | `tests_2fa.py` (13 testów) — zrobione, #23 |
-| US-011 | Should | SEC-022, SEC-024, SEC-025 | R8 | `tests_security_headers.py` |
+| US-011 | Should | SEC-022, SEC-024, SEC-025 | R8 | `tests_security_headers.py` (11 testów) — zrobione, #23; kryterium 3 ręcznie |
 | US-012 | Should | NFR-014, NFR-018, NFR-019, SEC-039 | R9 | n/d (RUNBOOK) |
 | US-013 | Should | FR-001, FR-004, FR-005, FR-018, NFR-009, SEC-015, SEC-017 | T16 | `tests_input_validation.py` |
 | US-014 | Should | SEC-041 | „poza listą” | `tests_open_decisions.py` (rozszerzenie) |

@@ -272,7 +272,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[SEC]** chcę ścisłej polityki treści i ograniczenia uprawnień przeglądarki, aby przyszły błąd szablonu lub JS nie dał pełnego zasięgu (kradzież sesji operatora). |
 | MoSCoW · rozmiar | Should · L |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji); kryterium 3 — test ręczny na telefonie |
 | Źródło | AUDYT §3.3 **R8** (Ś); `base.py:71-82`, `prod.py:38-40`, `scanner/base.html` |
 | Wymagania | SEC-022, SEC-024, SEC-025 |
 | Zależności | usunięcie 7 inline handlerów `onclick` i inline `window.CSRF`; `django-csp` (ADR); test ręczny skanera na telefonie |
@@ -285,7 +285,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 4. **Given** produkcja; **Then** `Permissions-Policy` zawiera `camera=(self)` i `geolocation=()`.
 5. **Given** HSTS; **Then** wartość ≥ 1 rok albo `preload` wyłączony (test ustawień).
 
-**Test do napisania:** `SecurityHeadersTests` w `warehouse/tests_security_headers.py` (nowy; `override_settings` na ustawieniach produkcyjnych).
+**Testy:** `warehouse/tests_security_headers.py` — `TemplateScanTests` (2: brak `on*=`/`javascript:`, każdy `<script>` inline z nonce), `SecurityHeadersTests` (8: CSP z nonce bez `unsafe-inline`/`unsafe-eval` na 9 stronach w tym skanera, nonce z nagłówka na każdym skrypcie inline odpowiedzi, nonce inny na każde żądanie, `frame-ancestors`/`object-src`/`base-uri`, `Permissions-Policy` z `camera=(self)` i `geolocation=()`, API JSON bez CSP, przełącznik Report-Only, panel `/admin/` bez wykonywalnych skryptów inline), `HstsSettingsTests` (1: produkcja — `preload` wyłączony, CSP egzekwowana). Sprawdzenie [DEV] w Chromium (Playwright, poza CI): 22 strony demo — 0 naruszeń CSP; działają menu, auto-filtr, różnica w spisie, potwierdzenia, „Anuluj”; próba kontrolna — wstrzyknięty `<script>` i `onerror` zablokowane. Decyzja [DEV] (ADR-0004): CSP egzekwowana od razu, awaryjnie `DJANGO_CSP_REPORT_ONLY=1`. Odbiór [BA] 2026-10-16: kryteria 1, 2, 4, 5 spełnione; **3 (kamera na telefonie przez HTTPS) — do wykonania ręcznie po deployu**.
 
 ### US-012 — Backup off-site, szyfrowany, z testem odtworzenia
 

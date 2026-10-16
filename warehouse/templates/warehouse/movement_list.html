@@ -4,7 +4,7 @@
 <h1>Ruchy magazynowe</h1>
 <div class="toolbar">
   <form method="get" class="inline">
-    <select name="type" onchange="this.form.submit()">
+    <select name="type" data-autosubmit>
       <option value="">— wszystkie typy —</option>
       {% for value, label in types %}
         <option value="{{ value }}" {% if value == type %}selected{% endif %}>{{ label }}</option>

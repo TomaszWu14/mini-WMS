@@ -47,6 +47,10 @@ SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", True)  # noqa: F405
 SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "2592000"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# US-011 / SEC-025: bez `preload` — wpis na listę preload przeglądarek wymaga roku i jest
+# praktycznie nieodwracalny; 30 dni wystarczy, dopóki domena i HTTPS się nie ustabilizują.
+SECURE_HSTS_PRELOAD = False
+# Świadomie bez preload (ADR-0004) — ostrzeżenie Django o preload wyciszone.
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"

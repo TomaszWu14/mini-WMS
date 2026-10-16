@@ -132,9 +132,9 @@ Numery linii dotyczą stanu `main` @ `f5be158` z audytu; zmiany wykonywane równ
 | 14.1.1 | 2 | Build i wdrożenie powtarzalne i zautomatyzowane | ⚠️ | CI, Dockerfile, auto-deploy Coolify; brak locka zależności (T7), obraz po tagu; R10; TM-52 | US-006 |
 | 14.2.1 | 1 | Komponenty aktualne, sprawdzane narzędziem do zależności | ⚠️ | `pip-audit` miesięcznie i doradczo, brak Dependabota; R10 | US-006 |
 | 14.3.2 | 1 | Tryb debug wyłączony w produkcji | ✅ | `DJANGO_DEBUG=0` w obrazie (`Dockerfile:23`), `prod.py:9`; uwaga: brak zmiennej poza Dockerem = dev (`docs/pitfalls/deploy.md` #3) | — |
-| 14.4.3 | 1 | Content-Security-Policy ogranicza skutki XSS | ❌ | brak CSP; R8; TM-16 | R8 (Should) |
+| 14.4.3 | 1 | Content-Security-Policy ogranicza skutki XSS | ✅ | `script-src 'self' 'nonce-…'` bez `unsafe-inline` (US-011, ADR-0004, `tests_security_headers.py`); TM-16 | R8 (Should) |
 | 14.4.4, 14.4.6, 14.4.7 | 1 | `X-Content-Type-Options`, `Referrer-Policy`, ochrona przed osadzaniem w ramkach | ✅ | `prod.py:41-42`; `XFrameOptionsMiddleware` (`base.py:81`), domyślnie `DENY` | — |
-| 14.4.5 | 1 | HSTS na wszystkich odpowiedziach, minimum rok | ⚠️ | `SECURE_HSTS_SECONDS` 30 dni (`prod.py:38`), `preload` bez efektu; TM-03 | R8 (Should) |
+| 14.4.5 | 1 | HSTS na wszystkich odpowiedziach, minimum rok | ⚠️ | `SECURE_HSTS_SECONDS` 30 dni (`DJANGO_HSTS_SECONDS`), `preload` wyłączony (US-011); rok — po stabilizacji domeny; TM-03 | R8 (Should) |
 
 ## 3. Podsumowanie
 

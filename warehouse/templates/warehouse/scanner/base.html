@@ -18,7 +18,7 @@
   <main class="scn-main">
     {% block content %}{% endblock %}
   </main>
-  <script>window.CSRF = "{{ csrf_token }}";</script>
+  <script nonce="{{ csp_nonce }}">window.CSRF = "{{ csrf_token }}";</script>
   <script src="{% static 'warehouse/scanner.js' %}"></script>
   <script src="{% static 'warehouse/vendor/jsQR.js' %}"></script>
   <script src="{% static 'warehouse/scanner_camera.js' %}"></script>

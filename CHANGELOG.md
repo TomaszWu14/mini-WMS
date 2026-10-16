@@ -52,6 +52,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   także z poprawnym hasłem, dostają 429; zdarzenie „Zablokowana próba” w dzienniku. Blokada obejmuje też `/admin/login/` i warianty unicode loginu;
   konta demo w `DEMO_MODE` nie są blokowane. Liczniki są wspólne dla wszystkich workerów (licznik konta w tabeli, limity per IP
   w DatabaseCache, ADR-0002). Migracje `0009` (lista wyborów `LoginEvent.kind`) i `0010` (tabela liczników). Testy: `tests_login_limits.py`.
+- **US-011 / R8:** nagłówek `Content-Security-Policy` z nonce (bez `unsafe-inline` dla skryptów) i `Permissions-Policy`
+  (kamera tylko dla własnej domeny, bez geolokalizacji) na wszystkich stronach; atrybuty `on*=` zastąpione `data-*` + `ui.js`;
+  HSTS bez `preload`. Awaryjnie `DJANGO_CSP_REPORT_ONLY=1`. Testy: `warehouse/tests_security_headers.py` (ADR-0004).
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

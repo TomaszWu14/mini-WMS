@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Nagłówki bezpieczeństwa (US-011):** przeglądarka dostaje `Content-Security-Policy` i `Permissions-Policy`.
+  Wygląd i działanie bez zmian. Gdyby po deployu coś na stronie przestało działać (np. przycisk nic nie
+  robi), w konsoli przeglądarki będzie „Refused to execute… Content Security Policy” — wtedy ustawić
+  w Coolify `DJANGO_CSP_REPORT_ONLY=1` i redeploy (tryb tylko raportowania), zgłosić stronę. HSTS bez `preload`.
 - **2FA dla Administratora (US-010):** na **Użytkownicy → Moja weryfikacja dwuetapowa** (`/2fa/`)
   Administrator skanuje kod QR aplikacją (Google Authenticator, Aegis…) i wpisuje pierwszy kod. Od
   tej pory po haśle aplikacja pyta o 6-cyfrowy kod (także przed `/admin/`). Włączenie jest dobrowolne;
@@ -105,6 +109,8 @@
 | 16 | Administrator | demo: `/uzytkownicy/dziennik/` | spojrzeć na nowe wpisy | kolumny IP i przeglądarka puste |
 | 18 | Administrator | `/2fa/` | zeskanować QR, wpisać kod; wylogować się i zalogować | po haśle ekran „Weryfikacja dwuetapowa”; po kodzie pełny dostęp |
 | 19 | superuser | kontener `web` → Terminal | `python manage.py reset_2fa <login>` | „Usunięto 1 urządzeń 2FA…”; logowanie samym hasłem |
+| 20 | `demo_operator` na telefonie | demo przez HTTPS: `/skaner/rozmieszczanie/` | „Skanuj aparatem”, zeskanować etykietę palety | kamera startuje, kod odczytany (US-011 kryt. 3) |
+| 21 | dowolne | dowolna strona → narzędzia deweloperskie → Konsola | przejść kilka ekranów | brak komunikatów „Content Security Policy” |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -114,7 +120,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (341 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (352 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 
@@ -130,6 +136,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
 | — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0`, `django-otp==1.7.4` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
+| `DJANGO_CSP_REPORT_ONLY` | nowa, opcjonalna (domyślnie `0` = CSP egzekwowana) | nie ustawiać | ☐ nie dotyczy (tylko awaryjnie `1`) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
 Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma

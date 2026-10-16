@@ -25,5 +25,8 @@
    `scanner_views.py`), nie do `views.py`.
 9. **Eksporty (`stock_export`, `movement_export`) budują wiersze w pamięci.** Przy dużej
    historii ruchów filtruj zakres dat zanim dodasz nowe kolumny.
+10a. **CSP (US-011, ADR-0004): bez `on*=`, `javascript:` i skryptów inline bez nonce.** Skrypt w szablonie:
+    `<script nonce="{{ csp_nonce }}">`; potwierdzenia, auto-wysyłka, menu — `data-confirm`, `data-autosubmit`,
+    `data-nav-toggle`, `data-history-back` (`static/warehouse/ui.js`). Zewnętrzne CDN są zablokowane.
 10. **Teksty UI po polsku**, komunikaty z numerem dokumentu/HU (`f"Dokument {doc.number} …"`)
     — trzymaj ten styl.

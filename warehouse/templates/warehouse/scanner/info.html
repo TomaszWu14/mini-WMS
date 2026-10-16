@@ -25,7 +25,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var S = window.Scanner;
   var scan = document.getElementById("scan");
