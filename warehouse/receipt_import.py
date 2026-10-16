@@ -6,7 +6,7 @@ HU (z ruchem PRZYJECIE).
 Kolumny (nagłówki nieczułe na wielkość liter):
     indeks / ref       — wymagany indeks materiału (musi istnieć w słowniku)
     ilosc / quantity   — wymagana ilość całkowita (>0)
-    palety / pallets   — liczba palet (domyślnie 1)
+    palety / pallets   — liczba palet (domyślnie 1; limity: services.MAX_*)
     lot / partia       — opcjonalna partia
     data_waznosci      — opcjonalna data ważności
     dostawa            — opcjonalny numer dostawy
@@ -24,11 +24,14 @@ from .stock_import import _clean_dash, _find_expiry, _get, _norm, _parse_date
 
 @transaction.atomic
 def import_receipts(filename: str, data: bytes, user):
-    """Tworzy przyjęcia (HU) z pliku. Zwraca podsumowanie i błędy."""
+    """Tworzy przyjęcia (HU) z pliku. Zwraca podsumowanie i błędy.
+
+    Dwa przebiegi (US-002): najpierw walidacja wszystkich wierszy i limitu palet
+    na plik, dopiero potem zapis — plik ponad limit nie zużywa numerów HU.
+    """
     rows = parse_locations_file(filename, data)
-    created_hus = 0
-    pallets_total = 0
     errors: list[str] = []
+    planned = []
 
     for i, row in enumerate(rows, start=2):  # wiersz 1 = nagłówek
         ref = _norm(_get(row, "indeks", "ref", "index", "material"))
@@ -42,7 +45,7 @@ def import_receipts(filename: str, data: bytes, user):
 
         try:
             total = parse_int_cell(_get(row, "ilosc", "ilość", "quantity", "qty"))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             errors.append(f"Wiersz {i} ({ref}): zła ilość.")
             continue
         if not total or total < 1:
@@ -52,7 +55,7 @@ def import_receipts(filename: str, data: bytes, user):
         pallets_raw = _get(row, "palety", "pallets", "liczba palet")
         try:
             pallets = parse_int_cell(pallets_raw) or 1
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             errors.append(f"Wiersz {i} ({ref}): zła liczba palet.")
             continue
         if pallets < 1:
@@ -68,6 +71,23 @@ def import_receipts(filename: str, data: bytes, user):
 
         try:
             quantities = services.split_quantity(total, pallets)
+        except services.WMSError as exc:
+            errors.append(f"Wiersz {i} ({ref}): {exc}")
+            continue
+        planned.append((i, ref, material, quantities, lot, expiry, delivery))
+
+    pallets_total = sum(len(p[3]) for p in planned)
+    if pallets_total > services.MAX_HU_PER_IMPORT:
+        errors.insert(
+            0,
+            f"Plik tworzyłby {pallets_total} palet — limit jednego importu to "
+            f"{services.MAX_HU_PER_IMPORT}. Podziel plik; nic nie zapisano.",
+        )
+        return {"created_hus": 0, "pallets": 0, "errors": errors}
+
+    created_hus = 0
+    for i, ref, material, quantities, lot, expiry, delivery in planned:
+        try:
             result = services.receive_material(
                 material=material,
                 quantities=quantities,
@@ -79,12 +99,10 @@ def import_receipts(filename: str, data: bytes, user):
         except services.WMSError as exc:
             errors.append(f"Wiersz {i} ({ref}): {exc}")
             continue
-
         created_hus += len(result.handling_units)
-        pallets_total += pallets
 
     return {
         "created_hus": created_hus,
-        "pallets": pallets_total,
+        "pallets": created_hus,
         "errors": errors,
     }

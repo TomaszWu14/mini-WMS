@@ -27,9 +27,12 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 ### Security
 - **US-001 / R1:** rola Administrator nie może już zmienić hasła, roli ani statusu konta superusera ani konta `is_staff` (403); lista
   użytkowników nie pokazuje dla takich kont przycisku „Edytuj”. Testy: `warehouse/tests_security.py`.
+- **US-002 / R3:** przyjęcie i import przyjęć mają limity — najwyżej 500 palet i 1 000 000 sztuk na przyjęcie,
+  2 000 palet na plik importu; plik ponad limit jest odrzucany przed jakimkolwiek zapisem, a liczby spoza zakresu
+  dają komunikat zamiast błędu 500. Testy: `warehouse/tests_input_limits.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
-  w `docs/analiza/HISTORYJKI.md` (US-001 zrobione).
+  w `docs/analiza/HISTORYJKI.md` (US-001, US-002 zrobione).
 
 ## [0.1.0] — 2026-10-13
 

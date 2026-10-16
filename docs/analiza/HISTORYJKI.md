@@ -78,7 +78,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Operator** chcę, aby przyjęcie i import odrzucały nierealnie duże liczby palet i ilości, aby jedna pomyłka lub złośliwy plik nie zablokowały numeracji HU i pracy wszystkich. |
 | MoSCoW · rozmiar | Must · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R3** (W na demo / Ś), §3.4 pkt 2; T16 (część); `forms.py:207-213`, `receipt_import.py:54-59`, `services.py:75-162` |
 | Wymagania | SEC-015, SEC-021; NFR-009, NFR-003; także: FR-001, FR-005 |
 | Zależności | wartości L_PAL, L_QTY, L_HU_PLIK (PYT-02); stałe wspólne z US-013 |
@@ -92,7 +92,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 5. **Given** plik, którego suma palet po wszystkich wierszach > L_HU_PLIK; **When** import; **Then** cały plik odrzucony **przed** pierwszym zapisem z komunikatem o limicie, baza bez zmian.
 6. **Given** użytkownik z rolą Podgląd; **When** POST `/przyjecie/`; **Then** nadal 403 (brak regresji SEC-007).
 
-**Test do napisania:** `ReceiveFormLimitTests`, `ReceiptImportLimitTests` w `warehouse/tests_input_limits.py` (nowy).
+**Testy:** `warehouse/tests_input_limits.py` — `ReceiveFormLimitTests` (5), `ServiceLimitTests` (2), `ReceiptImportLimitTests` (3). Wartości: L_PAL = 500, L_QTY = 1 000 000, L_HU_PLIK = 2 000 (`services.MAX_*`, Z-23/Z-35). Odbiór [BA] 2026-10-16: kryteria 1–6 spełnione; komunikaty mówią, co zrobić („podziel dostawę / plik”).
 
 ### US-003 — Wdrożenie nie startuje ze słabymi sekretami; konta demo tylko w trybie demo
 

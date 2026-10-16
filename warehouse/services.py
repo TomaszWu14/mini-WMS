@@ -35,6 +35,14 @@ class WMSError(Exception):
     """Błąd reguły biznesowej (np. brak stanu, zła ilość)."""
 
 
+# --- Limity wejścia (US-002 / R3; wartości startowe — założenia Z-23, Z-35) ---
+# Jedno przyjęcie ani jeden import nie mogą utworzyć tylu palet, by zająć workera
+# na minuty i trzymać blokadę licznika numeracji HU dla wszystkich użytkowników.
+MAX_PALLETS_PER_RECEIPT = 500
+MAX_RECEIPT_QUANTITY = 1_000_000
+MAX_HU_PER_IMPORT = 2_000
+
+
 def _lock_and_sync(obj):
     """Blokuje wiersz (`select_for_update`) i odświeża PRZEKAZANY obiekt w
     miejscu — ta sama tożsamość Pythona, świeże dane z bazy.
@@ -94,8 +102,12 @@ def split_quantity(total: int, pallets: int) -> list[int]:
     ceil(total/pallets) przy walidacji limitu na paletę."""
     if pallets < 1:
         raise WMSError("Liczba palet musi być dodatnia.")
+    if pallets > MAX_PALLETS_PER_RECEIPT:
+        raise WMSError(f"Najwyżej {MAX_PALLETS_PER_RECEIPT} palet w jednym przyjęciu.")
     if total < 1:
         raise WMSError("Ilość całkowita musi być dodatnia.")
+    if total > MAX_RECEIPT_QUANTITY:
+        raise WMSError(f"Ilość w jednym przyjęciu najwyżej {MAX_RECEIPT_QUANTITY}.")
     base = total // pallets
     remainder = total - base * pallets
     quantities = [base] * pallets
@@ -129,7 +141,15 @@ def receive_material(
     """Tworzy HU dla zadanego materiału wg listy ilości na palety.
 
     Każda paleta = jeden HU ze statusem DO_ULOZENIA (czeka na alokację).
+    Limity sprawdzane przed pobraniem pierwszego numeru HU (US-002).
     """
+    if not quantities or len(quantities) > MAX_PALLETS_PER_RECEIPT:
+        raise WMSError(f"Przyjęcie musi mieć od 1 do {MAX_PALLETS_PER_RECEIPT} palet.")
+    if any(q < 1 for q in quantities) or sum(quantities) > MAX_RECEIPT_QUANTITY:
+        raise WMSError(
+            "Ilość na palecie musi być dodatnia, a łącznie najwyżej "
+            f"{MAX_RECEIPT_QUANTITY}."
+        )
     if material.max_per_pallet:
         for qty in quantities:
             if qty > material.max_per_pallet:

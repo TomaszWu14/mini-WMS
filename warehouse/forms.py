@@ -15,6 +15,7 @@ from .models import (
     Role,
     Unit,
 )
+from .services import MAX_PALLETS_PER_RECEIPT, MAX_RECEIPT_QUANTITY
 
 
 class _MaxSizeFileMixin:
@@ -205,12 +206,20 @@ class ReceiveForm(forms.Form):
         widget=forms.RadioSelect,
     )
     total_quantity = forms.IntegerField(
-        label="Ilość całkowita", min_value=1, required=False
+        label="Ilość całkowita",
+        min_value=1,
+        max_value=MAX_RECEIPT_QUANTITY,
+        required=False,
     )
     qty_per_pallet = forms.IntegerField(
-        label="Ilość na paletę", min_value=1, required=False
+        label="Ilość na paletę",
+        min_value=1,
+        max_value=MAX_RECEIPT_QUANTITY,
+        required=False,
     )
-    pallets = forms.IntegerField(label="Liczba palet", min_value=1)
+    pallets = forms.IntegerField(
+        label="Liczba palet", min_value=1, max_value=MAX_PALLETS_PER_RECEIPT
+    )
 
     lot = forms.CharField(label="Partia / LOT", max_length=50, required=False)
     expiry_date = forms.DateField(
@@ -241,6 +250,14 @@ class ReceiveForm(forms.Form):
                 self.add_error("qty_per_pallet", "Podaj ilość na paletę.")
                 return cleaned
             cleaned["computed_total"] = per_pallet * pallets
+
+        if cleaned["computed_total"] > MAX_RECEIPT_QUANTITY:
+            self.add_error(
+                None,
+                f"Ilość w jednym przyjęciu najwyżej {MAX_RECEIPT_QUANTITY} — "
+                "podziel dostawę na kilka przyjęć.",
+            )
+            return cleaned
 
         # Walidacja maks. ilości na palecie (sztywny limit z materiału).
         if material and material.max_per_pallet:
