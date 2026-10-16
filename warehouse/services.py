@@ -149,32 +149,43 @@ DEMO_LIMIT_SUFFIX = "Dane demo wracają do stanu początkowego codziennie o 03:0
 class DemoBudget:
     """Ile palet (HU) i lokalizacji można jeszcze utworzyć w demo; poza demo bez limitu.
 
-    Liczone raz na operację (import — raz na plik). Równoległe żądania mogą przekroczyć
-    limit o rozmiar jednej operacji — to bezpiecznik na boty, nie księgowość.
+    Każdy rodzaj liczony najwyżej raz na budżet i tylko gdy operacja go dotyczy
+    (import — jeden budżet na plik). COUNT nic nie blokuje: N równoległych operacji
+    może przekroczyć limit łącznie o N × rozmiar operacji — bezpiecznik na boty,
+    nie księgowość (przegląd [DB] US-016).
     """
 
     def __init__(self):
         self.limited = bool(settings.DEMO_MODE)
-        self.hus = self.locations = 0
-        if self.limited:
-            self.hus = DEMO_MAX_HANDLING_UNITS - HandlingUnit.objects.count()
-            self.locations = DEMO_MAX_LOCATIONS - Location.objects.count()
+        self._left: dict[str, int] = {}
+
+    def _remaining(self, kind: str) -> int:
+        if kind not in self._left:
+            if kind == "hus":
+                self._left[kind] = (
+                    DEMO_MAX_HANDLING_UNITS - HandlingUnit.objects.count()
+                )
+            else:
+                self._left[kind] = DEMO_MAX_LOCATIONS - Location.objects.count()
+        return self._left[kind]
 
     def take(self, *, hus: int = 0, locations: int = 0) -> None:
         if not self.limited:
             return
-        if hus and hus > self.hus:
+        if hus and hus > self._remaining("hus"):
             raise WMSError(
                 f"Limit demo: najwyżej {DEMO_MAX_HANDLING_UNITS} palet (HU). "
                 + DEMO_LIMIT_SUFFIX
             )
-        if locations and locations > self.locations:
+        if locations and locations > self._remaining("locations"):
             raise WMSError(
                 f"Limit demo: najwyżej {DEMO_MAX_LOCATIONS} lokalizacji. "
                 + DEMO_LIMIT_SUFFIX
             )
-        self.hus -= hus
-        self.locations -= locations
+        if hus:
+            self._left["hus"] -= hus
+        if locations:
+            self._left["locations"] -= locations
 
 
 @transaction.atomic
@@ -186,6 +197,7 @@ def receive_material(
     lot: str = "",
     expiry_date=None,
     delivery_ref: str = "",
+    budget: DemoBudget | None = None,
 ) -> ReceiveResult:
     """Tworzy HU dla zadanego materiału wg listy ilości na palety.
 
@@ -206,7 +218,7 @@ def receive_material(
                     f"Ilość {qty} przekracza maks. {material.max_per_pallet} "
                     f"na palecie dla materiału {material.index}."
                 )
-    DemoBudget().take(hus=len(quantities))
+    (budget or DemoBudget()).take(hus=len(quantities))
 
     created: list[HandlingUnit] = []
     for qty in quantities:

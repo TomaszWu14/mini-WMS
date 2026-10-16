@@ -100,6 +100,7 @@ def import_receipts(filename: str, data: bytes, user):
         )
     }
     created_hus = 0
+    budget = services.DemoBudget()  # US-016: jedno liczenie na plik, nie na wiersz
     for i, ref, stale, quantities, lot, expiry, delivery in planned:
         material = fresh.get(stale.pk)
         if material is None:
@@ -113,6 +114,7 @@ def import_receipts(filename: str, data: bytes, user):
                 lot=lot,
                 expiry_date=expiry,
                 delivery_ref=delivery,
+                budget=budget,
             )
         except services.WMSError as exc:
             errors.append(f"Wiersz {i} ({ref}): {exc}")

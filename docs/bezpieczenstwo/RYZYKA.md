@@ -69,6 +69,7 @@ Decyzja: **otwarte**, **mitygacja w US-xxx**, **do akceptacji PO**, **zaakceptow
 | RR-28 | Luki rozliczalności i uprawnień: brak śladu pobrań eksportu i zmian kont, domyślna rola Operator w formularzu nowego konta. | TM-34, TM-40, TM-41 | 1 | 2 | 2 (N) | otwarte (Could) | [DEV] | 2027-01-15 | ASVS 7.1.3, 4.1.3 |
 | RR-29 | Odpowiedzi bez `Cache-Control: no-store` pozostawiają dane w cache przeglądarki na współdzielonym terminalu. | TM-18 | 1 | 2 | 2 (N) | otwarte (Could) | [DEV] | 2027-01-15 | ASVS 8.2.1 |
 | RR-30 | Ryzyka resztkowe z założeń: insider z uprawnieniami Operatora, brak kontroli obiektowej (jeden magazyn), pliki poza aplikacją, brak TLS web ↔ db. | TM-14, TM-15, TM-17, TM-33, TM-60 | 1 | 2 | 2 (N) | do akceptacji PO | PO | 2027-01-15 | TM-17 przestaje obowiązywać przy drugim magazynie lub firmie (Z-06) |
+| RR-31 | Demo po US-016: limit 2000 HU / 500 lokalizacji jest **wspólny** — jeden odwiedzający wyczerpuje go w kilku żądaniach (4 × 500 palet albo jeden import), a przyjęcia i importy stoją dla wszystkich do resetu o 03:00. Spis, materiały, WZ i ruchy rosną bez limitu obiektów (hamuje je tylko limiter POST). Licznik limitera w DatabaseCache nie jest atomowy, wspólny NAT dzieli 60 POST / 5 min. | przegląd [SEC] US-016 · TM-45, TM-47 | 2 | 2 | 4 (Ś) | otwarte — decyzja PO (warianty w podsumowaniu US-016) | [PO] | 2027-01-15 | warianty: reset co godzinę zamiast 03:00; limit na sesję (np. 200 HU); mniejsze operacje w demo (np. 50 palet na przyjęcie / 100 wierszy importu); limit otwartych spisów |
 
 ### Pokrycie audytu
 

@@ -42,4 +42,5 @@
     Konta demo zostają (te same `pk`), więc nikt nie traci sesji; bez `--keep-users` reset wylogowuje wszystkich.
     Nie dodawaj resetu z UI — wraca `LOCK TABLE` w żądaniu HTTP. W demo działa `DemoWriteRateLimitMiddleware`
     (60 POST / 300 s / IP dla zalogowanych) i `services.DemoBudget` (2000 HU / 500 lokalizacji) — nowa ścieżka
-    tworząca palety lub lokalizacje musi wołać `DemoBudget().take(...)`.
+    tworząca palety lub lokalizacje musi wołać `DemoBudget().take(...)` (import — jeden budżet na plik). Klucz
+    limiterów: IPv4 = adres, IPv6 = prefiks /64 (`demo._limit_subject`).

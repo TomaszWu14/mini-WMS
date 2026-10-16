@@ -6,6 +6,7 @@ Limit logowań działa zawsze; reszta — tylko przy DEMO_MODE.
 """
 
 import hashlib
+import ipaddress
 
 from django.conf import settings
 from django.contrib import messages
@@ -66,7 +67,7 @@ def _over_limit(prefix: str, request, limit: int, window: int) -> bool:
     IP w kluczu jest skrótem — tabela cache i jej kopie zapasowe nie trzymają
     jawnych adresów (SEC-035).
     """
-    ip_digest = hashlib.sha256(str(_client_ip(request)).encode()).hexdigest()[:32]
+    ip_digest = hashlib.sha256(_limit_subject(request).encode()).hexdigest()[:32]
     key = f"{prefix}:{ip_digest}"
     cache.add(key, 0, window)
     try:
@@ -74,6 +75,15 @@ def _over_limit(prefix: str, request, limit: int, window: int) -> bool:
     except ValueError:  # klucz wygasł między add a incr
         hits = 1
     return hits > limit
+
+
+def _limit_subject(request) -> str:
+    """IPv4 — adres; IPv6 — prefiks /64 (przegląd [SEC] US-016: klient zwykle
+    dostaje całą /64 i bez tego zmienia adres, by dostać nowy limit)."""
+    ip = _client_ip(request)
+    if ip and ":" in ip:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
 
 
 def _too_many(message: str) -> HttpResponse:

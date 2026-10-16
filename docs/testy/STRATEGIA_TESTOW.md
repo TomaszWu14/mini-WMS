@@ -59,7 +59,7 @@ na SQLite (współbieżność). Dodatkowo 4 testy hooków harnessu w `.claude/ho
 | `tests_views_fixes.py` | 17 | powód korekty, strona 403, linki powrotu, raport „bez limitu”, spis |
 | `tests_recruiter.py` | 14 | „Wejdź jako demo”, panel powitalny, limit importu w demo, uprawnienia |
 | `tests_demo_entry.py` | 13 | `/demo/` i limiter wejść |
-| `tests_demo_limits.py` | 13 | limity obiektów i zapisów w demo, reset z harmonogramu (US-016) |
+| `tests_demo_limits.py` | 15 | limity obiektów i zapisów w demo, reset z harmonogramu (US-016) |
 | `tests_demo.py` | 12 | `seed_demo`, baner, konta demo, limit logowań, ochrona kont |
 | `tests_open_decisions.py` | 12 | decyzje D-09…D-13 |
 | `tests_scanner_fixes.py` | 9 | skaner: `specific_hu` (W-25), FEFO (W-11), powód korekty (W-26) |

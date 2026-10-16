@@ -188,3 +188,29 @@ class DemoScheduledResetTests(_DemoBase):
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.operator.pk)
+
+
+class DemoReviewFixTests(_DemoBase):
+    """Uwagi z przeglądów [SEC]/[DB] US-016."""
+
+    def test_ipv6_limited_per_64_prefix(self):
+        for n in range(DEMO_WRITE_RATE_LIMIT):
+            self.client.post("/przyjecie/", {}, REMOTE_ADDR=f"2001:db8:1:1::{n + 1:x}")
+        same_64 = self.client.post("/przyjecie/", {}, REMOTE_ADDR="2001:db8:1:1::ffff")
+        self.assertEqual(same_64.status_code, 429)
+        other_64 = self.client.post("/przyjecie/", {}, REMOTE_ADDR="2001:db8:1:2::1")
+        self.assertNotEqual(other_64.status_code, 429)
+
+    def test_receipt_import_counts_once_per_file(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        rows = [(self.material.index, 1, 1)] * 20
+        data = _csv(["indeks", "ilosc", "palety"], *rows)
+        with CaptureQueriesContext(connection) as ctx:
+            result = import_receipts("p.csv", data, self.operator)
+        self.assertEqual(result["created_hus"], 20, result["errors"])
+        counts = [
+            q["sql"] for q in ctx.captured_queries if "COUNT(*)" in q["sql"].upper()
+        ]
+        self.assertEqual(len(counts), 1, counts)  # tylko HU, raz na plik
