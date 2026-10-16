@@ -20,6 +20,8 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   (ADR-0001).
 
 ### Changed
+- **US-007:** macierz dostępu rola × trasa w testach (`warehouse/tests_access_matrix.py`) — każda trasa ma test
+  odmowy dla ról poniżej minimum i test dostępu; nowa trasa bez wpisu w macierzy zatrzymuje CI.
 - CI uruchamia testy przez `pytest` z pomiarem pokrycia (próg 80 % ogółem, 90 % `warehouse/services.py`)
   i sprawdza typy w całym kodzie aplikacji (`mypy warehouse config`), nie tylko w trzech plikach.
 - Cotygodniowe skany bezpieczeństwa (`security.yml`) zamiast miesięcznych; akcje GitHub przypięte do SHA.

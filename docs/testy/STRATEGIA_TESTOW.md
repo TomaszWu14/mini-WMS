@@ -144,10 +144,11 @@ Każdy nowy widok lub endpoint ma w tym samym PR:
 Dekorator roli wykonuje się przed walidacją, więc testy odmowy **nie wymagają poprawnego
 ładunku** (wystarczy np. `pk=1`).
 
-### 5.2 Macierz rola × trasa (do zbudowania — [AUDYT, Załącznik A](../AUDYT.md))
+### 5.2 Macierz rola × trasa ([AUDYT, Załącznik A](../AUDYT.md)) — zbudowana w US-007
 
-Dziś: 35 asercji rozproszonych po plikach; brak systematycznej macierzy. Historyjka US-007,
-plik `warehouse/tests_access_matrix.py` (nowy):
+Plik `warehouse/tests_access_matrix.py`: słownik `MATRIX` (nazwa trasy → `PUBLIC` / `LOGGED_IN` / `OPERATOR` / `ADMIN`).
+**Nowa trasa = nowy wpis w `MATRIX`**, inaczej test kompletności jest czerwony i podaje nazwę trasy.
+Pierwotny projekt (zrealizowany z drobną zmianą: zła metoda — 405 — też liczy się jako odmowa):
 
 | Test | Idea |
 |---|---|
@@ -268,7 +269,7 @@ Priorytety MoSCoW to propozycja [DEV]; ustala je PO ([BA] wpisuje do `HISTORYJKI
 
 | # | Zadanie | Powiązanie | Priorytet |
 |---|---|---|---|
-| 1 | Macierz rola × trasa (5.2) | US-007, [AUDYT Zał. A](../AUDYT.md) | Should (wg backlogu) |
+| 1 | Macierz rola × trasa (5.2) | US-007, [AUDYT Zał. A](../AUDYT.md) | zrobione (#23) |
 | 2 | Testy regresji R1–R4, T1 (5.3) | US-001…US-004 | Must |
 | 3 | Test odtworzenia z kopii (procedura, nie kod) przed wdrożeniem u klienta | R9, US-012, [RUNBOOK §5](../operacje/RUNBOOK.md) | Should wg backlogu; warunek wdrożenia u klienta |
 | 4 | Test fail-fast `prod.py` i seed bez `DEMO_MODE` | R2, US-003 | Must |

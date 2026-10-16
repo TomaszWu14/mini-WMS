@@ -3,7 +3,8 @@
 1. **Każdy widok musi mieć dekorator.** `@login_required` (odczyt), `@operator_required`
    (operacje), `@admin_required` (użytkownicy, dziennik logowań) z `warehouse/roles.py`.
    Dziś wszystkie widoki w `views.py` i `scanner_views.py` go mają — nowy widok bez
-   dekoratora jest publiczny.
+   dekoratora jest publiczny. Każdą nową trasę dopisz do `MATRIX` w `tests_access_matrix.py`
+   (rola minimalna) — bez wpisu test jest czerwony.
 2. **Rola pochodzi z `Profile`, nie z grup Django.** `get_role()`: superuser → zawsze
    Administrator; brak profilu → Podgląd. Nie sprawdzaj `user.groups` ani `is_staff`.
 3. **Profil tworzy sygnał `ensure_profile` (post_save User).** Użytkownik tworzony bez

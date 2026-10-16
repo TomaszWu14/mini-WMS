@@ -67,6 +67,7 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Testy (US-007):** macierz dostępu rola × trasa — tylko testy, bez zmian w działaniu aplikacji.
 - **Kod:** dwa komentarze `# nosemgrep` z uzasadnieniem (`seed_demo.py` — `LOCK TABLE` z nazwami
   tabel z modeli; test wyścigu — celowe `sleep`); komentarz w `scanner.js` (numer pułapki).
   `pyproject.toml`: `coverage` pomija też `tests_*.py` i ma `fail_under = 80`.
@@ -98,7 +99,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (294 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (299 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 

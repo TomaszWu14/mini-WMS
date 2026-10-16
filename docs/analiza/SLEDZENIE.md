@@ -122,8 +122,8 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-004 | US-009 | brak — do napisania | #23 |
 | SEC-005 | US-005, US-043 | brak — do napisania (cookie, bezczynność, `clearsessions`) | #23 |
 | SEC-006 | US-010 | brak — do napisania | #23 |
-| SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `DemoResetTests.test_viewer_forbidden` | historyczny (przed procesem) |
-| SEC-008 | US-007 | brak — do napisania (są testy punktowe, brak macierzy rola × trasa) | #23 |
+| SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `DemoResetTests.test_viewer_forbidden`; `tests_access_matrix.AccessMatrixTests.test_role_matrix` | historyczny (przed procesem) |
+| SEC-008 | US-007 | `tests_access_matrix.AccessMatrixTests` (kompletność + 560 sprawdzeń), `DemoAccessMatrixTests`, `AdminSiteAccessTests` | #23 |
 | SEC-009 | US-001 | `tests_security.SuperuserProtectionTests` (9 testów) | #23 |
 | SEC-010 | — (powiązane: US-041) | `DemoModeViewTests.test_demo_account_cannot_change_password`; `AdminHiddenInDemoTests.test_admin_404_in_demo`; `DemoAccountPermissionTests.test_demo_operator_gets_403_on_admin_pages`; `DemoLoginTests.test_only_demo_accounts_can_be_entered` | historyczny (przed procesem) |
 | SEC-011 | — | n/d — decyzja (Z-06) | — |
@@ -171,7 +171,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (19 testów) — zrobione, #23 |
 | US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py` (8), `tests_demo_entry.DemoEntryRateLimitTests` (5) — zrobione, #23 |
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
-| US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` |
+| US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` (5 testów) — zrobione, #23 |
 | US-008 | Should | SEC-001 | R6 | `tests_passwords.py` |
 | US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` |
 | US-010 | Should | SEC-006 | R6 | `tests_2fa.py` |

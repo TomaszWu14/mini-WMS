@@ -159,7 +159,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 6. **Given** `DEMO_MODE`; **When** udane wejście `/demo/`; **Then** `LoginEvent.ip` jest pusty (pole nullable — bez migracji); user-agent — wg PYT-09.
 7. **Given** brak `DEMO_MODE`; **When** GET `/demo/` i POST `/login/demo/`; **Then** nadal 404 (`DemoEntryOffTests` zielone).
 
-**Testy:** `warehouse/tests_retention.py` — `PurgeLoginEventsTests` (5: domyślne 90 dni, `--days`, granica 89 dni, `--days 0` odrzucone, stała 90), `ClearSessionsTests` (1), `LoginEventPrivacyTests` (2: w demo brak IP i UA, poza demo bez zmian); `tests_demo_entry.DemoEntryRateLimitTests` (5: `/demo/` i `/login/demo/` — (K+1)-sze żądanie 429 bez sesji i `LoginEvent`, limit per IP, udane wejście bez IP, odświeżanie przez zalogowanego nie liczy się do limitu). Przed poprawką 9 testów czerwonych. Parametry: RETENCJA = 90 dni (**decyzja PO 2026-10-16**, Z-09), K / W = 10 / 300 s (Z-37, do potwierdzenia), w demo `LoginEvent` bez IP i user-agenta (Z-38, do potwierdzenia — PYT-09; poza demo bez zmian). Kryterium 4: COOLIFY.md §10a (dwa Scheduled Tasks); dodatkowo `entrypoint.sh` uruchamia obie komendy przy starcie. Limiter jest per proces gunicorna (LocMem, jak limit logowań — pułapka auth #6) i liczy tylko wejścia anonimowe (po przeglądzie [SEC]: zalogowany, odświeżając `/demo/`, nie zużywa limitu innym za tym samym NAT; `--days` ograniczone do 1…36 500). Przegląd [DB]: brak indeksu na `LoginEvent.created_at` — przy obecnej skali pełny skan jest tani, indeks wymaga migracji → US-051. Odbiór [BA] 2026-10-16: kryteria 1–3 i 5–7 spełnione; 4 — do sprawdzenia ręcznie na środowisku po deployu.
+**Testy:** `warehouse/tests_retention.py` — `PurgeLoginEventsTests` (5: domyślne 90 dni, `--days`, granica 89 dni, `--days 0` odrzucone, stała 90), `ClearSessionsTests` (1), `LoginEventPrivacyTests` (2: w demo brak IP i UA, poza demo bez zmian); `tests_demo_entry.DemoEntryRateLimitTests` (5: `/demo/` i `/login/demo/` — (K+1)-sze żądanie 429 bez sesji i `LoginEvent`, limit per IP, udane wejście bez IP, odświeżanie przez zalogowanego nie liczy się do limitu). Przed poprawką 9 testów czerwonych. Parametry: RETENCJA = 90 dni (**decyzja PO 2026-10-16**, Z-09), K / W = 10 / 300 s (Z-37, potwierdzone przez PO), w demo `LoginEvent` bez IP i user-agenta (Z-38, potwierdzone przez PO; poza demo bez zmian). Kryterium 4: COOLIFY.md §10a (dwa Scheduled Tasks); dodatkowo `entrypoint.sh` uruchamia obie komendy przy starcie. Limiter jest per proces gunicorna (LocMem, jak limit logowań — pułapka auth #6) i liczy tylko wejścia anonimowe (po przeglądzie [SEC]: zalogowany, odświeżając `/demo/`, nie zużywa limitu innym za tym samym NAT; `--days` ograniczone do 1…36 500). Przegląd [DB]: brak indeksu na `LoginEvent.created_at` — przy obecnej skali pełny skan jest tani, indeks wymaga migracji → US-051. Odbiór [BA] 2026-10-16: kryteria 1–3 i 5–7 spełnione; 4 — do sprawdzenia ręcznie na środowisku po deployu.
 
 ### US-006 — Łańcuch dostaw i CI: blokujące skany, Dependabot, SECURITY.md
 
@@ -193,7 +193,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[SEC]** chcę zautomatyzowanej macierzy rola × trasa, aby każda trasa miała test „brak dostępu”, a nowy widok bez dekoratora nie mógł trafić na produkcję. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | prompt PO sekcja 6; AUDYT Zał. A i §3.1 („≈ 35 asercji, brak macierzy”); pitfalls/auth #1 |
 | Wymagania | SEC-007, SEC-008; także: FR-023 |
 | Zależności | — (zalecane **przed** US-017) |
@@ -204,7 +204,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** ta sama macierz; **When** rola spełnia minimum; **Then** odpowiedź nie jest 403 (dostęp pozytywny).
 3. **Given** nowa trasa dodana bez wpisu w macierzy; **When** uruchomienie testu; **Then** test jest czerwony i podaje nazwę trasy.
 
-**Test do napisania:** `AccessMatrixTests` w `warehouse/tests_access_matrix.py` (nowy).
+**Testy:** `warehouse/tests_access_matrix.py` — `AccessMatrixTests` (2: kompletność macierzy dla 70 nazwanych tras i macierz 70 tras × 4 role × GET/POST = 560 sprawdzeń w podtestach), `DemoAccessMatrixTests` (1: `demo/przywroc/` przy `DEMO_MODE`), `AdminSiteAccessTests` (2: `/admin/` tylko dla `is_staff`, role aplikacji → logowanie panelu). Odmowa: anonim → 302 na `/login/` albo 405, rola poniżej minimum → 403 albo 405 (zła metoda odrzucana przed rolą); nigdy 200 ani 5xx. Dostęp: rola minimalna nie dostaje 403 ani 5xx (nieistniejący `pk` → 404, bez zmian w bazie). Sprawdzenie mutacyjne [DEV]: usunięcie `@admin_required` z `hu_delivery` i dodanie trasy bez wpisu dają czerwony test z nazwą trasy. Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione. Zmiana wyłącznie w testach — bez zmian w działaniu aplikacji.
 
 ### US-008 — Hasła w argon2
 

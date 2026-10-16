@@ -59,7 +59,7 @@ Numery linii dotyczą stanu `main` @ `f5be158` z audytu; zmiany wykonywane równ
 
 | ASVS | L | Wymaganie | Status | Dowód | Działanie |
 |---|---|---|---|---|---|
-| 4.1.1 | 1 | Kontrola dostępu egzekwowana po stronie serwera | ✅ | `roles.py:30-51`; 47 widoków i 16 endpointów z dekoratorem (AUDYT Zał. A); 35 asercji o 403 | — |
+| 4.1.1 | 1 | Kontrola dostępu egzekwowana po stronie serwera | ✅ | `roles.py:30-51`; 47 widoków i 16 endpointów z dekoratorem (AUDYT Zał. A); macierz rola × trasa dla wszystkich 70 tras (`tests_access_matrix.py`, US-007) | — |
 | 4.1.3 | 1 | Zasada najmniejszych uprawnień | ⚠️ | trzy role; R1 naprawione w US-001; nadal domyślna rola Operator (`forms.py:141`); TM-35, TM-41 | US-001 |
 | 4.1.5 | 1 | Kontrola dostępu domyślnie odmawia, także przy wyjątku | ⚠️ | `PermissionDenied` → 403 (`roles.py:38-41`), lecz nowy widok bez dekoratora jest publiczny; brak testu macierzowego; TM-10 | RR-24 (Should) |
 | 4.2.1 | 1 | Brak dostępu do cudzych obiektów przez zmianę identyfikatora (IDOR) | n/d | jeden magazyn, jedna firma (Z-06); TM-17 | wraca przy drugim magazynie |
