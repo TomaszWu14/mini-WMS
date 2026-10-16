@@ -8,10 +8,20 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 
-# --- SECRET_KEY: fail-fast, nie pozwól wystartować z kluczem deweloperskim ---
-if not SECRET_KEY or SECRET_KEY.startswith("django-insecure-"):  # noqa: F405
+# --- SECRET_KEY: fail-fast, nie pozwól wystartować ze słabym kluczem (US-003 / R2) ---
+# Te same progi co ostrzeżenie Django security.W009, ale jako błąd startu — oraz
+# znane zaślepki z repozytorium (domyślna wartość compose, .env.docker.example).
+_KNOWN_PLACEHOLDERS = {"zmien-mnie-w-produkcji", "YOUR_DJANGO_SECRET_KEY_HERE"}
+if (
+    not SECRET_KEY  # noqa: F405
+    or SECRET_KEY.startswith("django-insecure-")  # noqa: F405
+    or SECRET_KEY in _KNOWN_PLACEHOLDERS  # noqa: F405
+    or len(SECRET_KEY) < 50  # noqa: F405
+    or len(set(SECRET_KEY)) < 5  # noqa: F405
+):
     raise ImproperlyConfigured(
-        "Ustaw DJANGO_SECRET_KEY (silny, losowy) w środowisku produkcyjnym."
+        "Ustaw DJANGO_SECRET_KEY: losowy, co najmniej 50 znaków, np. "
+        'python -c "import secrets; print(secrets.token_urlsafe(64))".'
     )
 
 # --- ALLOWED_HOSTS: bez wildcarda w produkcji; sensowny host domyślny ---

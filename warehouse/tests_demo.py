@@ -32,6 +32,7 @@ def seed(*args):
     call_command("seed_demo", *args, stdout=StringIO())
 
 
+@override_settings(DEMO_MODE=True)  # US-003: seed_demo działa tylko w trybie demo
 class SeedDemoTests(TestCase):
     def test_seed_creates_data(self):
         seed()
@@ -78,6 +79,7 @@ class SeedDemoTests(TestCase):
         self.assertEqual(first, second)
         self.assertEqual(User.objects.filter(username__startswith="demo_").count(), 2)
 
+    @override_settings(DEMO_MODE=False)
     def test_reset_refused_without_demo_mode(self):
         with self.assertRaises(CommandError):
             seed("--reset")

@@ -38,6 +38,17 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 u = os.environ["DJANGO_SUPERUSER_USERNAME"]
 if not User.objects.filter(username=u).exists():
+    # US-003: hasło musi przejść walidatory Django (odrzucają `admin`) i nie może
+    # być zaślepką z .env.docker.example.
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError
+    pw = os.environ["DJANGO_SUPERUSER_PASSWORD"]
+    try:
+        if pw.startswith("YOUR_"):
+            raise ValidationError("to zaślepka z .env.docker.example")
+        validate_password(pw, User(username=u))
+    except ValidationError as e:
+        raise SystemExit("DJANGO_SUPERUSER_PASSWORD odrzucone: " + "; ".join(e.messages))
     User.objects.create_superuser(
         u,
         os.environ.get("DJANGO_SUPERUSER_EMAIL", ""),

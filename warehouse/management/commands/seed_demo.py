@@ -74,11 +74,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, reset=False, keep_users=False, **options):
-        if reset:
-            # Bezpiecznik: --reset kasuje WSZYSTKIE dane magazynowe.
-            if not settings.DEMO_MODE:
-                raise CommandError("--reset działa tylko przy DEMO_MODE=1.")
-        elif Material.objects.filter(index__startswith="DEMO-").exists():
+        # Bezpiecznik (US-003 / R2): konta demo mają publiczne hasło, więc na
+        # instancji bez DEMO_MODE nie mogą powstać; --reset kasuje dane magazynowe.
+        if not settings.DEMO_MODE:
+            raise CommandError(
+                "seed_demo wymaga DEMO_MODE=1 — konta demo mają publiczne hasło."
+            )
+        if not reset and Material.objects.filter(index__startswith="DEMO-").exists():
             self.stdout.write("Dane demo już istnieją — pomijam (użyj --reset).")
             return
         # Reset i zasiew razem: równoległe żądania nie zobaczą pustego magazynu.

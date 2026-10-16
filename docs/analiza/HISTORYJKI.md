@@ -100,7 +100,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **administrator infrastruktury (ST-05)** chcę, aby wdrożenie bez ustawionych sekretów kończyło się błędem, a konta demo nie powstawały poza trybem demo, aby nie uruchomić instancji z publicznie znanym kluczem i hasłami. |
 | MoSCoW · rozmiar | Must · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R2** (W), §3.4 pkt 3; `docker-compose.yml:18,53,65`, `config/settings/prod.py:12`, `seed_demo.py:79,134-141` |
 | Wymagania | SEC-026, SEC-027 |
 | Zależności | PYT-05 (wariant `seed_demo`); koordynacja z CI: krok smoke-testu w `ci.yml` używa klucza 42-znakowego (< progu 50) — wymaga wydłużenia |
@@ -114,7 +114,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 5. **Given** `DEMO_MODE=1`; **When** `seed_demo`; **Then** zachowanie bez zmian (`SeedDemoTests` zielone).
 6. **Given** README.md i COOLIFY.md; **Then** nie zalecają uruchamiania `seed_demo` na instancji bez `DEMO_MODE` (przegląd dokumentów).
 
-**Test do napisania:** `warehouse/tests_deploy_settings.py` (nowy; import `config.settings.prod` w subprocesie z podstawionym env), `test_seed_refused_without_demo_mode` w `tests_demo.py`; krok CI walidujący compose z pustym env.
+**Testy:** `warehouse/tests_deploy_settings.py` — `ProdSecretKeyTests` (7: brak klucza, `zmien-mnie-w-produkcji`, `YOUR_DJANGO_SECRET_KEY_HERE`, prefiks `django-insecure-`, 49 znaków, niska różnorodność znaków → odmowa; losowy 50 znaków → start), `SeedDemoModeTests` (2), `ComposeSecretsTests` (1), `EntrypointSuperuserPasswordTests` (2: `entrypoint.sh` odmawia założenia superusera z hasłem `admin`, zaślepką lub hasłem niespełniającym walidatorów Django); `tests_demo.SeedDemoTests` działa z `DEMO_MODE=True`. Krok CI „Compose (wariant prywatny) odmawia startu bez sekretów” — kryterium 1 dla każdej z trzech zmiennych. Odbiór [BA] 2026-10-16: kryteria 1–6 spełnione (6: README każe ustawić `DEMO_MODE=1` przed `seed_demo`, COOLIFY.md §11 opisuje instancję demo). PO potwierdził 2026-10-16, że klucze w Coolify (demo i produkcja) mają ≥ 50 losowych znaków (Z-36), więc nowy próg nie zatrzyma istniejących wdrożeń. Dodatkowo: klucz tylko do `collectstatic` w `Dockerfile` wydłużony do ≥ 50 znaków.
 
 ### US-004 — Bezpieczny import XLSX
 

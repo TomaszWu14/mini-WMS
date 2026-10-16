@@ -50,7 +50,7 @@ USER app
 # Pliki statyczne do obrazu (serwuje je WhiteNoise) — jako użytkownik app.
 # Build-time SECRET_KEY tylko na czas collectstatic; w runtime nadpisze go
 # realny klucz z Coolify/compose (prod.py wymaga własnego klucza).
-RUN DJANGO_SECRET_KEY="build-only-key-overridden-at-runtime" \
+RUN DJANGO_SECRET_KEY="build-only-key-overridden-at-runtime-not-a-secret-0123456789" \
     python manage.py collectstatic --noinput
 
 EXPOSE 8000

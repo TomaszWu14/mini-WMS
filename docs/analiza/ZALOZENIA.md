@@ -41,5 +41,6 @@ właściwego dokumentu (WIZJA, WYMAGANIA, RYZYKA) i tu zostawiamy ślad.
 | Z-33 | ADR jest „zaakceptowany”, gdy PO scali go do `main`; decyzje historyczne D-01…D-13 mają w indeksie identyfikatory ADR-H-01…H-13 bez przepisywania treści. | docs/06 pozostaje źródłem. | adr/README | do potwierdzenia |
 | Z-34 | Testy e2e Playwright (3 ścieżki krytyczne) mają priorytet Could; skaner testowany jako klawiatura, bez kamery i jsQR. | `tools/record_video.py` pokazuje, że Playwright jest w repo. | STRATEGIA_TESTOW | do potwierdzenia |
 | Z-35 | Maksymalna ilość łączna w jednym przyjęciu: 1 000 000 sztuk; maksymalna liczba palet tworzonych jednym importem przyjęć: 2 000 (4 przyjęcia po 500). | Skala docs/01 (~30 palet tygodniowo) — limity o rzędy wielkości powyżej realnego ruchu, a poniżej progu DoS. | US-002, PYT-02 | do potwierdzenia |
+| Z-36 | Klucze `DJANGO_SECRET_KEY` w Coolify (demo i produkcja) mają co najmniej 50 losowych znaków, więc próg z US-003 nie zatrzyma istniejących wdrożeń. | PO, 2026-10-16 („Jest ok”). | US-003, SEC-026 | potwierdzone (PO) |
 
-Historia zmian: 2026-10-15 — utworzenie rejestru po audycie (`docs/AUDYT.md`); 2026-10-16 — Z-11…Z-17 z dokumentów [BA], Z-18…Z-22 z [SEC], Z-23…Z-28 z [BA] (wymagania i backlog), Z-29…Z-34 z [DEV] (krok 3). 2026-10-16 — Z-35 (US-002).
+Historia zmian: 2026-10-15 — utworzenie rejestru po audycie (`docs/AUDYT.md`); 2026-10-16 — Z-11…Z-17 z dokumentów [BA], Z-18…Z-22 z [SEC], Z-23…Z-28 z [BA] (wymagania i backlog), Z-29…Z-34 z [DEV] (krok 3). 2026-10-16 — Z-35 (US-002); Z-36 (US-003, potwierdzone przez PO).

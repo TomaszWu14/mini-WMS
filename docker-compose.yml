@@ -15,7 +15,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-wms}
       POSTGRES_USER: ${POSTGRES_USER:-wms}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD w .env}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:-wms}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD w .env}
       POSTGRES_USER: ${POSTGRES_USER:-wms}
       POSTGRES_DB: ${POSTGRES_DB:-wms}
       BACKUP_INTERVAL: ${BACKUP_INTERVAL:-86400}
@@ -50,7 +50,7 @@ services:
         condition: service_healthy
     environment:
       DJANGO_DEBUG: "0"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-zmien-mnie-w-produkcji}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?ustaw DJANGO_SECRET_KEY w .env (losowy, 50+ znaków)}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-${DOMAIN:-localhost}}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-1}
@@ -59,10 +59,10 @@ services:
       DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Europe/Warsaw}
       # Jedno proxy (Caddy) — IP klienta z ostatniego wpisu X-Forwarded-For.
       DJANGO_TRUSTED_PROXY_COUNT: ${DJANGO_TRUSTED_PROXY_COUNT:-1}
-      DATABASE_URL: postgres://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:-wms}@db:5432/${POSTGRES_DB:-wms}
+      DATABASE_URL: postgres://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD w .env}@db:5432/${POSTGRES_DB:-wms}
       # Konto administratora tworzone automatycznie przy pierwszym starcie:
       DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
-      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-admin}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:?ustaw DJANGO_SUPERUSER_PASSWORD w .env}
       DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-}
     # Brak publikacji portów na host — ruch wchodzi wyłącznie przez Caddy.
     expose:

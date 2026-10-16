@@ -5,7 +5,7 @@
 | Branch | `claude/new-session-u8tqyj` (nazwa techniczna sesji Claude) |
 | PR | #23 (draft) |
 | Data | 2026-10-16 |
-| Ryzyko | średnie — dwie poprawki bezpieczeństwa zmieniają zachowanie (US-001, US-002); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
+| Ryzyko | średnie — trzy poprawki bezpieczeństwa zmieniają zachowanie (US-001, US-002, US-003 — wdrożenie bez sekretów nie wstaje); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
 
 ## 1. Co zmieniono
 - **Zmiany widoczne dla użytkowników:**
@@ -17,6 +17,21 @@
     Import przyjęć: najwyżej 2 000 palet w pliku; import stanów: najwyżej 2 000 wierszy. Plik ponad
     limit jest odrzucany w całości z komunikatem „Podziel plik; nic nie zapisano”. Liczby spoza
     zakresu w pliku dają komunikat przy wierszu zamiast błędu serwera.
+- **Zmiany dla administratora infrastruktury (US-003):**
+  - Produkcja (`DJANGO_DEBUG=0`) nie startuje, gdy `DJANGO_SECRET_KEY` ma mniej niż 50 znaków, jest
+    zaślepką (`zmien-mnie-w-produkcji`, `YOUR_DJANGO_SECRET_KEY_HERE`) albo zaczyna się od
+    `django-insecure-`. W logach kontenera: `ImproperlyConfigured: Ustaw DJANGO_SECRET_KEY…`.
+    PO potwierdził, że klucze w Coolify (demo i produkcja) spełniają próg (Z-36).
+  - Wariant prywatny `docker-compose.yml` (LAN/Caddy) nie ma już wartości domyślnych
+    `admin` / `wms` / `zmien-mnie-w-produkcji`: bez `DJANGO_SECRET_KEY`, `DJANGO_SUPERUSER_PASSWORD`
+    i `POSTGRES_PASSWORD` w `.env` polecenie `docker compose up` kończy się błędem
+    „required variable … is missing”. Istniejąca baza: `POSTGRES_PASSWORD` w `.env` musi być
+    równe dotychczasowemu hasłu (domyślnie było `wms`), inaczej `web` nie połączy się z bazą.
+  - `entrypoint.sh` przy **pierwszym** zakładaniu superusera odrzuca hasło `admin`, zaślepkę
+    `YOUR_…` i hasła niespełniające walidatorów Django — kontener kończy pracę z komunikatem
+    `DJANGO_SUPERUSER_PASSWORD odrzucone: …`. Istniejące konto nie jest sprawdzane ani zmieniane.
+  - `python manage.py seed_demo` bez `DEMO_MODE=1` kończy się błędem i nie zakłada kont demo.
+    Instancja demo (`DEMO_MODE=1`, zadanie `reset-demo`) działa bez zmian.
 - **Dokumentacja procesu i produktu** (wszystko w statusie „szkic 0.1 — do akceptacji PO”):
   `docs/AUDYT.md` (stan wyjściowy, ryzyka R1–R10, pytania), `CONTRIBUTING.md` (role, 7 kroków,
   Definition of Ready/Done, konwencje, narzędzia), `SECURITY.md`, `CHANGELOG.md`, szablony issue
@@ -49,7 +64,9 @@
 | 6 | konto z rolą Administrator (nie superuser) | `/uzytkownicy/` | spojrzeć na wiersz superusera; wejść ręcznie na `/uzytkownicy/<id superusera>/` | brak przycisku „Edytuj”; strona „Brak uprawnień” |
 | 7 | `demo_operator` (Operator) | `/przyjecie/` | wpisać 501 palet | błąd przy polu „Liczba palet”; żadna paleta nie powstaje |
 | 8 | `demo_operator` (Operator) | `/przyjecie/` | 10 szt. na 2 palety | przyjęcie przechodzi jak dotąd |
-| 5 | admin infrastruktury | Coolify → kontener `web` → Logs | po deployu sprawdzić start | migracje bez zmian, `Startuję gunicorn`, brak błędów o `pip` |
+| 5 | admin infrastruktury | Coolify → kontener `web` → Logs | po deployu sprawdzić start | migracje bez zmian, `Startuję gunicorn`, brak błędów o `pip` ani `ImproperlyConfigured` |
+| 9 | admin infrastruktury | Coolify (demo) → kontener `web` → Terminal | `python manage.py seed_demo --reset` | dane demo przywrócone jak dotąd |
+| 10 | admin infrastruktury | dowolna maszyna z Dockerem, katalog repo, bez `.env` | `docker compose config` | błąd „required variable DJANGO_SECRET_KEY is missing…” |
 
 ## 3. Checklista wdrożenia
 
@@ -57,7 +74,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (224 passed, 2 skipped; CI zielone) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (258 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 
@@ -67,10 +84,12 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 ### Zmienne środowiskowe
 | Zmienna | Nowa / zmieniona / usunięta | Wartość prod | Ustawiona w Coolify |
 |---|---|---|---|
-| — | nie dotyczy | — | ☐ nie dotyczy |
+| `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
+| `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
+| `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
-Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy,
-`COOLIFY.md` — nie dotyczy.
+Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma
+wszystkie trzy zmienne), `COOLIFY.md` — nie dotyczy (wariant Coolify już wymagał sekretów).
 
 ### Przed i po deployu
 - ☐ CI zielone na PR (`ci.yml`; `security.yml` uruchomiony ręcznie raz)
@@ -82,5 +101,8 @@ Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — n
 1. Kod: Coolify → zasób → **Deployments** → poprzedni deployment → **Redeploy**
    (albo revert PR na `main`). Poprzedni obraz zawiera pip — bez wpływu na działanie.
 2. Migracje: nie dotyczy.
-3. Zmienne środowiskowe: nie dotyczy.
+3. Zmienne środowiskowe: nic do cofania. Jeśli po deployu kontener nie wstaje z
+   `ImproperlyConfigured: Ustaw DJANGO_SECRET_KEY…`, ustawić nowy klucz
+   (`python -c "import secrets; print(secrets.token_urlsafe(64))"`) i zrobić redeploy — zmiana klucza
+   wyloguje użytkowników, dane zostają.
 4. Weryfikacja po wycofaniu: `/healthz`, logowanie, lista HU.

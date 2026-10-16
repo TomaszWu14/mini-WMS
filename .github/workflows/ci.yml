@@ -251,6 +251,17 @@ jobs:
           mkdir -p reports
           docker build -t miniwms:ci .
 
+      - name: Compose (wariant prywatny) odmawia startu bez sekretów — US-003
+        run: |
+          for v in DJANGO_SECRET_KEY DJANGO_SUPERUSER_PASSWORD POSTGRES_PASSWORD; do
+            if ( export DJANGO_SECRET_KEY=x DJANGO_SUPERUSER_PASSWORD=x POSTGRES_PASSWORD=x
+                 unset "$v"; docker compose -f docker-compose.yml config >/dev/null 2>compose.err ); then
+              echo "::error::compose przyjął konfigurację bez $v"; exit 1
+            fi
+            grep -q "required variable $v is missing" compose.err || { cat compose.err; exit 1; }
+            echo "OK: brak $v zatrzymuje compose"
+          done
+
       - name: Smoke test — kontener wstaje i jest healthy
         run: |
           docker run -d --name miniwms-ci \
