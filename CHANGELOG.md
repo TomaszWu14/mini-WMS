@@ -63,6 +63,8 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   wartości typu `1e999` lub ponad zakres bazy dają komunikat przy polu/wierszu zamiast błędu 500; importy pomijają wiersze ze zbyt
   długim kodem lokalizacji, numerem HU, partią lub referencją, zanim cokolwiek zapiszą; nazwy plików PDF/CSV/XLSX z dowolnymi
   znakami (`content_disposition_header`). Testy: `warehouse/tests_input_validation.py`.
+- **US-014:** niepoprawny adres w `X-Forwarded-For` (błędna konfiguracja proxy) jest ignorowany — logowanie nie kończy
+  się błędem 500, dziennik zapisuje `REMOTE_ADDR`, limitery liczą po poprawnym IP.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

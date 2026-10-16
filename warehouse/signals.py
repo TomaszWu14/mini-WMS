@@ -1,5 +1,7 @@
 """Sygnały — profil użytkownika oraz dziennik logowań."""
 
+import ipaddress
+
 from django.conf import settings
 from django.contrib.auth.signals import (
     user_logged_in,
@@ -43,9 +45,20 @@ def _client_ip(request):
             for h in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
             if h.strip()
         ]
-        if len(hops) >= count:
+        if len(hops) >= count and _valid_ip(hops[-count]):
             return hops[-count]
-    return request.META.get("REMOTE_ADDR")
+    # US-014: śmieci w nagłówku (błędna konfiguracja proxy) nie mogą trafić do
+    # GenericIPAddressField (DataError → 500 przy logowaniu) ani do klucza limitera.
+    remote = request.META.get("REMOTE_ADDR")
+    return remote if _valid_ip(remote) else None
+
+
+def _valid_ip(value) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _user_agent(request):

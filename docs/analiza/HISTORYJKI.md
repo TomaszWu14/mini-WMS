@@ -334,7 +334,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Administrator** chcę, aby aplikacja ignorowała niepoprawny adres w `X-Forwarded-For`, aby błędna konfiguracja proxy nie wywalała logowania ani nie psuła limitera. |
 | MoSCoW · rozmiar | Should · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT „poza listą” (`signals.py:38-48`); pitfalls/auth #5; D-12 |
 | Wymagania | SEC-041 |
 | Zależności | — |
@@ -344,7 +344,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 1. **Given** `TRUSTED_PROXY_COUNT=1` i `X-Forwarded-For` z wartością niebędącą adresem IP; **When** logowanie; **Then** adres z `REMOTE_ADDR`, `LoginEvent` zapisany, brak `DataError` i 500.
 2. **Given** poprawny adres IPv6 w nagłówku; **Then** zapisany bez zmian.
 
-**Test do napisania:** rozszerzenie `ClientIPTests` w `warehouse/tests_open_decisions.py`.
+**Testy:** `warehouse/tests_open_decisions.py` — `ClientIPTests` (+3: śmieci w `X-Forwarded-For` — `unknown`, port, SQL, 300 znaków, `999.1.1.1`, `[::1]` → `REMOTE_ADDR`; IPv6 bez zmian; niepoprawny `REMOTE_ADDR` → brak IP), `ClientIPLoginTests` (1: logowanie z `X-Forwarded-For: unknown` → 302 i `LoginEvent.ip = REMOTE_ADDR`). Przed poprawką 8 sprawdzeń czerwonych. Walidacja `ipaddress.ip_address` w `_client_ip` — dotyczy też limiterów (klucz z poprawnego IP). Odbiór [BA] 2026-10-16: kryteria 1–2 spełnione.
 
 ### US-015 — Paginacja list i limit etykiet lokalizacji
 

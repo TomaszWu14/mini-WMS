@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Adres IP za proxy (US-014):** jeśli proxy przekaże w `X-Forwarded-For` coś, co nie jest adresem IP, aplikacja
+  użyje adresu połączenia (proxy) zamiast błędu przy logowaniu. Bez zmian dla poprawnej konfiguracji.
 - **Walidacja danych (US-013):** każda ilość (korekta, pozycja WZ, przepakowanie, spis, skaner) najwyżej
   1 000 000, pojemność lokalizacji najwyżej 10 000 — powyżej komunikat przy polu. Importy: liczba typu `1e999`
   → „Wiersz N: nieprawidłowa liczba…”, za długi kod lokalizacji / numer HU / partia / referencja → wiersz
@@ -131,7 +133,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (384 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (388 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

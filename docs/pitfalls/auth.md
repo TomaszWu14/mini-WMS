@@ -14,7 +14,8 @@
    w każdym querysecie (dziś go nie ma).
 5. **`_client_ip` ufa `X-Forwarded-For` tylko przy `TRUSTED_PROXY_COUNT` > 0** (`signals.py`)
    i bierze N-ty wpis od końca. Nowe proxy przed aplikacją (np. Cloudflare przed Traefikiem)
-   = podbij `DJANGO_TRUSTED_PROXY_COUNT`, inaczej wszyscy dzielą IP proxy i jeden limit.
+   = podbij `DJANGO_TRUSTED_PROXY_COUNT`, inaczej wszyscy dzielą IP proxy i jeden limit. Wpis niebędący
+   adresem IP jest ignorowany (US-014) — wtedy liczy się `REMOTE_ADDR`, czyli IP proxy.
 6. **Blokada konta: `warehouse/login_limits.py`** (tabela `LoginFailureCounter`, login normalizowany NFKC +
    casefold) — każda nowa ścieżka logowania musi przejść przez `login_guard` (`/login/`, `/admin/login/`).
    Limity per IP i wejść demo są w DatabaseCache (ADR-0002) — wspólne dla workerów. `dev.py` ma LocMem; testy POST na `/login/` czyszczą cache (`cache.clear()`). Dawniej: per proces — przy 3 workerach realnie

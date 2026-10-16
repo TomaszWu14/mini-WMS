@@ -90,6 +90,54 @@ class ClientIPTests(SimpleTestCase):
     def test_too_few_hops_falls_back_to_remote_addr(self):
         self.assertEqual(_client_ip(self._req("5.5.5.5")), "10.0.0.2")
 
+    @override_settings(TRUSTED_PROXY_COUNT=1)
+    def test_invalid_header_value_falls_back_to_remote_addr(self):
+        """US-014 kryterium 1: wartość niebędąca adresem IP → REMOTE_ADDR."""
+        for bad in (
+            "unknown",
+            "1.2.3.4:5678",
+            "' OR 1=1",
+            "x" * 300,
+            "999.1.1.1",
+            "[::1]",
+        ):
+            with self.subTest(bad=bad):
+                self.assertEqual(_client_ip(self._req(f"6.6.6.6, {bad}")), "10.0.0.2")
+
+    @override_settings(TRUSTED_PROXY_COUNT=1)
+    def test_ipv6_kept_unchanged(self):
+        """US-014 kryterium 2."""
+        ip = "2001:db8::8a2e:370:7334"
+        self.assertEqual(_client_ip(self._req(ip)), ip)
+
+    def test_invalid_remote_addr_gives_none(self):
+        req = RequestFactory().get("/", REMOTE_ADDR="nie-ip")
+        self.assertIsNone(_client_ip(req))
+
+
+class ClientIPLoginTests(TestCase):
+    """US-014 kryterium 1 end-to-end: logowanie z błędnym nagłówkiem zapisuje dziennik."""
+
+    @override_settings(TRUSTED_PROXY_COUNT=1, DEMO_MODE=False)
+    def test_login_with_garbage_forwarded_for(self):
+        from django.contrib.auth.models import User
+        from django.core.cache import cache
+
+        from .models import LoginEvent
+
+        cache.clear()
+        User.objects.create_user("ipuser", password="IpUserPass123!")
+        resp = self.client.post(
+            "/login/",
+            {"username": "ipuser", "password": "IpUserPass123!"},
+            REMOTE_ADDR="10.0.0.9",
+            HTTP_X_FORWARDED_FOR="unknown",
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            LoginEvent.objects.get(kind=LoginEvent.Kind.LOGIN).ip, "10.0.0.9"
+        )
+
 
 class StocktakeOverlapTests(_HUSetup):
     def test_second_open_sheet_skips_hus_already_counted(self):
