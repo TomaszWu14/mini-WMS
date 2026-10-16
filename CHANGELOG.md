@@ -35,7 +35,8 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   (bez wartości domyślnych); `entrypoint.sh` nie zakłada superusera z hasłem `admin`, zaślepką ani hasłem
   odrzucanym przez walidatory Django, nie startuje, gdy istniejący superuser ma hasło `admin` albo hasło bazy jest zaślepką; `seed_demo` odmawia bez `DEMO_MODE=1`. Testy: `warehouse/tests_deploy_settings.py`, krok CI dla compose.
 - **US-004 / R4:** import XLSX sprawdza sygnaturę ZIP i sumę rozmiarów po rozpakowaniu (najwyżej 50 MB) przed
-  otwarciem pliku; uszkodzony plik daje komunikat zamiast błędu 500; limit 10 000 wierszy obowiązuje także poza demo;
+  otwarciem pliku; uszkodzony plik daje komunikat zamiast błędu 500; limit 10 000 wierszy obowiązuje także poza demo (puste wiersze XLSX się wliczają, czytane jest najwyżej 50 kolumn,
+  zaszyfrowane archiwa są odrzucane);
   `defusedxml` w zależnościach produkcyjnych. Testy: `warehouse/tests_imports_hardening.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006

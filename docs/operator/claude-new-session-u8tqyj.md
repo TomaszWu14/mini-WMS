@@ -21,7 +21,8 @@
     albo jest uszkodzony, daje komunikat „Plik nie jest poprawnym XLSX…” zamiast błędu serwera.
     XLSX, który po rozpakowaniu przekracza 50 MB, jest odrzucany. Każdy import (lokalizacje,
     stany, przyjęcia, wydania) obejmuje najwyżej 10 000 wierszy także poza demo; w demo — 500
-    jak dotąd.
+    jak dotąd. W XLSX puste wiersze wliczają się do limitu, a kolumny od 51. są pomijane
+    (importy używają kilku pierwszych). Zaszyfrowany XLSX jest odrzucany.
 - **Zmiany dla administratora infrastruktury (US-003):**
   - Produkcja (`DJANGO_DEBUG=0`) nie startuje, gdy `DJANGO_SECRET_KEY` ma mniej niż 50 znaków, jest
     zaślepką (`zmien-mnie-w-produkcji`, `YOUR_DJANGO_SECRET_KEY_HERE`) albo zaczyna się od
@@ -86,7 +87,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (275 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (281 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 

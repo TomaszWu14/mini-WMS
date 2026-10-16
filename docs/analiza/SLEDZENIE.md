@@ -168,7 +168,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-001 | Must | FR-023, FR-024, SEC-009 | R1 | `tests_security.SuperuserProtectionTests` — zrobione, #23 |
 | US-002 | Must | FR-001, FR-005, NFR-003, NFR-009, SEC-015, SEC-021 | R3 | `tests_input_limits` (13 testów) — zrobione, #23 |
 | US-003 | Must | SEC-026, SEC-027 | R2 | `tests_deploy_settings.py`, `tests_demo.py`, krok CI compose — zrobione, #23 |
-| US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (13 testów) — zrobione, #23 |
+| US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (19 testów) — zrobione, #23 |
 | US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py`, `tests_demo_entry.py` |
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` |

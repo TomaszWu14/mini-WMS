@@ -98,7 +98,13 @@ _XLSX_ERRORS = (
     EOFError,
     zlib.error,
     ParseError,
+    RuntimeError,  # zipfile: zaszyfrowany członek archiwum
+    NotImplementedError,  # zipfile: nieobsługiwana metoda kompresji
 )
+# Importy używają kilku kolumn; dalsze są ignorowane, żeby szeroki arkusz
+# (16 384 kolumny × tysiące wierszy) nie zajął gigabajtów pamięci.
+XLSX_MAX_COLUMNS = 50
+_ZIP_METHODS = {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
 _XLSX_BROKEN = (
     "Plik nie jest poprawnym XLSX — zapisz go ponownie w Excelu albo użyj CSV."
 )
@@ -112,9 +118,13 @@ def _check_xlsx_archive(data: bytes) -> None:
         raise ImportError_(_XLSX_BROKEN)
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            total = sum(info.file_size for info in zf.infolist())
+            members = zf.infolist()
     except (zipfile.BadZipFile, zlib.error, EOFError, ValueError) as exc:
         raise ImportError_(_XLSX_BROKEN) from exc
+    # Excel zapisuje XLSX bez szyfrowania ZIP i tylko metodą STORED/DEFLATED.
+    if any(m.flag_bits & 0x1 or m.compress_type not in _ZIP_METHODS for m in members):
+        raise ImportError_(_XLSX_BROKEN)
+    total = sum(m.file_size for m in members)
     limit = settings.IMPORT_MAX_UNCOMPRESSED_BYTES
     if total > limit:
         raise ImportError_(
@@ -124,6 +134,9 @@ def _check_xlsx_archive(data: bytes) -> None:
 
 
 def _rows_from_xlsx(data: bytes):
+    """Generator wierszy; pusty wiersz daje `None`, żeby liczył się do limitu
+    odczytu w `parse_locations_file` — inaczej arkusz z „dziurą” do wiersza
+    1 048 576 przechodziłby milion pustych wierszy, zanim limit zadziała."""
     from openpyxl import load_workbook
     from openpyxl.utils.exceptions import InvalidFileException
 
@@ -133,21 +146,21 @@ def _rows_from_xlsx(data: bytes):
         ws = wb.active
         if ws is None:
             raise ImportError_(_XLSX_BROKEN)
-        rows = ws.iter_rows(values_only=True)
+        rows = ws.iter_rows(max_col=XLSX_MAX_COLUMNS, values_only=True)
         try:
             header = next(rows)
         except StopIteration:
             return
-        headers = [str(h).strip().lower() if h is not None else "" for h in header]
+        columns = [
+            (i, str(h).strip().lower()) for i, h in enumerate(header) if h is not None
+        ]
         for row in rows:
             if row is None or all(c is None for c in row):
+                yield None
                 continue
             # Wiersze krótsze od nagłówka (puste komórki z prawej) nie mogą rzucać
             # IndexError i wywracać całego importu — brakujące kolumny → None.
-            yield {
-                headers[i]: (row[i] if i < len(row) else None)
-                for i in range(len(headers))
-            }
+            yield {name: (row[i] if i < len(row) else None) for i, name in columns}
     except (InvalidFileException, *_XLSX_ERRORS) as exc:
         raise ImportError_(_XLSX_BROKEN) from exc
 
@@ -172,7 +185,7 @@ def parse_locations_file(filename: str, data: bytes):
     rows = list(islice(gen, limit + 1))
     if len(rows) > limit:
         raise ImportError_(message)
-    return rows
+    return [row for row in rows if row is not None]
 
 
 @transaction.atomic

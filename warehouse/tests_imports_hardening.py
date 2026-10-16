@@ -185,3 +185,66 @@ class DefusedXmlTests(SimpleTestCase):
 
         req = (Path(__file__).resolve().parents[1] / "requirements.txt").read_text()
         self.assertRegex(req, r"(?m)^defusedxml==\d")
+
+
+class ReviewRegressionTests(SimpleTestCase):
+    """Uwagi z przeglądu [SEC] US-004: szeroki arkusz, „dziura” w wierszach, szyfrowanie."""
+
+    def test_wide_sheet_reads_limited_columns(self):
+        from .imports import XLSX_MAX_COLUMNS
+
+        header = ["kod"] + [f"k{i}" for i in range(1, 16384)]
+        data = _xlsx([header, ["A-01"], ["A-02"]])
+        rows = parse_locations_file("szeroki.xlsx", data)
+        self.assertEqual([r["kod"] for r in rows], ["A-01", "A-02"])
+        self.assertLessEqual(len(rows[0]), XLSX_MAX_COLUMNS)
+
+    @override_settings(DEMO_MODE=False, IMPORT_MAX_ROWS=100)
+    def test_row_gap_counts_toward_limit(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws["A1"] = "kod"
+        ws["A2"] = "A-01"
+        ws.cell(row=1_048_576, column=1, value="A-99")
+        buf = io.BytesIO()
+        wb.save(buf)
+        with self.assertRaisesMessage(ImportError_, "najwyżej 100 wierszy"):
+            parse_locations_file("dziura.xlsx", buf.getvalue())
+
+    def test_blank_rows_inside_limit_are_skipped(self):
+        rows = parse_locations_file(
+            "x.xlsx", _xlsx([["kod"], ["A-01"], [None], ["A-02"]])
+        )
+        self.assertEqual([r["kod"] for r in rows], ["A-01", "A-02"])
+
+    def test_encrypted_member_rejected(self):
+        # writestr() zeruje flag_bits, więc bit szyfrowania podstawiamy w infolist().
+        data = _xlsx([["kod"], ["A-01"]])
+        member = zipfile.ZipInfo("[Content_Types].xml")
+        member.flag_bits = 0x1
+        with (
+            patch("zipfile.ZipFile.infolist", return_value=[member]),
+            patch("openpyxl.load_workbook") as load,
+        ):
+            with self.assertRaisesMessage(ImportError_, "Plik nie jest poprawnym XLSX"):
+                parse_locations_file("szyfr.xlsx", data)
+            load.assert_not_called()
+
+    def test_unsupported_compression_rejected(self):
+        data = _xlsx([["kod"], ["A-01"]])
+        with patch("zipfile.ZipFile.infolist") as infolist:
+            member = zipfile.ZipInfo("xl/workbook.xml")
+            member.compress_type = 99  # AES
+            infolist.return_value = [member]
+            with self.assertRaisesMessage(ImportError_, "Plik nie jest poprawnym XLSX"):
+                parse_locations_file("aes.xlsx", data)
+
+    def test_runtime_and_not_implemented_wrapped(self):
+        data = _xlsx([["kod"], ["A-01"]])
+        for exc in (RuntimeError("encrypted"), NotImplementedError("method")):
+            with self.subTest(exc=type(exc).__name__):
+                with patch("openpyxl.load_workbook", side_effect=exc):
+                    with self.assertRaisesMessage(
+                        ImportError_, "Plik nie jest poprawnym XLSX"
+                    ):
+                        parse_locations_file("x.xlsx", data)
