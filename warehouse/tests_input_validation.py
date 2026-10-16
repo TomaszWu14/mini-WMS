@@ -297,3 +297,67 @@ class ContentDispositionTests(_Base):
             "Content-Disposition"
         ]
         self.assertIn("filename*=utf-8''", header)
+
+
+class ReviewFixTests(_Base):
+    """Uwagi z przeglądów [SEC]/[DB] US-013."""
+
+    def test_hu_total_capped(self):
+        self.hu.quantity = services.MAX_QUANTITY - 5
+        self.hu.save()
+        with self.assertRaisesMessage(services.WMSError, "nie może przekroczyć"):
+            services.adjust_hu_quantity(
+                hu=self.hu, delta=10, user=self.user, reason="INNE"
+            )
+        resp = self.client.post(
+            "/skaner/api/inwentaryzacja/",
+            {"hu": "HU-V-1", "delta": "10", "reason": "INNE"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_repack_target_capped(self):
+        target = HandlingUnit.objects.create(
+            number="HU-V-2",
+            material=self.material,
+            quantity=services.MAX_QUANTITY,
+            status=HUStatus.ZMAGAZYNOWANY,
+            location=self.loc,
+        )
+        with self.assertRaisesMessage(services.WMSError, "przekroczyłby"):
+            services.repack_hu(
+                source=self.hu, target=target, quantity=1, user=self.user
+            )
+
+    def test_generated_number_skips_taken(self):
+        from .models import HUNumberingConfig
+
+        cfg = (
+            HUNumberingConfig.objects.order_by("pk").first()
+            or HUNumberingConfig.objects.create()
+        )
+        taken = f"{cfg.prefix}{cfg.next_number:0{cfg.padding}d}"
+        HandlingUnit.objects.create(number=taken, material=self.material, quantity=1)
+        self.assertNotEqual(services.generate_hu_number(), taken)
+
+    def test_stock_import_explicit_then_generated_number(self):
+        from .models import HUNumberingConfig
+
+        cfg = (
+            HUNumberingConfig.objects.order_by("pk").first()
+            or HUNumberingConfig.objects.create()
+        )
+        upcoming = f"{cfg.prefix}{cfg.next_number:0{cfg.padding}d}"
+        data = _csv(["REF", "hu", "ilosc"], ("MAT-V", upcoming, 1), ("MAT-V", "", 1))
+        result = import_stock("s.csv", data, self.user)
+        self.assertEqual(result["created"], 2, result["errors"])
+
+    def test_unicode_digit_document_id_is_404_not_500(self):
+        for value in ("²", "①", "١"):
+            with self.subTest(value=value):
+                resp = self.client.get("/skaner/api/zlecenie/", {"id": value})
+                self.assertLess(resp.status_code, 500)
+                resp = self.client.post(
+                    "/skaner/api/pick/",
+                    {"hu": "HU-V-1", "quantity": "1", "document": value},
+                )
+                self.assertLess(resp.status_code, 500)

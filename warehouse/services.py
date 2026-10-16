@@ -93,8 +93,13 @@ def generate_hu_number() -> str:
         if config is None:
             config = HUNumberingConfig.objects.create()
             config = HUNumberingConfig.objects.select_for_update().get(pk=config.pk)
-        number = f"{config.prefix}{config.next_number:0{config.padding}d}"
-        config.next_number += 1
+        # Przegląd [DB] US-013: numer z licznika mógł zostać nadany ręcznie w imporcie
+        # stanów — taki pomijamy, zamiast wycofać cały import na unikalności.
+        while True:
+            number = f"{config.prefix}{config.next_number:0{config.padding}d}"
+            config.next_number += 1
+            if not HandlingUnit.objects.filter(number__iexact=number).exists():
+                break
         config.save(update_fields=["next_number"])
     return number
 
@@ -254,6 +259,8 @@ def correct_hu_quantity(
     _lock_and_sync(hu)
     if new_quantity < 0:
         raise WMSError("Ilość nie może być ujemna.")
+    if new_quantity > MAX_QUANTITY:  # US-013: stan palety, nie tylko pojedyncza zmiana
+        raise WMSError(f"Stan palety nie może przekroczyć {MAX_QUANTITY}.")
     delta = new_quantity - hu.quantity
     if delta == 0:
         raise WMSError("Nowa ilość jest taka sama jak obecna — brak korekty.")
@@ -341,6 +348,10 @@ def repack_hu(*, source: HandlingUnit, target: HandlingUnit, quantity: int, user
         raise WMSError(f"Paleta docelowa {target.number} jest pusta/zamknięta.")
     if quantity < 1:
         raise WMSError("Ilość do przepakowania musi być dodatnia.")
+    if target.quantity + quantity > MAX_QUANTITY:
+        raise WMSError(
+            f"Stan palety {target.number} przekroczyłby {MAX_QUANTITY} — przepakuj mniej."
+        )
     if quantity > source.quantity:
         raise WMSError(
             f"Brak stanu na palecie {source.number}: dostępne {source.quantity}."

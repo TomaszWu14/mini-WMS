@@ -70,7 +70,7 @@
 - **Walidacja danych (US-013):** każda ilość (korekta, pozycja WZ, przepakowanie, spis, skaner) najwyżej
   1 000 000, pojemność lokalizacji najwyżej 10 000 — powyżej komunikat przy polu. Importy: liczba typu `1e999`
   → „Wiersz N: nieprawidłowa liczba…”, za długi kod lokalizacji / numer HU / partia / referencja → wiersz
-  pominięty z komunikatem. Etykiety z cudzysłowem lub polskimi znakami w kodzie pobierają się poprawnie.
+  pominięty z komunikatem. Stan jednej palety najwyżej 1 000 000. Etykiety z cudzysłowem lub polskimi znakami w kodzie pobierają się poprawnie.
 - **Backup (US-012):** kontener `backup` ma teraz własny obraz (`docker/backup.Dockerfile`: PostgreSQL 16 +
   `age`, `rclone`, `curl`) — Coolify go zbuduje przy deployu. Bez nowych zmiennych działa jak dotąd (kopia
   lokalna, 7 dni), ale błąd `pg_dump` nie daje już fałszywego „OK”. Kopia poza serwerem włącza się po
@@ -131,7 +131,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (379 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (384 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

@@ -26,10 +26,15 @@ from .services import WMSError
 BAD_QTY = f"Niepoprawna ilość (liczba całkowita do {services.MAX_QUANTITY})."
 
 
+def _is_id(value: str) -> bool:
+    """Klucz główny z parametru: tylko cyfry ASCII (`"²".isdigit()` jest True → 500)."""
+    return bool(re.fullmatch(r"[0-9]{1,18}", value))
+
+
 def _parse_quantity(raw, allow_negative=False):
     """US-013: ilość z API skanera — liczba całkowita, |ilość| ≤ MAX_QUANTITY, inaczej None."""
     text = (raw or "").strip()
-    if not re.fullmatch(r"-?\d{1,9}", text):
+    if not re.fullmatch(r"-?[0-9]{1,9}", text):
         return None
     value = int(text)
     if abs(value) > services.MAX_QUANTITY or (value < 0 and not allow_negative):
@@ -234,7 +239,7 @@ def api_document(request):
     doc_id = (request.GET.get("id") or "").strip()
     number = (request.GET.get("number") or "").strip()
     doc = None
-    if doc_id.isdigit():
+    if _is_id(doc_id):
         doc = IssueDocument.objects.filter(pk=doc_id).first()
     elif number:
         doc = IssueDocument.objects.filter(number=number).first()
@@ -296,7 +301,7 @@ def api_pick(request):
 
     doc = (
         IssueDocument.objects.filter(pk=doc_id, status=IssueStatus.OTWARTY).first()
-        if doc_id.isdigit()
+        if _is_id(doc_id)
         else None
     )
     if doc is None:
