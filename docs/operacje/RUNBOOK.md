@@ -239,13 +239,19 @@ Jednorazowo, przed pierwszym deployem z off-site:
    - S3 (Backblaze B2, Cloudflare R2, AWS): `RCLONE_CONFIG_OFFSITE_TYPE=s3`, `RCLONE_CONFIG_OFFSITE_PROVIDER=Other`
      (lub `Cloudflare`, `AWS`), `RCLONE_CONFIG_OFFSITE_ENDPOINT=https://…`, `RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID`,
      `RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY`; `BACKUP_RCLONE_REMOTE=offsite:<bucket>/miniwms`.
-     Klucz API tylko z prawem zapisu/listy/usuwania w tym jednym buckecie.
+     Klucz API **tylko z prawem zapisu i listowania** w tym jednym buckecie (bez usuwania — przejęty serwer
+     nie skasuje kopii). Retencja: **reguła lifecycle bucketu** „usuń `wms-*.sql.gz.age` starsze niż 30 dni”
+     (B2: Lifecycle Settings, R2: Object lifecycle, S3: Lifecycle rule); jeśli dostawca ma Object Lock /
+     wersjonowanie — włącz na 30 dni.
    - SFTP (Hetzner Storage Box): `RCLONE_CONFIG_OFFSITE_TYPE=sftp`, `RCLONE_CONFIG_OFFSITE_HOST`,
      `RCLONE_CONFIG_OFFSITE_USER`, `RCLONE_CONFIG_OFFSITE_PASS` (wartość z `rclone obscure 'hasło'`);
-     `BACKUP_RCLONE_REMOTE=offsite:miniwms`.
+     `BACKUP_RCLONE_REMOTE=offsite:miniwms`. SFTP nie ma lifecycle — ustaw `BACKUP_OFFSITE_PRUNE=1` (skrypt usuwa
+     tylko `wms-*.sql.gz.age` starsze niż `BACKUP_OFFSITE_KEEP_DAYS` w tym jednym katalogu); hasło Storage Box
+     daje też prawo usuwania — osobne konto/podkonto tylko dla backupu.
 3. **Alert:** w Healthchecks.io (lub Uptime Kuma „Push”) utwórz check: okres 1 dzień, tolerancja 2 h, powiadomienie e-mail
    do PO/INFRA. URL pingu → `BACKUP_HEARTBEAT_URL`. Brak pingu przez ~26 h = alert (kopia się nie udała albo kontener nie działa).
-4. **Retencja off-site:** `BACKUP_OFFSITE_KEEP_DAYS=30` (domyślnie). Lokalnie `BACKUP_KEEP_DAYS=7`.
+4. **Retencja off-site:** 30 dni — lifecycle bucketu (S3) albo `BACKUP_OFFSITE_PRUNE=1` + `BACKUP_OFFSITE_KEEP_DAYS=30` (SFTP).
+   Lokalnie `BACKUP_KEEP_DAYS=7`. `BACKUP_RCLONE_REMOTE` musi wskazywać katalog (`offsite:bucket/miniwms`), nie cały dysk.
 5. **Sprawdzenie:** Redeploy → kontener `backup` → Logs: `off-site OK -> offsite:…/wms-….sql.gz.age`; w Healthchecks — zielony ping;
    w buckecie plik `.age`. Bez `BACKUP_AGE_RECIPIENT` kontener **odmawia** wysyłki (`nie wysyłam kopii bez szyfrowania`).
 

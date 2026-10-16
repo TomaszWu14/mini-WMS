@@ -148,10 +148,12 @@ jobs:
           RECIPIENT="$(grep 'public key' key.txt | cut -d' ' -f4)"
           mkdir -p out
           # Prawdziwy skrypt backupu w obrazie PostgreSQL (jak kontener `backup`); off-site = katalog lokalny rclone.
-          docker run --rm --network host -v "$PWD/scripts:/s:ro" -v "$PWD/out:/backups" \
+          # Ten sam obraz co kontener `backup` (bez instalowania pakietów w trakcie testu).
+          docker build -q -f docker/backup.Dockerfile -t miniwms-backup:drill . >/dev/null
+          docker run --rm --network host -v "$PWD/out:/backups" \
             -e PGPASSWORD=wms -e DB_HOST=localhost -e POSTGRES_USER=wms -e POSTGRES_DB=wms \
             -e BACKUP_ONCE=1 -e BACKUP_AGE_RECIPIENT="$RECIPIENT" -e BACKUP_RCLONE_REMOTE=/backups/offsite \
-            postgres:16-alpine sh -c "apk add --no-cache -q age rclone curl && sh /s/pg_backup.sh"
+            -e BACKUP_OFFSITE_PRUNE=1 miniwms-backup:drill
           ENC="$(ls out/offsite/wms-*.sql.gz.age)"
           if gunzip -t "$ENC" 2>/dev/null; then echo "kopia off-site NIE jest zaszyfrowana"; exit 1; fi
           age -d -i key.txt "$ENC" | gunzip > restore.sql
@@ -326,6 +328,19 @@ jobs:
           exit-code: "1"
           format: table
           trivyignores: .trivyignore
+
+      - name: "Trivy — obraz kontenera backupu (US-012; blokuje: HIGH/CRITICAL z poprawką)"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: miniwms-backup:ci
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          trivyignores: .trivyignore
+          skip-setup-trivy: true
 
       - name: Trivy — raport SARIF z obrazu (artefakt)
         if: always()

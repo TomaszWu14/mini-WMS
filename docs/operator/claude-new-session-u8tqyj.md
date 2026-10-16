@@ -126,7 +126,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (361 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (365 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 
@@ -142,7 +142,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
 | — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0`, `django-otp==1.7.4` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
-| `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`, `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS`, `RCLONE_CONFIG_OFFSITE_*` | nowe, opcjonalne (US-012) | wg RUNBOOK §5.0 (klucz publiczny, cel off-site, URL Healthchecks) | ☐ ustawić w zasobie prod i demo; klucz prywatny — tylko offline u PO |
+| `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`, `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS`, `BACKUP_OFFSITE_PRUNE`, `RCLONE_CONFIG_OFFSITE_*` | nowe, opcjonalne (US-012) | wg RUNBOOK §5.0 (klucz publiczny, cel off-site w katalogu, URL Healthchecks; S3: klucz bez prawa usuwania + lifecycle 30 dni) | ☐ ustawić w zasobie prod i demo; klucz prywatny — tylko offline u PO |
 | `DJANGO_CSP_REPORT_ONLY` | nowa, opcjonalna (domyślnie `0` = CSP egzekwowana) | nie ustawiać | ☐ nie dotyczy (tylko awaryjnie `1`) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 

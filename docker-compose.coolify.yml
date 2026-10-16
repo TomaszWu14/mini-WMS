@@ -77,6 +77,8 @@ services:
       BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
       BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
       BACKUP_OFFSITE_KEEP_DAYS: ${BACKUP_OFFSITE_KEEP_DAYS:-30}
+      # 1 = skrypt usuwa stare kopie off-site (klucz z prawem usuwania); 0 = lifecycle bucketu.
+      BACKUP_OFFSITE_PRUNE: ${BACKUP_OFFSITE_PRUNE:-0}
       BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
       # Zdalny cel rclone wyłącznie ze zmiennych (przykład S3 — COOLIFY.md §10).
       RCLONE_CONFIG_OFFSITE_TYPE: ${RCLONE_CONFIG_OFFSITE_TYPE:-}

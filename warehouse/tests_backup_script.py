@@ -41,7 +41,7 @@ cp "$1" "$out"
 """
 
 
-class BackupScriptTests(SimpleTestCase):
+class _BackupScriptBase(SimpleTestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
@@ -98,10 +98,13 @@ class BackupScriptTests(SimpleTestCase):
             "BACKUP_AGE_RECIPIENT": self.recipient,
             "BACKUP_RCLONE_REMOTE": "offsite:miniwms",
             "BACKUP_HEARTBEAT_URL": "https://hc.example/ping/abc",
+            "BACKUP_OFFSITE_PRUNE": "1",
         }
         env.update(extra)
         return env
 
+
+class BackupScriptTests(_BackupScriptBase):
     def test_full_success_encrypts_uploads_prunes_and_pings(self):
         """Kryteria 1–3: kopia szyfrowana poza serwerem, retencja 30 dni, heartbeat."""
         r = self._run(**self._offsite_env())
@@ -112,7 +115,7 @@ class BackupScriptTests(SimpleTestCase):
             r"rclone copyto \S+/wms-\d{8}-\d{6}\.sql\.gz\.age offsite:miniwms/wms-",
         )
         self.assertIn(
-            "rclone delete offsite:miniwms --min-age 30d --include wms-*.sql.gz.age",
+            "rclone delete offsite:miniwms --max-depth 1 --min-age 30d --include /wms-*.sql.gz.age",
             calls,
         )
         self.assertIn(
@@ -201,3 +204,31 @@ class BackupFingerprintTests(TestCase):
         self.assertIn("palety (HU): 1", text)
         self.assertIn("suma ilości na paletach: 7", text)
         self.assertIn("materiały: 1", text)
+
+
+class BackupScriptReviewTests(_BackupScriptBase):
+    """Uwagi [SEC] US-012: zakres usuwania off-site i konfiguracja."""
+
+    def test_no_prune_by_default(self):
+        """Domyślnie retencja po stronie bucketu — serwer niczego off-site nie usuwa."""
+        r = self._run(**self._offsite_env(BACKUP_OFFSITE_PRUNE="0"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("rclone copyto", self._calls())
+        self.assertNotIn("rclone delete", self._calls())
+
+    def test_zero_or_bad_retention_refused(self):
+        for value in ("0", "abc", "-5"):
+            with self.subTest(value=value):
+                r = self._run(**self._offsite_env(BACKUP_OFFSITE_KEEP_DAYS=value))
+                self.assertEqual(r.returncode, 2)
+                self.assertNotIn("rclone", self._calls())
+
+    def test_remote_root_refused(self):
+        r = self._run(**self._offsite_env(BACKUP_RCLONE_REMOTE="offsite:"))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("katalog", r.stderr)
+
+    def test_failed_upload_leaves_no_encrypted_copy(self):
+        r = self._run(FAKE_RCLONE_FAIL="1", **self._offsite_env())
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(list(self.backups.glob("*.age")), [])
