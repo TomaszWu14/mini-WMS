@@ -69,7 +69,14 @@ Pełna instrukcja krok po kroku: **[COOLIFY.md](../COOLIFY.md)**.
 Patrz `.env.example`. Najważniejsze:
 
 - `DATABASE_URL` — np. `postgres://user:pass@host:5432/dbname` (domyślnie SQLite).
-- `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_TIME_ZONE`.
+- `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
+  `DJANGO_TIME_ZONE`, `DJANGO_SESSION_AGE` (sekundy bezczynności, domyślnie 1800).
+- `DJANGO_TRUSTED_PROXY_COUNT` — liczba proxy przed aplikacją (Caddy/Traefik: 1); od tego zależy
+  IP w limicie i dzienniku logowań.
+- `DEMO_MODE`, `DEMO_USER`, `DEMO_PASSWORD` — publiczna instancja demo (COOLIFY.md §11).
+- `DJANGO_SECURE_COOKIES`, `DJANGO_SSL_REDIRECT`, `DJANGO_HSTS_SECONDS`, `DJANGO_CONN_MAX_AGE`,
+  `DJANGO_MAX_UPLOAD_BYTES`, `GUNICORN_WORKERS` (domyślnie 3).
+Pełna lista z opisem wrażliwości: [docs/operacje/RUNBOOK.md](operacje/RUNBOOK.md).
 
 
 ## Rozwój (lint, format, typy, testy)
@@ -100,6 +107,11 @@ warehouse/
   forms.py      # formularze
   imports.py    # import lokalizacji CSV/XLSX
   exports.py    # eksport CSV/XLSX
-  labels.py     # etykieta HU (PDF + QR)
+  labels.py     # etykiety HU i lokalizacji (PDF + QR); documents.py — WZ w PDF
+  scanner_views.py  # ekrany i JSON API skanera (docs/architektura/API.md)
+  stock_import.py, receipt_import.py, issue_import.py  # importy stanów, przyjęć, zleceń
+  demo.py       # tryb demo: „Wejdź jako demo”, /demo/, reset danych, limit prób logowania
+  roles.py, signals.py  # role i dekoratory; profil użytkownika, dziennik logowań
+  management/commands/seed_demo.py  # dane demo
   templates/ static/
 ```

@@ -19,7 +19,7 @@
    wierszy.
 7. **CSV: separator zgadywany** (`;` vs `,` po próbce) i nagłówki zamieniane na lowercase —
    nowe kolumny w importach porównuj po `strip().lower()`.
-8. **`views.py` ma 1177 linii.** Nowe ekrany dokładaj do osobnego modułu (jak
+8. **`views.py` ma 1405 linii** (T2 w audycie). Nowe ekrany dokładaj do osobnego modułu (jak
    `scanner_views.py`), nie do `views.py`.
 9. **Eksporty (`stock_export`, `movement_export`) budują wiersze w pamięci.** Przy dużej
    historii ruchów filtruj zakres dat zanim dodasz nowe kolumny.

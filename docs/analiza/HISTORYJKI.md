@@ -130,13 +130,13 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 **Kryteria akceptacji** (dla wszystkich czterech importów: `/stany/import/`, `/lokalizacje/import/`, `/przyjecie/import/`, `/wydania/import/`)
 
 1. **Given** plik `.xlsx`, który nie jest ZIP-em (np. CSV z rozszerzeniem `.xlsx`); **When** import; **Then** odpowiedź 200 z komunikatem „Plik nie jest poprawnym XLSX”, bez 500 i bez zmian w bazie.
-2. **Given** poprawny ZIP, którego suma `file_size` członków > L_ROZP, a rozmiar po kompresji < 5 MB (np. ogromny `xl/sharedStrings.xml`); **When** import; **Then** odrzucony **przed** `load_workbook` z komunikatem o limicie.
+2. **Given** poprawny ZIP, którego suma `file_size` członków > L_ROZP, a rozmiar po kompresji < 5 MB (mały po kompresji, duży po rozpakowaniu); **When** import; **Then** odrzucony **przed** `load_workbook` z komunikatem o limicie.
 3. **Given** plik `.xlsx` bez sygnatury `PK\x03\x04`; **When** import; **Then** odrzucony jak w kryterium 1.
 4. **Given** plik z liczbą wierszy > L_WIERSZE, `DEMO_MODE` wyłączony; **When** import; **Then** odrzucony z komunikatem „najwyżej N wierszy” (jak dziś w demo); limit demo (500) bez zmian.
 5. **Given** środowisko produkcyjne (`requirements.txt`); **Then** `defusedxml` jest zainstalowany w przypiętej wersji, a openpyxl go wykrywa (np. `openpyxl.xml.DEFUSEDXML is True` — do potwierdzenia przez [DEV]).
 6. **Given** błędy `BadZipFile`, `InvalidFileException`, `KeyError` z biblioteki; **When** import; **Then** każdy zamieniony na `ImportError_` z komunikatem, nigdy 500.
 
-**Test do napisania:** `warehouse/tests_imports_hardening.py` (nowy): `test_non_zip_xlsx_rejected_on_all_importers`, `test_zip_bomb_rejected_before_load_workbook`, `test_row_limit_enforced_outside_demo`, `test_defusedxml_available`. Wartości `1e999` — US-013.
+**Test do napisania:** `warehouse/tests_imports_hardening.py` (nowy): `test_non_zip_xlsx_rejected_on_all_importers`, `test_zip_bomb_rejected_before_load_workbook`, `test_row_limit_enforced_outside_demo`, `test_defusedxml_available`. Wartości w zapisie wykładniczym — US-013.
 
 ### US-005 — Retencja dziennika logowań, czyszczenie sesji, limiter wejść demo
 
@@ -307,6 +307,8 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 
 **Test do napisania:** brak testu jednostkowego — skrypt `pg_backup.sh` sprawdzany `shellcheck`, przebieg odtworzenia opisany w RUNBOOK (karta odbioru).
 
+**Uwaga [DEV] (2026-10-16):** `scripts/pg_backup.sh` nie ustawia `pipefail`, więc przy błędzie `pg_dump` w potoku `pg_dump | gzip` log może pokazać „OK” przy pustym pliku; poprawka skryptu (i sprawdzanie rozmiaru kopii) wchodzi w zakres tej historyjki.
+
 ### US-013 — Walidacja zakresów, długości i nagłówków z danych użytkownika
 
 | | |
@@ -320,7 +322,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 
 **Kryteria akceptacji**
 
-1. **Given** import z komórką `1e999` w polu liczbowym; **When** import; **Then** wiersz pominięty z komunikatem „Wiersz N: nieprawidłowa liczba”, bez `OverflowError` i bez 500.
+1. **Given** import z komórką w zapisie wykładniczym (wartość poza zakresem) w polu liczbowym; **When** import; **Then** wiersz pominięty z komunikatem „Wiersz N: nieprawidłowa liczba”, bez `OverflowError` i bez 500.
 2. **Given** pole całkowite formularza (limit na paletę, przyjęcie, korekta, pozycja WZ) z wartością > 2^31−1; **When** zapis; **Then** błąd pola, nie `DataError` (sprawdzone na PostgreSQL).
 3. **Given** `stocktake_save` lub API inwentaryzacji (`delta`) z wartością > L_QTY; **Then** odrzucone z komunikatem / JSON 400.
 4. **Given** import z kodem lokalizacji > 40 znaków lub numerem HU > 30; **When** import; **Then** wiersz pominięty z komunikatem, bez częściowego importu.

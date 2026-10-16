@@ -176,7 +176,7 @@ Kolumna „Status” = stan wg audytu.
 |---|---|---|---|---|
 | SEC-018 | Limit rozmiaru uploadu. | **Given** plik > 5 MB; **When** wysłany do dowolnego importu; **Then** „Plik jest za duży (maks. 5 MB)”. | spełnione (test do napisania) | US-043 (test) |
 | SEC-019 | Walidacja typu po zawartości, ochrona przed bombą dekompresyjną i XML, uszkodzony plik = komunikat. | **Given** plik `.xlsx` niebędący ZIP-em lub ZIP z `sharedStrings.xml` powyżej limitu po rozpakowaniu; **When** dowolny import; **Then** komunikat „Plik nie jest poprawnym XLSX” lub odmowa, bez 500 i bez skoku pamięci workera. | brak (R4, T1) | US-004 |
-| SEC-020 | Pliki uploadu: losowe nazwy, poza katalogiem publicznym. | **Given** import pliku; **When** przetworzony; **Then** plik nie jest zapisywany na dysku (przetwarzanie w pamięci). Gdyby zapis się pojawił — losowa nazwa i katalog poza webrootem. | spełnione — N/D, brak zapisu plików | — |
+| SEC-020 | Pliki uploadu: losowe nazwy, poza katalogiem publicznym. | **Given** import pliku; **When** przetworzony; **Then** plik nie trafia do katalogu publicznego ani `MEDIA_ROOT` (brak pól plikowych w modelach); pliki > 2,5 MB Django buforuje chwilowo w katalogu tymczasowym pod losową nazwą i usuwa po żądaniu. Gdyby trwały zapis się pojawił — losowa nazwa i katalog poza webrootem. | spełnione — brak trwałego zapisu plików | — |
 | SEC-021 | Ochrona zasobów przed nadużyciem (DoS aplikacyjny): palety, import, etykiety, listy. | **Given** Operator; **When** POST `/przyjecie/` z liczbą palet powyżej limitu; **Then** odrzucone przed zapisem; **Given** Podgląd; **When** GET `/lokalizacje/etykiety/` dla > limit lokalizacji; **Then** komunikat „Zawęź filtr”. | brak (R3, R4, R5) | US-002, US-004, US-015 |
 
 ### 3.5 Transport i nagłówki

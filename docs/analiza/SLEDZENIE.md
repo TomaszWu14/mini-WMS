@@ -135,7 +135,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-017 | US-013 | brak — do napisania | #23 |
 | SEC-018 | US-043 | brak — do napisania | historyczny (przed procesem) |
 | SEC-019 | US-004 | brak — do napisania | #23 |
-| SEC-020 | — | n/d — pliki nie są zapisywane na dysku | historyczny (przed procesem) |
+| SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
 | SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests` (fragmenty: etykiety HU, wiersze w demo) | #23 |
 | SEC-022 | US-011 | n/d — `check --deploy` w CI; test nagłówków do napisania | #23 |
 | SEC-023 | US-043 | brak — do napisania (`check --deploy` w CI nie jest testem odpowiedzi) | historyczny (przed procesem) |
@@ -161,7 +161,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 
 ---
 
-## 5. Indeks odwrotny: historyczka → wymagania
+## 5. Indeks odwrotny: historyjka → wymagania
 
 | US | MoSCoW | Pokrywa | Źródło | Planowany test (nowy) |
 |---|---|---|---|---|

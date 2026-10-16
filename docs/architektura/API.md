@@ -517,7 +517,7 @@ Zasada dla nowych endpointów: **test odmowy dla każdej roli**
 | 2 | **Brak limitera** na endpointach API i na `/demo/`, `/login/demo/` (limit tylko `/login/`) | anonimowy Operator w demo może generować dowolny ruch | R5, US-005, US-016 |
 | 3 | Po wygaśnięciu sesji API zwraca 302 → HTML logowania (200 po `fetch`) | własny klient widzi HTML zamiast JSON | [auth.md #10](../pitfalls/auth.md); `scanner.js` to obsługuje |
 | 4 | **Brak idempotencji** — ponowienie POST (np. po timeoucie sieci) wykona operację drugi raz | podwójne pobranie lub korekta | po błędzie sieci sprawdź stan (`GET …/hu/`) przed ponowieniem |
-| 5 | **Brak górnej granicy** `quantity` / `delta` | liczba spoza zakresu bazy (SQLite: > 2^63; PostgreSQL: > 2^31−1) kończy się **500 (HTML)**, nie 400. Potwierdzone lokalnie: `delta=99999999999999999999` → `OverflowError` | T16, US-013 |
+| 5 | **Brak górnej granicy** `quantity` / `delta` | liczba spoza zakresu bazy (SQLite: > 2^63; PostgreSQL: > 2^31−1) kończy się **500 (HTML)**, nie 400. Potwierdzone lokalnie: wartość poza zakresem → `OverflowError` | T16, US-013 |
 | 6 | Domknięcie WZ (`ZREALIZOWANY`) w widoku `api_pick`, poza `services.py` i bez blokady dokumentu | logika w dwóch miejscach | T3, D-05, US-018 |
 | 7 | Niespójne dopasowanie kodów: HU bez rozróżniania wielkości liter, lokalizacje z rozróżnianiem | `a01-01-01` nie znajdzie `A01-01-01` | do decyzji PO |
 | 8 | `zlecenie` bez parametrów → 404 (nie 400) | niejednolity kod błędu | kosmetyka |

@@ -163,12 +163,12 @@ Każde ryzyko naprawiane z backlogu dostaje test, który czerwienieje bez popraw
 | Ryzyko | Historyjka | Test regresji |
 |---|---|---|
 | **R1** — Administrator zmienia superusera | US-001 | POST na `/uzytkownicy/<pk superusera>/` jako Administrator bez `is_superuser` → 403; hasło i `is_active` bez zmian; superuser może edytować siebie |
-| **R3** — nieograniczona liczba palet | US-002 | `ReceiveForm` odrzuca `pallets`/`total_quantity` powyżej limitu; import przyjęć z `palety=5000000` → błąd wiersza, **zero** utworzonych HU; sprawdzenie przed pierwszym zapisem |
+| **R3** — nieograniczona liczba palet | US-002 | `ReceiveForm` odrzuca `pallets`/`total_quantity` powyżej limitu; import przyjęć z liczbą palet ponad limit → błąd wiersza, **zero** utworzonych HU; sprawdzenie przed pierwszym zapisem |
 | **R2** — słabe sekrety/konta demo | US-003 | `prod.py` rzuca `ImproperlyConfigured` dla kluczy: zaślepka, wartość domyślna z compose, < 50 znaków (test przez przeładowanie ustawień z podmienionym env); `seed_demo` bez `DEMO_MODE` nie tworzy kont demo z działającym hasłem; kontrola, że `docker-compose.yml` nie ma domyślnych sekretów |
 | **T1 / R4** — XLSX | US-004 | uszkodzony plik (`.xlsx` z losową treścią, CSV z rozszerzeniem `.xlsx`) na `/stany/import/`, `/lokalizacje/import/`, `/przyjecie/import/`, `/wydania/import/` → komunikat, nie 500; „bomba” (suma rozmiarów po rozpakowaniu ponad limit) odrzucona szybko; limit wierszy działa także poza demo |
 | **R7 + R5** — dziennik, sesje, demo | US-005 | komenda retencji usuwa wpisy starsze niż 90 dni i zostawia nowsze; limiter na `/demo/` i `/login/demo/` zwraca 429 po przekroczeniu |
 | **R10** — CI | US-006 | nie testy aplikacji; weryfikacja w CI (pliki `dependabot.yml`, `permissions` w `ci.yml`) |
-| **T16** — zakresy | US-013 | `delta`/`quantity` = `99999999999999999999` oraz `1e999` w importach → 400/komunikat, nie 500 (dziś API zwraca 500 — potwierdzone, [API.md §9](../architektura/API.md)); kod lokalizacji z `"` lub znakiem nowej linii nie psuje `Content-Disposition` |
+| **T16** — zakresy | US-013 | `delta`/`quantity` poza zakresem kolumny oraz zapis wykładniczy w importach → 400/komunikat, nie 500 (dziś API zwraca 500 — potwierdzone, [API.md §9](../architektura/API.md)); kod lokalizacji z `"` lub znakiem nowej linii nie psuje `Content-Disposition` |
 | **T3** — domknięcie WZ | US-018 | po przeniesieniu do `services`: dwa równoległe pobrania ostatnich pozycji kończą dokument raz (PostgreSQL) |
 
 Pozostałe kontrole bezpieczeństwa uruchamia CI (bandit, semgrep, pip-audit, gitleaks, trivy —
@@ -277,7 +277,7 @@ Priorytety MoSCoW to propozycja [DEV]; ustala je PO ([BA] wpisuje do `HISTORYJKI
 | 7 | Baseline testów mutacyjnych `services.py` + zapisany raport | sekcja 6 | Should |
 | 8 | Test kontraktu API (komplet kluczy JSON per endpoint) i CSRF z `enforce_csrf_checks=True` | [API.md §8](../architektura/API.md) | Should |
 | 9 | `JsonFormatter` (`config/log.py`, 29 %) | luka pokrycia | Could |
-| 10 | Testy zakresów (T16): `1e999`, wartości > 2^31−1, długość kodów | T16, US-013 | Should |
+| 10 | Testy zakresów (T16): zapis wykładniczy, wartości > 2^31−1, długość kodów | T16, US-013 | Should |
 | 11 | E2E Playwright, 3 ścieżki (sekcja 7) | — | Could |
 | 12 | Cykl `migrate` w górę i w dół na PostgreSQL dla migracji odwracalnych | [MODEL_DANYCH §2](../architektura/MODEL_DANYCH.md) | Could |
 | 13 | Przeniesienie testów do pakietu `warehouse/tests/` (podział jednostkowe/integracyjne/e2e) | AUDYT §2.3 | Could |

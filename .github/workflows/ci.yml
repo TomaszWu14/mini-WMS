@@ -254,7 +254,7 @@ jobs:
       - name: Smoke test — kontener wstaje i jest healthy
         run: |
           docker run -d --name miniwms-ci \
-            -e DJANGO_SECRET_KEY=ci-smoke-key-not-for-production-0123456789 \
+            -e DJANGO_SECRET_KEY=ci-smoke-key-not-for-production-0123456789-abcdefghij \
             -e DJANGO_ALLOWED_HOSTS=localhost \
             miniwms:ci
           status=starting
