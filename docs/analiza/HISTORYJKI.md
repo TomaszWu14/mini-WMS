@@ -159,7 +159,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 6. **Given** `DEMO_MODE`; **When** udane wejście `/demo/`; **Then** `LoginEvent.ip` jest pusty (pole nullable — bez migracji); user-agent — wg PYT-09.
 7. **Given** brak `DEMO_MODE`; **When** GET `/demo/` i POST `/login/demo/`; **Then** nadal 404 (`DemoEntryOffTests` zielone).
 
-**Testy:** `warehouse/tests_retention.py` — `PurgeLoginEventsTests` (5: domyślne 90 dni, `--days`, granica 89 dni, `--days 0` odrzucone, stała 90), `ClearSessionsTests` (1), `LoginEventPrivacyTests` (2: w demo brak IP i UA, poza demo bez zmian); `tests_demo_entry.DemoEntryRateLimitTests` (4: `/demo/` i `/login/demo/` — (K+1)-sze żądanie 429 bez sesji i `LoginEvent`, limit per IP, udane wejście bez IP). Przed poprawką 9 testów czerwonych. Parametry: RETENCJA = 90 dni (**decyzja PO 2026-10-16**, Z-09), K / W = 10 / 300 s (Z-37, do potwierdzenia), w demo `LoginEvent` bez IP i user-agenta (Z-38, do potwierdzenia — PYT-09; poza demo bez zmian). Kryterium 4: COOLIFY.md §10a (dwa Scheduled Tasks); dodatkowo `entrypoint.sh` uruchamia obie komendy przy starcie. Limiter jest per proces gunicorna (LocMem, jak limit logowań — pułapka auth #6). Odbiór [BA] 2026-10-16: kryteria 1–3 i 5–7 spełnione; 4 — do sprawdzenia ręcznie na środowisku po deployu.
+**Testy:** `warehouse/tests_retention.py` — `PurgeLoginEventsTests` (5: domyślne 90 dni, `--days`, granica 89 dni, `--days 0` odrzucone, stała 90), `ClearSessionsTests` (1), `LoginEventPrivacyTests` (2: w demo brak IP i UA, poza demo bez zmian); `tests_demo_entry.DemoEntryRateLimitTests` (5: `/demo/` i `/login/demo/` — (K+1)-sze żądanie 429 bez sesji i `LoginEvent`, limit per IP, udane wejście bez IP, odświeżanie przez zalogowanego nie liczy się do limitu). Przed poprawką 9 testów czerwonych. Parametry: RETENCJA = 90 dni (**decyzja PO 2026-10-16**, Z-09), K / W = 10 / 300 s (Z-37, do potwierdzenia), w demo `LoginEvent` bez IP i user-agenta (Z-38, do potwierdzenia — PYT-09; poza demo bez zmian). Kryterium 4: COOLIFY.md §10a (dwa Scheduled Tasks); dodatkowo `entrypoint.sh` uruchamia obie komendy przy starcie. Limiter jest per proces gunicorna (LocMem, jak limit logowań — pułapka auth #6) i liczy tylko wejścia anonimowe (po przeglądzie [SEC]: zalogowany, odświeżając `/demo/`, nie zużywa limitu innym za tym samym NAT; `--days` ograniczone do 1…36 500). Przegląd [DB]: brak indeksu na `LoginEvent.created_at` — przy obecnej skali pełny skan jest tani, indeks wymaga migracji → US-051. Odbiór [BA] 2026-10-16: kryteria 1–3 i 5–7 spełnione; 4 — do sprawdzenia ręcznie na środowisku po deployu.
 
 ### US-006 — Łańcuch dostaw i CI: blokujące skany, Dependabot, SECURITY.md
 
@@ -700,4 +700,20 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** import 2 000 palet; **When** trwa zapis; **Then** blokada licznika jest brana raz (rezerwacja `next_number += N`), HU i ruchy zapisywane `bulk_create`, liczba zapytań stała względem N (`assertNumQueries`).
 2. **Given** dwa równoległe przyjęcia; **When** jedno to import; **Then** numery HU nadal unikalne i ciągłe (test PostgreSQL jak `tests_concurrency_pg.py`).
+
+### US-051 — Indeks na `LoginEvent.created_at` (z przeglądu [DB] US-005)
+
+| | |
+|---|---|
+| Historyjka | Jako **administrator infrastruktury (ST-05)** chcę, aby codzienne usuwanie starego dziennika logowań i lista dziennika nie skanowały całej tabeli, aby nie spowalniały startu kontenera przy dużym dzienniku. |
+| MoSCoW · rozmiar | Could · S |
+| Status | do zrobienia |
+| Źródło | przegląd `db-reviewer` US-005: `purge_login_events` (`created_at__lt`) i `login_log` (`-created_at`) bez indeksu; dziś tabela mała (tysiące wierszy) |
+| Wymagania | SEC-036; NFR-003 |
+| Zależności | nowa migracja — wdrożenie wymaga zgody PO (§8: migracje na danych produkcyjnych) |
+
+**Kryteria akceptacji**
+
+1. **Given** `LoginEvent.Meta.indexes` z `created_at`; **When** `makemigrations --check`; **Then** migracja `AddIndex` w repo, odwracalna.
+2. **Given** PostgreSQL; **When** `EXPLAIN` zapytania `purge_login_events`; **Then** plan używa indeksu.
 

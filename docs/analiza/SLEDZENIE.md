@@ -155,7 +155,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-037 | US-023 | n/d — przegląd dokumentu | #23 |
 | SEC-038 | US-023, US-027 | brak — do napisania | #23 |
 | SEC-039 | US-012 | n/d — próba odtworzenia (RUNBOOK) | #23 |
-| SEC-040 | US-005, US-016 | `tests_demo_entry.DemoEntryRateLimitTests` (4) | #23 |
+| SEC-040 | US-005, US-016 | `tests_demo_entry.DemoEntryRateLimitTests` (5) | #23 |
 | SEC-041 | US-014 | `ClientIPTests` (D-12: nagłówek ignorowany bez zaufanego proxy; format adresu bez testu) | historyczny (przed procesem; #13) |
 | SEC-042 | US-024 | n/d — przegląd dokumentu | #23 |
 
@@ -169,7 +169,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-002 | Must | FR-001, FR-005, NFR-003, NFR-009, SEC-015, SEC-021 | R3 | `tests_input_limits` (13 testów) — zrobione, #23 |
 | US-003 | Must | SEC-026, SEC-027 | R2 | `tests_deploy_settings.py`, `tests_demo.py`, krok CI compose — zrobione, #23 |
 | US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (19 testów) — zrobione, #23 |
-| US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py` (8), `tests_demo_entry.DemoEntryRateLimitTests` (4) — zrobione, #23 |
+| US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py` (8), `tests_demo_entry.DemoEntryRateLimitTests` (5) — zrobione, #23 |
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` |
 | US-008 | Should | SEC-001 | R6 | `tests_passwords.py` |

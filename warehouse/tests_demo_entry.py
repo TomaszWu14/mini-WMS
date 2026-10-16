@@ -150,3 +150,11 @@ class DemoEntryRateLimitTests(TestCase):
         event = LoginEvent.objects.get(kind=LoginEvent.Kind.LOGIN)
         self.assertIsNone(event.ip)
         self.assertEqual(event.user_agent, "")
+
+    def test_logged_in_refresh_not_counted(self):
+        """Uwaga [SEC] US-005: zalogowany nie zużywa limitu anonimowych wejść."""
+        self.client.get("/demo/")
+        for _ in range(self.limit + 5):
+            self.assertEqual(self.client.get("/demo/").status_code, 302)
+        self.client.logout()
+        self.assertEqual(self.client.get("/demo/").status_code, 302)

@@ -8,6 +8,8 @@ from django.utils import timezone
 
 from warehouse.models import LoginEvent
 
+MAX_DAYS = 36_500  # 100 lat; więcej przepełnia datetime (OverflowError)
+
 
 class Command(BaseCommand):
     help = (
@@ -25,8 +27,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, days=None, **options):
         days = settings.LOGIN_EVENT_RETENTION_DAYS if days is None else days
-        if days < 1:
-            raise CommandError("--days musi być liczbą dni ≥ 1.")
+        if not 1 <= days <= MAX_DAYS:
+            raise CommandError(f"--days musi być liczbą dni od 1 do {MAX_DAYS}.")
         cutoff = timezone.now() - timedelta(days=days)
         deleted, _ = LoginEvent.objects.filter(created_at__lt=cutoff).delete()
         self.stdout.write(

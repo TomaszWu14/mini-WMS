@@ -133,9 +133,11 @@ def demo_start(request):
     """
     if not settings.DEMO_MODE:
         raise Http404
-    if _demo_entry_limited(request):
-        return _too_many(DEMO_TOO_MANY)
     if not request.user.is_authenticated:
+        # Liczymy tylko wejścia, które logują — zalogowany, odświeżając link,
+        # nie zużywa limitu innym gościom za tym samym NAT.
+        if _demo_entry_limited(request):
+            return _too_many(DEMO_TOO_MANY)
         user = _demo_user()
         if user is None:
             messages.error(

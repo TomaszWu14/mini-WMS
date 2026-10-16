@@ -49,8 +49,9 @@ class PurgeLoginEventsTests(TestCase):
 
     def test_invalid_days_refused(self):
         _event(100)
-        with self.assertRaises(CommandError):
-            self._purge(days=0)
+        for days in (0, -5, 10**9):
+            with self.subTest(days=days), self.assertRaises(CommandError):
+                self._purge(days=days)
         self.assertEqual(LoginEvent.objects.count(), 1)
 
     def test_default_is_90(self):

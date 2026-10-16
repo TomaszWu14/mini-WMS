@@ -23,7 +23,7 @@
     stany, przyjęcia, wydania) obejmuje najwyżej 10 000 wierszy także poza demo; w demo — 500
     jak dotąd. W XLSX puste wiersze wliczają się do limitu, a kolumny od 51. są pomijane
     (importy używają kilku pierwszych). Zaszyfrowany XLSX jest odrzucany.
-  - (US-005) Demo: więcej niż 10 wejść przez `/demo/` lub „Wejdź jako demo” w 5 minut z jednego
+  - (US-005) Demo: więcej niż 10 wejść (osoby niezalogowanej) przez `/demo/` lub „Wejdź jako demo” w 5 minut z jednego
     adresu daje stronę „Zbyt wiele wejść do demo…” (HTTP 429). W trybie demo dziennik logowań nie
     pokazuje IP ani przeglądarki. Na produkcji dziennik działa jak dotąd, ale wpisy starsze niż
     90 dni są usuwane.
@@ -98,7 +98,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (293 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (294 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 
