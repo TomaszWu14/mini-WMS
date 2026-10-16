@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Walidacja danych (US-013):** każda ilość (korekta, pozycja WZ, przepakowanie, spis, skaner) najwyżej
+  1 000 000, pojemność lokalizacji najwyżej 10 000 — powyżej komunikat przy polu. Importy: liczba typu `1e999`
+  → „Wiersz N: nieprawidłowa liczba…”, za długi kod lokalizacji / numer HU / partia / referencja → wiersz
+  pominięty z komunikatem. Etykiety z cudzysłowem lub polskimi znakami w kodzie pobierają się poprawnie.
 - **Backup (US-012):** kontener `backup` ma teraz własny obraz (`docker/backup.Dockerfile`: PostgreSQL 16 +
   `age`, `rclone`, `curl`) — Coolify go zbuduje przy deployu. Bez nowych zmiennych działa jak dotąd (kopia
   lokalna, 7 dni), ale błąd `pg_dump` nie daje już fałszywego „OK”. Kopia poza serwerem włącza się po
@@ -117,6 +121,7 @@
 | 21 | dowolne | dowolna strona → narzędzia deweloperskie → Konsola | przejść kilka ekranów | brak komunikatów „Content Security Policy” |
 | 22 | admin infrastruktury | Coolify → `backup` → Logs (po ustawieniu §5.0) | Restart kontenera `backup` | `OK -> /backups/wms-…`, `off-site OK -> offsite:…`; zielony ping w Healthchecks |
 | 23 | PO | komputer z kluczem prywatnym | pobrać plik `.age` z bucketu, `age -d -i miniwms-backup.key … > kopia.sql.gz`, `gunzip -t kopia.sql.gz` | odszyfrowanie i test OK; wpis w RUNBOOK §5.4 |
+| 24 | Operator | `/hu/<id>/korekta/` | wpisać nową ilość 2000000 | błąd przy polu „Nowa ilość”, stan bez zmian |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -126,7 +131,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (365 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (379 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

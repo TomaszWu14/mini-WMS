@@ -313,7 +313,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Operator** chcę, aby formularze, API skanera i importy walidowały zakres i długość danych, aby błędna wartość kończyła się komunikatem przy polu lub wierszu, a nie błędem 500 i wycofaniem całego importu. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T16**, „poza listą” (Content-Disposition); `forms.py:111,132,276,332`, `views.py:370,498,1066`, `scanner_views.py:421`, `imports.py:32,59` |
 | Wymagania | SEC-015, SEC-017; także: FR-001, FR-004, FR-005, FR-018, NFR-009 |
 | Zależności | US-002 (wspólne stałe L_QTY); test na PostgreSQL w CI (`test-postgres`) |
@@ -326,7 +326,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 4. **Given** import z kodem lokalizacji > 40 znaków lub numerem HU > 30; **When** import; **Then** wiersz pominięty z komunikatem, bez częściowego importu.
 5. **Given** kod lokalizacji lub numer HU zawierający `"` albo znak nowej linii; **When** pobranie etykiety; **Then** 200 PDF z poprawnym `Content-Disposition` (`django.utils.http.content_disposition_header`), bez `BadHeaderError`.
 
-**Test do napisania:** `InputValidationTests` w `warehouse/tests_input_validation.py` (nowy).
+**Testy:** `warehouse/tests_input_validation.py` — `ImportNumberTests` (3: `1e999`/`1e20`/`inf`/`nan`/2^31 → „nieprawidłowa liczba” we wszystkich importach i w pojemności lokalizacji), `FormRangeTests` (3: korekta, przepakowanie, lokalizacja, materiał, pozycja WZ, inwentaryzacja z 2^31 → błąd pola, bez zmian w bazie), `QuantityLimitTests` (3: spis i API inwentaryzacji/przepakowania > L_QTY → pominięte / JSON 400), `ImportLengthTests` (3: kod lokalizacji > 40, numer HU > 30, partia > 50, referencja > 100 → wiersz pominięty, bez materiałów i lokalizacji z odrzuconych wierszy), `ContentDispositionTests` (2: `"` i nowa linia w kodzie → 200 PDF; polskie znaki → `filename*=utf-8''`). Przed poprawką 25 sprawdzeń czerwonych; kryterium 2 na PostgreSQL — CI job „3b”. Wartości: L_QTY = `services.MAX_QUANTITY` = 1 000 000 (jak US-002), pojemność lokalizacji ≤ 10 000 (Z-40, do potwierdzenia). Import stanów sprawdza długości **przed** utworzeniem materiału i lokalizacji. Odbiór [BA] 2026-10-16: kryteria 1–5 spełnione.
 
 ### US-014 — Walidacja adresu IP z nagłówka proxy
 

@@ -42,6 +42,10 @@ class WMSError(Exception):
 # numerów jednym UPDATE to osobna historyjka (US-050).
 MAX_PALLETS_PER_RECEIPT = 500
 MAX_RECEIPT_QUANTITY = 1_000_000
+# US-013 / L_QTY: ta sama granica dla każdej ilości wpisywanej przez użytkownika
+# (korekta, pozycja WZ, przepakowanie, spis, API skanera) — daleko poniżej 2^31−1.
+MAX_QUANTITY = MAX_RECEIPT_QUANTITY
+MAX_LOCATION_CAPACITY = 10_000  # palet w jednej lokalizacji
 MAX_HU_PER_IMPORT = 2_000
 
 

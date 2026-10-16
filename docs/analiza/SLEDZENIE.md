@@ -89,7 +89,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-006 | US-015 | brak — do napisania | #23 |
 | NFR-007 | US-004, US-043 | brak — do napisania (limit 5 MB bez testu) | historyczny (przed procesem) |
 | NFR-008 | US-004 | `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests` (poza demo) | #23 |
-| NFR-009 | US-002, US-013 | brak — do napisania | #23 |
+| NFR-009 | US-002, US-013 | `tests_input_validation.ImportNumberTests`, `ImportLengthTests` | #23 |
 | NFR-010 | US-015 | `SecurityTests.test_login_log_pagination` (tylko dziennik logowań) | #23 |
 | NFR-011 | US-028 | brak — do napisania | #23 |
 | NFR-012 | US-005, US-043 | brak — do napisania (wygasanie sesji po 30 min) | historyczny (przed procesem) |
@@ -130,9 +130,9 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-012 | — | n/d — bandit w CI | historyczny (przed procesem) |
 | SEC-013 | US-043 | brak — do napisania | historyczny (przed procesem) |
 | SEC-014 | US-043 | brak — do napisania (test z `enforce_csrf_checks=True`) | historyczny (przed procesem) |
-| SEC-015 | US-002, US-013 | brak — do napisania | #23 |
+| SEC-015 | US-002, US-013 | `tests_input_limits.py` (US-002); `tests_input_validation.FormRangeTests`, `QuantityLimitTests`, `ImportNumberTests` | #23 |
 | SEC-016 | US-043 | `HardeningTests.test_csv_export_neutralizes_formula_injection` (funkcja `_safe_cell`; ścieżka XLSX bez testu) | historyczny (przed procesem) |
-| SEC-017 | US-013 | brak — do napisania | #23 |
+| SEC-017 | US-013 | `tests_input_validation.ContentDispositionTests` | #23 |
 | SEC-018 | US-043 | brak — do napisania | historyczny (przed procesem) |
 | SEC-019 | US-004 | `tests_imports_hardening.BrokenXlsxViewTests`, `LibraryErrorTests`, `DefusedXmlTests` | #23 |
 | SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
@@ -177,7 +177,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-010 | Should | SEC-006 | R6 | `tests_2fa.py` (13 testów) — zrobione, #23 |
 | US-011 | Should | SEC-022, SEC-024, SEC-025 | R8 | `tests_security_headers.py` (11 testów) — zrobione, #23; kryterium 3 ręcznie |
 | US-012 | Should | NFR-014, NFR-018, NFR-019, SEC-039 | R9 | `tests_backup_script.py` (9) + ćwiczenie w CI — zrobione, #23; ćwiczenie produkcyjne — INFRA |
-| US-013 | Should | FR-001, FR-004, FR-005, FR-018, NFR-009, SEC-015, SEC-017 | T16 | `tests_input_validation.py` |
+| US-013 | Should | FR-001, FR-004, FR-005, FR-018, NFR-009, SEC-015, SEC-017 | T16 | `tests_input_validation.py` (14 testów) — zrobione, #23 |
 | US-014 | Should | SEC-041 | „poza listą” | `tests_open_decisions.py` (rozszerzenie) |
 | US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` |
 | US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` |

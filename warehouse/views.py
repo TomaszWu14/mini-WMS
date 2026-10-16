@@ -14,6 +14,7 @@ from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import content_disposition_header
 
 from . import services
 from .demo import is_demo_account
@@ -368,7 +369,9 @@ def location_label(request, pk):
     loc = get_object_or_404(Location, pk=pk)
     pdf = location_labels_pdf([loc])
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="LOK-{loc.code}.pdf"'
+    response["Content-Disposition"] = content_disposition_header(
+        False, f"LOK-{loc.code}.pdf"
+    )
     return response
 
 
@@ -380,7 +383,9 @@ def location_labels(request):
         locations = locations.filter(type=loc_type)
     pdf = location_labels_pdf(locations)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = 'inline; filename="etykiety_lokalizacji.pdf"'
+    response["Content-Disposition"] = content_disposition_header(
+        False, "etykiety_lokalizacji.pdf"
+    )
     return response
 
 
@@ -496,7 +501,9 @@ def hu_label(request, pk):
     )
     pdf = hu_label_pdf(hu)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="{hu.number}.pdf"'
+    response["Content-Disposition"] = content_disposition_header(
+        False, f"{hu.number}.pdf"
+    )
     return response
 
 
@@ -530,7 +537,9 @@ def hu_labels(request):
         return redirect(f"{reverse('hu_list')}?{request.GET.urlencode()}")
     pdf = hu_labels_pdf(hus)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = 'inline; filename="etykiety_hu.pdf"'
+    response["Content-Disposition"] = content_disposition_header(
+        False, "etykiety_hu.pdf"
+    )
     return response
 
 
@@ -837,7 +846,9 @@ def issue_pdf(request, pk):
     doc = get_object_or_404(IssueDocument.objects.select_related("created_by"), pk=pk)
     pdf = issue_document_pdf(doc)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="{doc.number}.pdf"'
+    response["Content-Disposition"] = content_disposition_header(
+        False, f"{doc.number}.pdf"
+    )
     return response
 
 
@@ -1068,6 +1079,9 @@ def stocktake_save(request, pk):
                 except ValueError:
                     skipped += 1
                     continue
+                if new_val > services.MAX_QUANTITY:  # US-013
+                    skipped += 1
+                    continue
             if new_val != line.counted_qty:
                 line.counted_qty = new_val
                 line.save(update_fields=["counted_qty"])
@@ -1075,7 +1089,9 @@ def stocktake_save(request, pk):
         messages.success(request, f"Zapisano ({updated} zmian).")
         if skipped:
             messages.warning(
-                request, f"Pominięto {skipped} wartości, które nie są liczbą."
+                request,
+                f"Pominięto {skipped} wartości, które nie są liczbą całkowitą "
+                f"od 0 do {services.MAX_QUANTITY}.",
             )
     return redirect("stocktake_detail", pk=pk)
 

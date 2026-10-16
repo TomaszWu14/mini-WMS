@@ -15,7 +15,12 @@ from .models import (
     Role,
     Unit,
 )
-from .services import MAX_PALLETS_PER_RECEIPT, MAX_RECEIPT_QUANTITY
+from .services import (
+    MAX_LOCATION_CAPACITY,
+    MAX_PALLETS_PER_RECEIPT,
+    MAX_QUANTITY,
+    MAX_RECEIPT_QUANTITY,
+)
 
 
 class _MaxSizeFileMixin:
@@ -37,6 +42,7 @@ class MaterialForm(forms.ModelForm):
         label="maks. ilość na palecie",
         required=False,
         min_value=1,
+        max_value=MAX_QUANTITY,
         help_text="Opcjonalny sztywny limit ilości na jednej palecie.",
     )
 
@@ -58,6 +64,7 @@ class LocationForm(forms.ModelForm):
     capacity = forms.IntegerField(
         label="pojemność (liczba HU)",
         min_value=0,
+        max_value=MAX_LOCATION_CAPACITY,
         initial=1,
         help_text="Maks. liczba HU. 0 = bez limitu.",
     )
@@ -109,7 +116,7 @@ class InventoryForm(forms.Form):
         initial=MODE_ADD,
         widget=forms.RadioSelect,
     )
-    quantity = forms.IntegerField(label="Ilość", min_value=1)
+    quantity = forms.IntegerField(label="Ilość", min_value=1, max_value=MAX_QUANTITY)
     reason = forms.ChoiceField(
         label="Powód",
         choices=[("", "— wybierz —")] + list(AdjustReason.choices),
@@ -130,7 +137,7 @@ class RepackForm(forms.Form):
         max_length=30,
         widget=forms.TextInput(attrs={"placeholder": "numer palety docelowej"}),
     )
-    quantity = forms.IntegerField(label="Ilość", min_value=1)
+    quantity = forms.IntegerField(label="Ilość", min_value=1, max_value=MAX_QUANTITY)
 
 
 class UserCreateForm(forms.Form):
@@ -290,7 +297,9 @@ class DeliveryDateForm(forms.Form):
 
 
 class HUCorrectionForm(forms.Form):
-    new_quantity = forms.IntegerField(label="Nowa ilość", min_value=0)
+    new_quantity = forms.IntegerField(
+        label="Nowa ilość", min_value=0, max_value=MAX_QUANTITY
+    )
     reason = forms.ChoiceField(
         label="Powód",
         choices=[("", "— wybierz —")] + list(AdjustReason.choices),
@@ -346,7 +355,9 @@ class IssueLineForm(forms.Form):
         label="Konkretny HU",
         required=False,
     )
-    requested_qty = forms.IntegerField(label="Ilość", min_value=1)
+    requested_qty = forms.IntegerField(
+        label="Ilość", min_value=1, max_value=MAX_QUANTITY
+    )
 
     def clean(self):
         cleaned = super().clean()

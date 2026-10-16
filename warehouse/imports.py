@@ -8,6 +8,7 @@ Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
 
 import csv
 import io
+import math
 import zipfile
 import zlib
 from itertools import islice
@@ -23,6 +24,10 @@ class ImportError_(Exception):
     """Błąd importu pliku lokalizacji."""
 
 
+MAX_DB_INT = 2_147_483_647
+BAD_NUMBER = "nieprawidłowa liczba"
+
+
 def parse_int_cell(value):
     """Parsuje liczbę całkowitą z komórki: obsługuje '5', '5.0', '5,0'
     (przecinek dziesiętny po polsku), spacje i separatory tysięcy. Zwraca
@@ -32,7 +37,23 @@ def parse_int_cell(value):
     text = str(value).strip().replace("\xa0", "").replace(" ", "")
     if text in ("", "-", "–", "—"):
         return None
-    return int(float(text.replace(",", ".")))
+    try:
+        number = float(text.replace(",", "."))
+    except ValueError:
+        raise ValueError(BAD_NUMBER) from None
+    # US-013: '1e999' → inf, '1e20' poza zakresem bazy — komunikat przy wierszu, nie 500.
+    if not math.isfinite(number) or abs(number) > MAX_DB_INT:
+        raise ValueError(BAD_NUMBER)
+    return int(number)
+
+
+def too_long(model, field: str, value, label: str):
+    """Komunikat, gdy tekst z pliku przekracza `max_length` pola modelu (US-013):
+    PostgreSQL odrzuciłby zapis błędem i wycofał cały import."""
+    limit = model._meta.get_field(field).max_length
+    if value and len(str(value)) > limit:
+        return f"{label} dłuższy niż {limit} znaków"
+    return None
 
 
 def get_or_create_ci(model, field: str, value: str, defaults=None):
@@ -56,14 +77,20 @@ def _normalize_type(value: str) -> str:
 def _parse_capacity(value) -> int:
     """0 = bez limitu (jak w LocationForm/modelu) — zostaje, nie jest
     podnoszone do 1. Ujemne wartości to błąd wiersza importu."""
+    from .services import MAX_LOCATION_CAPACITY
+
     if value in (None, ""):
         return 1
     try:
-        capacity = int(float(str(value).strip()))
-    except (TypeError, ValueError) as exc:
-        raise ImportError_(f"Niepoprawna pojemność: '{value}'.") from exc
-    if capacity < 0:
-        raise ImportError_(f"Niepoprawna pojemność: '{value}'.")
+        capacity = parse_int_cell(value)
+    except ValueError as exc:
+        raise ImportError_(f"Niepoprawna pojemność: '{value}' ({BAD_NUMBER}).") from exc
+    if capacity is None:
+        return 1
+    if capacity < 0 or capacity > MAX_LOCATION_CAPACITY:
+        raise ImportError_(
+            f"Niepoprawna pojemność: '{value}' (0…{MAX_LOCATION_CAPACITY})."
+        )
     return capacity
 
 
@@ -199,6 +226,9 @@ def import_locations(filename: str, data: bytes):
         code = str(row.get("kod") or row.get("code") or "").strip()
         if not code:
             errors.append(f"Wiersz {i}: brak kodu lokalizacji — pominięto.")
+            continue
+        if problem := too_long(Location, "code", code, "kod lokalizacji"):
+            errors.append(f"Wiersz {i}: {problem} — pominięto.")
             continue
         try:
             loc_type = _normalize_type(str(row.get("typ") or row.get("type") or ""))

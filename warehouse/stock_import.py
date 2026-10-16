@@ -19,9 +19,11 @@ from django.db.models import Count, F, Q
 
 from . import services
 from .imports import (
+    BAD_NUMBER,
     get_or_create_ci,
     parse_int_cell,
     parse_locations_file,
+    too_long,
 )
 from .models import (
     HandlingUnit,
@@ -140,19 +142,16 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             continue
 
         name = _norm(_get(row, "nazwa", "name")) or ref
-        material, m_created = get_or_create_ci(
-            Material, "index", ref, {"name": name, "unit": unit}
-        )
-        if m_created:
-            materials_created.add(ref)
 
         # Ilość zwykle nieznana przy imporcie — domyślnie 0, uzupełniana
         # później ręcznie w aplikacji (Korekta ilości). Kolumna opcjonalna.
         qty_raw = _get(row, "ilosc", "ilość", "quantity", "qty")
         try:
             qty = parse_int_cell(qty_raw) or 0
-        except (ValueError, OverflowError):
-            errors.append(f"Wiersz {i} ({ref}): zła ilość '{qty_raw}'.")
+        except ValueError:
+            errors.append(
+                f"Wiersz {i} ({ref}): {BAD_NUMBER} w kolumnie ilość '{qty_raw}'."
+            )
             continue
         if qty < 0:
             qty = 0
@@ -164,6 +163,35 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             continue
 
         loc_raw = _norm(_get(row, "lokalizacja", "location", "lok"))
+        lot = _clean_dash(_get(row, "partia", "lot"))
+        hu_number = _norm(_get(row, "hu", "numer hu"))
+        # US-013: długości sprawdzamy, zanim cokolwiek powstanie (materiał, lokalizacja).
+        problem = (
+            too_long(Material, "index", ref, "indeks")
+            or too_long(Material, "name", name, "nazwa")
+            or too_long(Location, "code", loc_raw, "kod lokalizacji")
+            or too_long(HandlingUnit, "lot", lot, "partia")
+            or too_long(HandlingUnit, "number", hu_number, "numer HU")
+        )
+        if problem:
+            errors.append(f"Wiersz {i} ({ref[:40]}): {problem} — pominięto.")
+            continue
+        try:
+            expiry = _parse_date(_find_expiry(row))
+        except ValueError as exc:
+            errors.append(f"Wiersz {i} ({ref}): {exc}.")
+            continue
+        if hu_number:
+            if HandlingUnit.objects.filter(number__iexact=hu_number).exists():
+                errors.append(f"Wiersz {i}: HU '{hu_number}' już istnieje — pominięto.")
+                continue
+
+        material, m_created = get_or_create_ci(
+            Material, "index", ref, {"name": name, "unit": unit}
+        )
+        if m_created:
+            materials_created.add(ref)
+
         location = None
         status = HUStatus.DO_ULOZENIA
         if loc_raw.lower() not in RECEIVING_TOKENS:
@@ -175,19 +203,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             status = HUStatus.ZMAGAZYNOWANY
             touched_locations.add(location.pk)
 
-        lot = _clean_dash(_get(row, "partia", "lot"))
-        try:
-            expiry = _parse_date(_find_expiry(row))
-        except ValueError as exc:
-            errors.append(f"Wiersz {i} ({ref}): {exc}.")
-            continue
-
-        hu_number = _norm(_get(row, "hu", "numer hu"))
-        if hu_number:
-            if HandlingUnit.objects.filter(number__iexact=hu_number).exists():
-                errors.append(f"Wiersz {i}: HU '{hu_number}' już istnieje — pominięto.")
-                continue
-        else:
+        if not hu_number:
             hu_number = services.generate_hu_number()
 
         hu = HandlingUnit.objects.create(

@@ -59,6 +59,10 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   (kamera tylko dla własnej domeny, bez geolokalizacji) na wszystkich stronach; atrybuty `on*=` zastąpione `data-*` + `ui.js`;
   HSTS bez `preload`. Awaryjnie `DJANGO_CSP_REPORT_ONLY=1`. Testy: `warehouse/tests_security_headers.py` (ADR-0004).
 - **US-012:** skrypt backupu nie raportuje już „OK” przy nieudanym `pg_dump` (zrzut bez potoku, kontrola rozmiaru i `gzip -t`).
+- **US-013:** liczby z formularzy, importów i API skanera mają górną granicę (1 000 000 sztuk, pojemność lokalizacji 10 000) —
+  wartości typu `1e999` lub ponad zakres bazy dają komunikat przy polu/wierszu zamiast błędu 500; importy pomijają wiersze ze zbyt
+  długim kodem lokalizacji, numerem HU, partią lub referencją, zanim cokolwiek zapiszą; nazwy plików PDF/CSV/XLSX z dowolnymi
+  znakami (`content_disposition_header`). Testy: `warehouse/tests_input_validation.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

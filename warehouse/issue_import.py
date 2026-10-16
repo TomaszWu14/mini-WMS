@@ -13,7 +13,7 @@ from __future__ import annotations
 from django.db import transaction
 
 from . import services
-from .imports import parse_int_cell, parse_locations_file
+from .imports import BAD_NUMBER, parse_int_cell, parse_locations_file, too_long
 from .models import IssueDocument, IssueLine, Material
 
 
@@ -46,10 +46,17 @@ def import_issue_orders(filename: str, data: bytes, user, default_reference: str
         try:
             qty = parse_int_cell(qty_raw)
         except (TypeError, ValueError):
-            errors.append(f"Wiersz {i} ({ref}): zła ilość '{qty_raw}'.")
+            errors.append(
+                f"Wiersz {i} ({ref}): {BAD_NUMBER} w kolumnie ilość '{qty_raw}'."
+            )
             continue
         if not qty or qty < 1:
             errors.append(f"Wiersz {i} ({ref}): ilość musi być dodatnia.")
+            continue
+        if qty > services.MAX_QUANTITY:
+            errors.append(
+                f"Wiersz {i} ({ref}): ilość ponad {services.MAX_QUANTITY} — pominięto."
+            )
             continue
         material = Material.objects.filter(index__iexact=ref).first()
         if material is None:
@@ -57,6 +64,9 @@ def import_issue_orders(filename: str, data: bytes, user, default_reference: str
             continue
 
         doc_key = _norm(_get(row, "referencja", "dokument", "reference"))
+        if problem := too_long(IssueDocument, "reference", doc_key, "referencja"):
+            errors.append(f"Wiersz {i} ({ref}): {problem} — pominięto.")
+            continue
         key = doc_key or default_reference or "__single__"
         if key not in groups:
             groups[key] = []

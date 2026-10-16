@@ -17,8 +17,8 @@ from __future__ import annotations
 from django.db import transaction
 
 from . import services
-from .imports import parse_int_cell, parse_locations_file
-from .models import Material
+from .imports import BAD_NUMBER, parse_int_cell, parse_locations_file, too_long
+from .models import HandlingUnit, Material
 from .stock_import import _clean_dash, _find_expiry, _get, _norm, _parse_date
 
 
@@ -45,8 +45,8 @@ def import_receipts(filename: str, data: bytes, user):
 
         try:
             total = parse_int_cell(_get(row, "ilosc", "ilość", "quantity", "qty"))
-        except (TypeError, ValueError, OverflowError):
-            errors.append(f"Wiersz {i} ({ref}): zła ilość.")
+        except (TypeError, ValueError):
+            errors.append(f"Wiersz {i} ({ref}): {BAD_NUMBER} w kolumnie ilość.")
             continue
         if not total or total < 1:
             errors.append(f"Wiersz {i} ({ref}): ilość musi być dodatnia.")
@@ -55,14 +55,20 @@ def import_receipts(filename: str, data: bytes, user):
         pallets_raw = _get(row, "palety", "pallets", "liczba palet")
         try:
             pallets = parse_int_cell(pallets_raw) or 1
-        except (TypeError, ValueError, OverflowError):
-            errors.append(f"Wiersz {i} ({ref}): zła liczba palet.")
+        except (TypeError, ValueError):
+            errors.append(f"Wiersz {i} ({ref}): {BAD_NUMBER} w kolumnie palety.")
             continue
         if pallets < 1:
             pallets = 1
 
         lot = _clean_dash(_get(row, "lot", "partia"))
         delivery = _clean_dash(_get(row, "dostawa", "delivery"))
+        problem = too_long(HandlingUnit, "lot", lot, "partia") or too_long(
+            HandlingUnit, "delivery_ref", delivery, "numer dostawy"
+        )
+        if problem:
+            errors.append(f"Wiersz {i} ({ref}): {problem} — pominięto.")
+            continue
         try:
             expiry = _parse_date(_find_expiry(row))
         except ValueError as exc:

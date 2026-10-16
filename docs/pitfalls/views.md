@@ -25,6 +25,10 @@
    `scanner_views.py`), nie do `views.py`.
 9. **Eksporty (`stock_export`, `movement_export`) budują wiersze w pamięci.** Przy dużej
    historii ruchów filtruj zakres dat zanim dodasz nowe kolumny.
+9a. **Liczby i teksty od użytkownika (US-013):** ilość → `max_value=services.MAX_QUANTITY` w formularzu, w API skanera
+    `_parse_quantity`, w imporcie `parse_int_cell` (odrzuca `1e999`, `inf`, > 2^31−1) i `too_long(model, pole, …)` **przed**
+    zapisem — SQLite tego nie złapie, PostgreSQL rzuci `DataError` i wycofa cały import. Nazwa pliku w odpowiedzi:
+    `content_disposition_header()`, nigdy f-string.
 10a. **CSP (US-011, ADR-0004): bez `on*=`, `javascript:` i skryptów inline bez nonce.** Skrypt w szablonie:
     `<script nonce="{{ csp_nonce }}">`; potwierdzenia, auto-wysyłka, menu — `data-confirm`, `data-autosubmit`,
     `data-nav-toggle`, `data-history-back` (`static/warehouse/ui.js`). Zewnętrzne CDN są zablokowane.
