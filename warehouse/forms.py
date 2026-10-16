@@ -1,5 +1,7 @@
 """Formularze ekranów operatora."""
 
+from typing import Any
+
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -27,6 +29,7 @@ class _MaxSizeFileMixin:
     """Ogranicza rozmiar wgrywanego pliku importu (ochrona przed OOM/DoS)."""
 
     max_upload_mb = 5
+    cleaned_data: dict[str, Any]  # dostarcza forms.Form, z którym mixin jest łączony
 
     def clean_file(self):
         upload = self.cleaned_data.get("file")
@@ -237,7 +240,8 @@ class ReceiveForm(forms.Form):
     delivery_ref = forms.CharField(label="Numer dostawy", max_length=50, required=False)
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         mode = cleaned.get("mode")
         pallets = cleaned.get("pallets")
         total = cleaned.get("total_quantity")
@@ -360,7 +364,8 @@ class IssueLineForm(forms.Form):
     )
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         mode = cleaned.get("mode")
         if mode == self.MODE_MATERIAL:
             if not cleaned.get("material"):

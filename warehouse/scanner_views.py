@@ -321,11 +321,13 @@ def api_pick(request):
         line = next((ln for ln in candidates if ln.specific_hu_id is None), None)
     if line is None:
         if candidates:
+            # Zostały tylko pozycje wiązane do innej palety (ogólna byłaby wybrana wyżej).
             other = candidates[0].specific_hu
+            other_number = other.number if other is not None else "?"
             return JsonResponse(
                 {
                     "ok": False,
-                    "error": f"Pozycja wskazuje paletę {other.number} — zeskanuj ją.",
+                    "error": f"Pozycja wskazuje paletę {other_number} — zeskanuj ją.",
                 },
                 status=400,
             )

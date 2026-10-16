@@ -65,6 +65,9 @@ python_version = "3.11"
 plugins = ["mypy_django_plugin.main"]
 ignore_missing_imports = true
 warn_unused_ignores = true
+# US-019 / kryterium 1: widoki nie mają adnotacji — bez tego mypy pomija ich ciała
+# i błąd typu w widoku przechodzi CI.
+check_untyped_defs = true
 # Migracje generowane maszynowo; settings korzystają z gwiazdkowego importu
 # (base→dev/prod), którego mypy nie śledzi — sprawdzamy logikę, nie konfigurację.
 exclude = ["warehouse/migrations/", "config/settings/"]
@@ -74,6 +77,42 @@ exclude = ["warehouse/migrations/", "config/settings/"]
 [[tool.mypy.overrides]]
 module = "config.settings.*"
 ignore_errors = true
+
+# Testy: Optional z `.first()` / `.get()` bez zawężania to norma w asercjach —
+# pełne sprawdzanie ciał dotyczy kodu aplikacji, nie testów.
+[[tool.mypy.overrides]]
+# mypy nie obsługuje wzorca `tests_*` — nowy plik testów dopisz do listy.
+module = [
+    "warehouse.tests",
+    "warehouse.tests_2fa",
+    "warehouse.tests_access_matrix",
+    "warehouse.tests_backup_script",
+    "warehouse.tests_concurrency_pg",
+    "warehouse.tests_demo",
+    "warehouse.tests_demo_entry",
+    "warehouse.tests_demo_limits",
+    "warehouse.tests_demo_tour",
+    "warehouse.tests_deploy_settings",
+    "warehouse.tests_imports_fixes",
+    "warehouse.tests_imports_hardening",
+    "warehouse.tests_input_limits",
+    "warehouse.tests_input_validation",
+    "warehouse.tests_login_limits",
+    "warehouse.tests_open_decisions",
+    "warehouse.tests_pagination",
+    "warehouse.tests_passwords",
+    "warehouse.tests_record_video",
+    "warehouse.tests_recruiter",
+    "warehouse.tests_retention",
+    "warehouse.tests_scanner_fixes",
+    "warehouse.tests_security",
+    "warehouse.tests_security_headers",
+    "warehouse.tests_services_fixes",
+    "warehouse.tests_tooling",
+    "warehouse.tests_urls",
+    "warehouse.tests_views_fixes",
+]
+check_untyped_defs = false
 
 [tool.django-stubs]
 django_settings_module = "config.settings"

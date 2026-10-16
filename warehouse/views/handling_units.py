@@ -78,8 +78,8 @@ def hu_label(request, pk):
     )
     pdf = hu_label_pdf(hu)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = content_disposition_header(
-        False, f"{hu.number}.pdf"
+    response["Content-Disposition"] = (
+        content_disposition_header(False, f"{hu.number}.pdf") or "inline"
     )
     return response
 
@@ -114,8 +114,8 @@ def hu_labels(request):
         return redirect(f"{reverse('hu_list')}?{request.GET.urlencode()}")
     pdf = hu_labels_pdf(hus)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = content_disposition_header(
-        False, "etykiety_hu.pdf"
+    response["Content-Disposition"] = (
+        content_disposition_header(False, "etykiety_hu.pdf") or "inline"
     )
     return response
 
@@ -141,13 +141,13 @@ def hu_allocate(request, pk):
             else:
                 messages.success(
                     request,
-                    f"HU {hu.number} ulokowano w {hu.location.code}.",
+                    f"HU {hu.number} ulokowano w {location.code}.",
                 )
-                if services.location_over_capacity(hu.location):
+                if services.location_over_capacity(location):
                     messages.warning(
                         request,
-                        f"Lokalizacja {hu.location.code} ma więcej palet niż "
-                        f"pojemność ({hu.location.occupancy}/{hu.location.capacity}).",
+                        f"Lokalizacja {location.code} ma więcej palet niż "
+                        f"pojemność ({location.occupancy}/{location.capacity}).",
                     )
                 return redirect("hu_detail", pk=pk)
     else:

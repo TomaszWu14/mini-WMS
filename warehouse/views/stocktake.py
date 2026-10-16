@@ -48,17 +48,18 @@ def stocktake_create(request):
                 request,
                 f"Utworzono arkusz {sheet.number} ({sheet.lines.count()} pozycji).",
             )
-            if sheet.skipped_in_open:
+            skipped = getattr(sheet, "skipped_in_open", 0)  # ustawia create_stocktake
+            if skipped:
                 messages.warning(
                     request,
-                    f"Pominięto {sheet.skipped_in_open} palet, które są już "
+                    f"Pominięto {skipped} palet, które są już "
                     "w innym otwartym arkuszu spisu.",
                 )
             return redirect("stocktake_detail", pk=sheet.pk)
         else:
             for errs in form.errors.values():
                 for err in errs:
-                    messages.error(request, err)
+                    messages.error(request, str(err))
     return redirect("stocktake_list")
 
 

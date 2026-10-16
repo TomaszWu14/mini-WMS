@@ -1,5 +1,7 @@
 """Raporty: zajętość lokalizacji, kartoteka materiału."""
 
+from typing import Any
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
 from django.shortcuts import render
@@ -58,7 +60,7 @@ def report_material_history(request):
     """Kartoteka materiału — pełna historia ruchów wybranego indeksu."""
     index = request.GET.get("material", "").strip()
     material = None
-    movements = []
+    movements: Any = []  # lista albo QuerySet (wycinek 500)
     current = 0
     if index:
         material = Material.objects.filter(index=index).first()

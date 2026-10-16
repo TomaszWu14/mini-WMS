@@ -62,10 +62,13 @@ def issue_detail(request, pk):
     # Podpowiedź skąd pobrać (FEFO) dla otwartych pozycji z brakiem.
     if doc.status == IssueStatus.OTWARTY:
         for line in lines:
+            # Atrybut tylko dla szablonu (nie pole modelu).
             if line.specific_hu_id or line.outstanding <= 0:
-                line.suggestion = None
+                line.suggestion = None  # type: ignore[attr-defined]
             else:
-                line.suggestion = services.picking_plan(line.material, line.outstanding)
+                line.suggestion = services.picking_plan(  # type: ignore[attr-defined]
+                    line.material, line.outstanding
+                )
     return render(
         request,
         "warehouse/issue_detail.html",
@@ -118,7 +121,7 @@ def issue_add_line(request, pk):
         else:
             for errs in form.errors.values():
                 for err in errs:
-                    messages.error(request, err)
+                    messages.error(request, str(err))
     return redirect("issue_detail", pk=pk)
 
 
@@ -193,7 +196,7 @@ def issue_ship(request, pk):
         else:
             for errs in form.errors.values():
                 for err in errs:
-                    messages.error(request, err)
+                    messages.error(request, str(err))
     return redirect("issue_detail", pk=pk)
 
 
@@ -235,7 +238,7 @@ def issue_pdf(request, pk):
     doc = get_object_or_404(IssueDocument.objects.select_related("created_by"), pk=pk)
     pdf = issue_document_pdf(doc)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = content_disposition_header(
-        False, f"{doc.number}.pdf"
+    response["Content-Disposition"] = (
+        content_disposition_header(False, f"{doc.number}.pdf") or "inline"
     )
     return response

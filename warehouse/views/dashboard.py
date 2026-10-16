@@ -155,8 +155,8 @@ def _today_plan():
     items = []
     hu_waiting = HandlingUnit.objects.filter(status=HUStatus.DO_ULOZENIA)
     hu_count = hu_waiting.count()
-    if hu_count:
-        oldest = hu_waiting.order_by("created_at").first()
+    oldest = hu_waiting.order_by("created_at").first() if hu_count else None
+    if oldest is not None:  # paleta mogła zostać ułożona między count() a first()
         items.append(
             {
                 "kind": "alert",

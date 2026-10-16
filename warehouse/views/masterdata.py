@@ -161,8 +161,8 @@ def location_label(request, pk):
     loc = get_object_or_404(Location, pk=pk)
     pdf = location_labels_pdf([loc])
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = content_disposition_header(
-        False, f"LOK-{loc.code}.pdf"
+    response["Content-Disposition"] = (
+        content_disposition_header(False, f"LOK-{loc.code}.pdf") or "inline"
     )
     return response
 
@@ -181,7 +181,7 @@ def location_labels(request):
         return redirect(f"{reverse('location_list')}?{request.GET.urlencode()}")
     pdf = location_labels_pdf(locations)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = content_disposition_header(
-        False, "etykiety_lokalizacji.pdf"
+    response["Content-Disposition"] = (
+        content_disposition_header(False, "etykiety_lokalizacji.pdf") or "inline"
     )
     return response
