@@ -58,7 +58,8 @@ na SQLite (współbieżność). Dodatkowo 4 testy hooków harnessu w `.claude/ho
 | `tests_services_fixes.py` | 18 | poprawki `services.py`: `split_quantity`, pojemność informacyjna (W-08), blokady wierszy, `adjust_hu_quantity` |
 | `tests_views_fixes.py` | 17 | powód korekty, strona 403, linki powrotu, raport „bez limitu”, spis |
 | `tests_recruiter.py` | 14 | „Wejdź jako demo”, panel powitalny, limit importu w demo, uprawnienia |
-| `tests_demo_entry.py` | 13 | `/demo/` i „Przywróć dane demo” |
+| `tests_demo_entry.py` | 13 | `/demo/` i limiter wejść |
+| `tests_demo_limits.py` | 13 | limity obiektów i zapisów w demo, reset z harmonogramu (US-016) |
 | `tests_demo.py` | 12 | `seed_demo`, baner, konta demo, limit logowań, ochrona kont |
 | `tests_open_decisions.py` | 12 | decyzje D-09…D-13 |
 | `tests_scanner_fixes.py` | 9 | skaner: `specific_hu` (W-25), FEFO (W-11), powód korekty (W-26) |
@@ -155,7 +156,7 @@ Pierwotny projekt (zrealizowany z drobną zmianą: zła metoda — 405 — też 
 | **Kompletność** | przejść po `get_resolver()`; każda nazwa trasy musi być w słowniku `ROLE_MATRIX` (`L`/`O`/`A`) albo w `PUBLIC` (`healthz`, `login`, `demo_*`…). Nowa trasa bez wpisu = czerwony test, więc autor musi zdecydować o roli (łapie „widok bez dekoratora” — [auth.md #1](../pitfalls/auth.md)) |
 | **Odmowa** | dla każdej trasy i każdej roli poniżej minimalnej: anonim → 302, Podgląd → 403, Operator → 403 dla tras `A` (GET i POST) |
 | **Dostęp** | minimalna rola nie dostaje 403/302 (200, 302 po operacji lub 404 dla nieistniejącego `pk`) |
-| **Zasady szczególne** | superuser bez `Profile` = Administrator; trasy `DEMO_MODE` (`/demo/`, `/login/demo/`, `/demo/przywroc/`) zwracają 404 poza demo; zależność od `/admin/` wyłączonego w demo |
+| **Zasady szczególne** | superuser bez `Profile` = Administrator; trasy `DEMO_MODE` (`/demo/`, `/login/demo/`) zwracają 404 poza demo; zależność od `/admin/` wyłączonego w demo |
 
 ### 5.3 Testy regresji dla ryzyk z audytu
 

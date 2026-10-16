@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Demo (US-016):** znika przycisk „Przywróć dane demo” (i `POST /demo/przywroc/`). Przyjęcia i importy w demo
+  odmawiają powyżej 2000 palet / 500 lokalizacji („Limit demo…”), zapisy powyżej 60 na 5 min z jednego IP → 429.
+  **Akcja w Coolify (demo):** Scheduled Task `reset-demo` — Command zmienić na
+  `python manage.py seed_demo --reset --keep-users` (dotąd `--reset` wylogowywał wszystkich). Bez migracji i zmiennych.
 - **Listy i etykiety lokalizacji (US-015):** listy HU, lokalizacji, „Stan wg lokalizacji” i raport zajętości pokazują
   po 100 wierszy z przyciskami stron (filtry zostają). Lista lokalizacji ma pole kodu i wybór typu. „Drukuj etykiety”
   na liście lokalizacji drukuje lokalizacje z bieżącego filtra, najwyżej 200 — przy większej liczbie komunikat „Zawęź filtr”.
@@ -130,6 +134,8 @@
 | 24 | Operator | `/hu/<id>/korekta/` | wpisać nową ilość 2000000 | błąd przy polu „Nowa ilość”, stan bez zmian |
 | 25 | Podgląd | `/lokalizacje/` (ponad 200 lokalizacji) | „🏷 Drukuj etykiety” bez filtra; potem wybrać typ / wpisać początek kodu i powtórzyć | najpierw komunikat „Wybrano N lokalizacji — limit… Zawęź filtr”; po zawężeniu PDF |
 | 26 | Podgląd | `/hu/` (ponad 100 palet) | ustawić filtr statusu, przejść „Następna →” | strona 2 z tym samym filtrem; licznik „Strona 2 z N” |
+| 27 | admin infrastruktury | Coolify (demo) → Scheduled Tasks → `reset-demo` | zmienić Command na `python manage.py seed_demo --reset --keep-users`, uruchomić ręcznie (Execute) przy zalogowanym demo w drugiej karcie | log „Dane demo zasiane.”; w drugiej karcie po odświeżeniu sesja trwa, dane w stanie początkowym |
+| 28 | `demo_operator` | demo: baner | spojrzeć na żółty baner | brak przycisku „Przywróć dane demo” |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -139,7 +145,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (401 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (409 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

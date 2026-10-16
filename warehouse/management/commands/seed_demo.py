@@ -92,10 +92,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Dane demo zasiane."))
 
     def _lock_tables(self):
-        """PostgreSQL: reset z /demo/przywroc/ idzie przy działającej aplikacji.
+        """PostgreSQL: reset z harmonogramu (03:00) idzie przy działającej aplikacji.
 
-        Bez blokady równoległe przyjęcie/wydanie (albo drugi reset z innego
-        workera) wstawia ruch między DELETE-ami → ProtectedError albo deadlock
+        Bez blokady równoległe przyjęcie/wydanie (albo ręczny reset z terminala)
+        wstawia ruch między DELETE-ami → ProtectedError albo deadlock
         z blokadą HUNumberingConfig. EXCLUSIVE wstrzymuje zapisy do końca
         transakcji (poniżej 1–2 s), odczyty działają dalej. SQLite i tak
         szereguje zapisy całej bazy.

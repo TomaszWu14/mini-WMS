@@ -13,8 +13,8 @@ kartce papieru — dla magazynierów i kierowników.**
 🌐 **Demo online bez logowania: <https://miniwms.twapp.pl/demo/>** — od razu w aplikacji,
 z 3-minutową prezentacją. Na ekranie logowania jest też **„Wejdź jako demo”**; można się
 zalogować: `demo_operator` (Operator) lub `demo_podglad` (Podgląd), hasło `demo1234`.
-Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00, a od razu — przyciskiem
-**„Przywróć dane demo”** w banerze. Można klikać śmiało.
+Dane są fikcyjne i wracają do stanu początkowego codziennie o 3:00. Można klikać śmiało
+(demo ma limity: 2000 palet, 500 lokalizacji, 60 zapisów na 5 minut z jednego adresu).
 
 ### Od czego zacząć (5 minut)
 

@@ -68,6 +68,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-015:** listy HU, lokalizacji, stanów wg lokalizacji i raport zajętości lokalizacji są stronicowane (100 wierszy,
   filtry zachowane przy zmianie strony); lista lokalizacji ma filtr typu i kodu; zbiorczy wydruk etykiet lokalizacji
   najwyżej 200 — powyżej komunikat „Zawęź filtr”. Eksporty CSV/XLSX bez zmian (pełne). Testy: `warehouse/tests_pagination.py`.
+- **US-016:** demo ma limity: najwyżej 2000 palet i 500 lokalizacji (przyjęcia i importy powyżej — „Limit demo”),
+  60 zapisów (POST) na 5 min z jednego IP (powyżej 429). Przycisk „Przywróć dane demo” i `POST /demo/przywroc/`
+  usunięte — dane wraca wyłącznie Scheduled Task `seed_demo --reset --keep-users` (DEC-6, Z-41).
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

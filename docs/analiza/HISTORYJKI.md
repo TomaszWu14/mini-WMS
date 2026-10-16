@@ -37,12 +37,12 @@ Wartości liczbowe bez źródła w kodzie lub audycie nie są wymaganiami — kr
 | L_HU_PLIK | maks. palet (HU) utworzonych jednym plikiem importu | do ustalenia | PYT-02 |
 | L_WIERSZE | maks. wierszy w pliku importu poza demo | 10 000 (AUDYT R4) | PYT-02 |
 | L_ROZP | maks. suma rozmiarów członków ZIP po rozpakowaniu XLSX | 50 MB (AUDYT R4) | PYT-02 |
-| K / W | limiter wejść demo: K żądań na W sekund z jednego IP | do ustalenia (punkt wyjścia: jak logowanie, 10 / 300 s) | PYT-22 |
+| K / W | limiter wejść demo: K żądań na W sekund z jednego IP | wejścia: 10 / 300 s (Z-37); zapisy operatora w demo: 60 / 300 s (Z-41) | PYT-22 |
 | N_KONTO / W_KONTO | limit nieudanych prób na konto w oknie | do ustalenia | PYT-07 |
 | RETENCJA | wiek, po którym kasujemy `LoginEvent` | 90 dni (Z-09, DEC-5) | PYT-09 |
 | ROZMIAR_STRONY | liczba wierszy na stronę list | 100 (precedens: dziennik logowań) | — |
 | L_ETYKIET_LOK | maks. etykiet lokalizacji na wydruk | 200 (jak `HU_LABELS_LIMIT`, D-11) | — |
-| L_DEMO | maks. łączna liczba palet / lokalizacji w demo | do ustalenia | PYT-22 |
+| L_DEMO | maks. łączna liczba palet / lokalizacji w demo | 2000 palet / 500 lokalizacji (Z-41) | PYT-22 |
 
 ---
 
@@ -371,7 +371,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **PO** chcę ograniczyć, ile obiektów i żądań może wygenerować anonimowy Operator w demo, i przenieść reset danych demo do harmonogramu, aby demo pozostało dostępne mimo botów. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia — warunek: DEC-6 / PYT-22 |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji); DEC-6 / PYT-22 rozstrzygnięte (Z-41) |
 | Źródło | AUDYT §3.3 **R5** (reszta), DEC-6; `demo.py:126-143` (`demo_reset`), `imports.py:119-127`, `seed_demo.py:116` |
 | Wymagania | SEC-040; Z-05 |
 | Zależności | US-005 (limiter wejść), parametry K / W, L_DEMO; zmiana usuwa przycisk „Przywróć dane demo” — wpływ na `DemoResetTests` i tour |
@@ -382,7 +382,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** `DEMO_MODE` i więcej niż K żądań POST ze ścieżek operatora z jednego IP w oknie W; **Then** 429.
 3. **Given** `DEMO_MODE`; **When** Operator wysyła POST `/demo/przywroc/`; **Then** reset z UI niedostępny (wariant wg DEC-6), a `manage.py seed_demo --reset --keep-users` wywołane z harmonogramu działa i zachowuje sesje.
 
-**Test do napisania:** `DemoLimitsTests` w `warehouse/tests_demo_limits.py` (nowy); aktualizacja `DemoResetTests`.
+**Testy:** `warehouse/tests_demo_limits.py` — `DemoLimitsTests` (6: domyślne limity; przyjęcie z formularza, import przyjęć, import stanów — palety i nowe lokalizacje osobno —, import i formularz lokalizacji odrzucone z „Limit demo”; poza demo bez limitu), `DemoWriteRateLimitTests` (5: 61. POST → 429, API skanera → JSON 429, limit per IP i zawsze działające wylogowanie, GET nie liczony, poza demo wyłączony), `DemoScheduledResetTests` (2: brak przycisku i `/demo/przywroc/` → 404; `seed_demo --reset --keep-users` przywraca dane i zachowuje sesję). `DemoResetTests` usunięte (reset z UI nie istnieje), `DemoAccessMatrixTests` sprawdza 404 dla każdej roli. Implementacja: `services.DemoBudget` (liczy raz na operację), `demo.DemoWriteRateLimitMiddleware` (po `AuthenticationMiddleware`). Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione; Scheduled Task w Coolify do zmiany na `--keep-users` (COOLIFY.md §11, dokument operatora).
 
 ### US-017 — Podział `views.py` na moduły
 

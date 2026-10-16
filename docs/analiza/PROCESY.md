@@ -113,20 +113,17 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A(["Codziennie 03:00"]) --> R["seed_demo --reset: dane magazynowe i konta demo od zera — wylogowuje wszystkich"]
-    B(["Odwiedzający klika Przywróć dane demo"]) --> C{DEMO_MODE i rola Operator?}
-    C -->|nie| C1["404 lub 403"]
-    C -->|tak| D{Blokada 60 s aktywna?}
-    D -->|tak| D1["Komunikat: spróbuj za minutę"]
-    D -->|nie| E["seed_demo --reset --keep-users: konta zostają, sesje nie giną"]
-    R --> F{DEMO_MODE włączony?}
+    A(["Codziennie 03:00 (Scheduled Task)"]) --> F{DEMO_MODE włączony?}
     F -->|nie| F1["Komenda odmawia resetu"]
-    F -->|tak| G["Stan początkowy: 15 materiałów, ok. 30 palet, 3 wydania, otwarty spis"]
-    E --> G
+    F -->|tak| E["seed_demo --reset --keep-users: dane od zera, konta zostają, sesje nie giną"]
+    E --> G["Stan początkowy: 15 materiałów, ok. 30 palet, 3 wydania, otwarty spis"]
+    B(["Odwiedzający (Operator) przyjmuje / importuje"]) --> L{Limit demo: 2000 HU / 500 lokalizacji, 60 POST / 5 min / IP}
+    L -->|przekroczony| L1["Komunikat „Limit demo” albo 429"]
+    L -->|w limicie| L2["Operacja jak poza demo"]
 ```
 
-- **Wyjątki:** blokada 60 s jest w pamięci procesu (3 workery → do 3 resetów na minutę); reset w żądaniu HTTP z
-  `LOCK TABLE` na PostgreSQL (R5). Niedostępność demo to ryzyko wizerunkowe, nie utrata danych (Z-05).
+- **Wyjątki:** od US-016 (DEC-6, Z-41) nie ma resetu z UI — odwiedzający nie wywołuje `LOCK TABLE` w żądaniu HTTP.
+  Niedostępność demo to ryzyko wizerunkowe, nie utrata danych (Z-05).
 
 ## 6. P-09 Obsługa incydentu bezpieczeństwa (szkic)
 

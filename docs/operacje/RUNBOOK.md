@@ -335,12 +335,11 @@ Zapisz wynik poniżej (po każdym ćwiczeniu, **raz w miesiącu** — US-012):
 |---|---|
 | Kto | harmonogram Coolify; INFRA ręcznie; każdy odwiedzający (przycisk) |
 | Kiedy | codziennie 03:00; po nadużyciu demo; przed prezentacją |
-| Status | **przetestowana** (komenda i przycisk: testy; harmonogram: działa na demo wg README, konfiguracja poza repo) |
+| Status | **przetestowana** (komenda: `DemoScheduledResetTests`; harmonogram: konfiguracja poza repo — po US-016 zmienić Command na `--keep-users`) |
 
 | Sposób | Jak | Skutek |
 |---|---|---|
-| Przycisk „Przywróć dane demo” | `POST /demo/przywroc/` (rola Operator; w demo ma ją każdy odwiedzający) | `seed_demo --reset --keep-users`; konta demo zostają, nikt nie traci sesji; blokada 60 s (per proces) |
-| Scheduled Task Coolify | zasób → **Scheduled Tasks → + Add**: Name `reset-demo`, Command `python manage.py seed_demo --reset`, Frequency `0 3 * * *`, Container `web` | usuwa dane i konta demo, zasiewa od nowa; **wylogowuje wszystkich** ([COOLIFY.md §11](../../COOLIFY.md)) |
+| Scheduled Task Coolify (jedyny reset od US-016) | zasób → **Scheduled Tasks → + Add**: Name `reset-demo`, Command `python manage.py seed_demo --reset --keep-users`, Frequency `0 3 * * *`, Container `web` | usuwa dane magazynowe i zasiewa od nowa; konta demo zostają, sesje nie giną ([COOLIFY.md §11](../../COOLIFY.md)) |
 | Ręcznie | terminal `web`: `python manage.py seed_demo --reset` | jak wyżej; bez `DEMO_MODE=1` komenda odmawia |
 | Pierwsze zasianie | po pierwszym deployu: `python manage.py seed_demo` | 15 materiałów, ~30 palet, 3 WZ, otwarty spis |
 

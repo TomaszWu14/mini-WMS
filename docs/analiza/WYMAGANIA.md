@@ -216,7 +216,7 @@ Kolumna „Status” = stan wg audytu.
 | SEC | Wymaganie | Kryterium (Given / When / Then) | Status (audyt) | US |
 |---|---|---|---|---|
 | SEC-039 | Backup: kopia off-site, szyfrowana, z testem odtworzenia i alertem. | **Given** backup nocny; **When** zakończony; **Then** szyfrowana kopia jest poza hostem bazy; **When** miesięczny test odtworzenia; **Then** baza wstaje na środowisku testowym (zapis w RUNBOOK); **Given** brak świeżej kopii powyżej progu; **Then** alert. | częściowo — lokalny, nieszyfrowany, nieprzećwiczony (R9) | US-012 |
-| SEC-040 | Limit żądań na anonimowych wejściach demo (`/demo/`, `/login/demo/`). | **Given** `DEMO_MODE`; **When** > K żądań w oknie W z jednego IP; **Then** 429 bez nowej sesji i bez `LoginEvent`. | brak (R5) | US-005, US-016 |
+| SEC-040 | Limit żądań na anonimowych wejściach demo (`/demo/`, `/login/demo/`). | **Given** `DEMO_MODE`; **When** > K żądań w oknie W z jednego IP; **Then** 429 bez nowej sesji i bez `LoginEvent`. | spełnione — wejścia US-005; zapisy i limit obiektów US-016 | US-005, US-016 |
 | SEC-041 | IP klienta tylko od zaufanego proxy i zwalidowany. | **Given** `TRUSTED_PROXY_COUNT=1` i `X-Forwarded-For` z wartością niebędącą IP; **When** logowanie; **Then** fallback na `REMOTE_ADDR`, bez `DataError`. | spełnione — `ClientIPTests`, `ClientIPLoginTests` (US-014) | US-014 |
 | SEC-042 | Zaakceptowane wyjątki bezpieczeństwa zapisane w rejestrze z datą przeglądu. | **Given** `RYZYKA.md`; **Then** każdy wyjątek (publiczny Operator w demo, logowanie GET `/demo/`, jawne hasło demo, brak 2FA do wdrożenia, backup lokalny) ma uzasadnienie, właściciela, datę przeglądu i akceptację PO. | brak (AUDYT §3.5) | US-024 |
 
@@ -276,7 +276,7 @@ do czasu odpowiedzi (pozycje z numerem Z-nn są w [ZALOZENIA.md](ZALOZENIA.md)).
 | PYT-19 | Które wyjątki z AUDYT §3.5 akceptujesz (publiczny Operator w demo, brak 2FA do wdrożenia, backup lokalny)? Czy cel repo to portfolio, wdrożenie, czy oba (Z-04)? | SEC-042, US-024 | Z-04, Z-05 |
 | PYT-20 | Formularz „Nowy użytkownik” podpowiada rolę Operator, a konto bez profilu dostaje Podgląd. Czy podpowiedź ma być Podgląd (najmniejsze uprawnienia)? | FR-023 | bez zmian do decyzji |
 | PYT-21 | Czy użytkownik ma sam zmieniać lub odzyskiwać hasło, zamiast ustawiać je przez Administratora, który je zna (PROCESY L-01, Z-16)? Czy blokada ruchów na czas spisu ma być techniczna (PROCESY L-02, Z-13)? | US-041, US-042 | stan obecny: hasło ustawia Administrator; zamrożenie organizacyjne |
-| PYT-22 | Demo: jakie parametry limitera wejść i ścieżek operatora (K żądań / W sekund), jaki limit obiektów w demo (L_DEMO) i czy reset danych demo przenosimy wyłącznie do harmonogramu (DEC-6)? | SEC-040, US-005, US-016 | punkt wyjścia K / W = jak logowanie (10 / 300 s); DEC-6 domyślnie: reset tylko z harmonogramu |
+| PYT-22 | Demo: jakie parametry limitera wejść i ścieżek operatora (K żądań / W sekund), jaki limit obiektów w demo (L_DEMO) i czy reset danych demo przenosimy wyłącznie do harmonogramu (DEC-6)? | SEC-040, US-005, US-016 | **odpowiedź PO 2026-10-16:** wejścia 10 / 300 s (Z-37); zapisy 60 / 300 s; L_DEMO 2000 HU / 500 lokalizacji; reset tylko z harmonogramu (Z-41) |
 
 ---
 

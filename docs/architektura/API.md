@@ -430,9 +430,9 @@ migracji, miejsca na dysku ani kopii zapasowych. Konsumenci: `HEALTHCHECK` w `Do
 
 | Trasa | Metoda | Uprawnienie | Działanie |
 |---|---|---|---|
-| `/demo/` | GET | publiczne | jeśli nikt nie jest zalogowany — loguje kontem `DEMO_USER` (musi być z listy `demo_operator`, `demo_podglad`) **na GET**, potem 302 na `/?demo=1`; zalogowanego nie przelogowuje. Świadomy wyjątek od „zmiany tylko na POST” ([auth.md #12](../pitfalls/auth.md)); **bez limitera** (R5) |
+| `/demo/` | GET | publiczne | jeśli nikt nie jest zalogowany — loguje kontem `DEMO_USER` (musi być z listy `demo_operator`, `demo_podglad`) **na GET**, potem 302 na `/?demo=1`; zalogowanego nie przelogowuje. Świadomy wyjątek od „zmiany tylko na POST” ([auth.md #12](../pitfalls/auth.md)); limit 10 wejść / 300 s / IP (US-005) |
 | `/login/demo/` | POST | publiczne, CSRF | „Wejdź jako demo” — logowanie bez hasła; opcjonalne `next` (sprawdzane `url_has_allowed_host_and_scheme`); brak konta → komunikat i 302 na `/login/` |
-| `/demo/przywroc/` | POST | `@operator_required`, CSRF | `seed_demo --reset --keep-users` dla wszystkich; blokada 60 s (per proces); zawsze 302 na pulpit |
+| ~~`/demo/przywroc/`~~ | — | — | usunięte w US-016 (DEC-6): reset danych demo tylko ze Scheduled Task; 404 |
 
 ### 5.4 Eksporty CSV / XLSX
 
@@ -475,7 +475,6 @@ Pozostałe trasy (≈ 70) to ekrany HTML; pełna lista w `warehouse/urls.py`, ma
 | `/skaner/api/*` (8) | 302 → `/login/` | 403 | 200 / 400 / 404 | 200 / 400 / 404 |
 | `/healthz` | 200 / 503 | 200 / 503 | 200 / 503 | 200 / 503 |
 | `/stany/eksport/…`, `/ruchy/eksport/…`, PDF-y | 302 | 200 | 200 | 200 |
-| `/demo/przywroc/` (demo) | 302 | 403 | 302 | 302 |
 
 Zasada dla nowych endpointów: **test odmowy dla każdej roli**
 ([STRATEGIA_TESTOW.md](../testy/STRATEGIA_TESTOW.md) §5).

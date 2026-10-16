@@ -155,7 +155,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-037 | US-023 | n/d — przegląd dokumentu | #23 |
 | SEC-038 | US-023, US-027 | brak — do napisania | #23 |
 | SEC-039 | US-012 | `BackupScriptTests.test_encrypted_copy_decrypts_only_with_private_key`, `test_refuses_unencrypted_offsite`; CI job 3b | #23 |
-| SEC-040 | US-005, US-016 | `tests_demo_entry.DemoEntryRateLimitTests` (5) | #23 |
+| SEC-040 | US-005, US-016 | `tests_demo_entry.DemoEntryRateLimitTests` (5); `tests_demo_limits` (13) | #23 |
 | SEC-041 | US-014 | `tests_open_decisions.ClientIPTests`, `ClientIPLoginTests` | historyczny (przed procesem; #13) |
 | SEC-042 | US-024 | n/d — przegląd dokumentu | #23 |
 
@@ -180,7 +180,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-013 | Should | FR-001, FR-004, FR-005, FR-018, NFR-009, SEC-015, SEC-017 | T16 | `tests_input_validation.py` (14 testów) — zrobione, #23 |
 | US-014 | Should | SEC-041 | „poza listą” | `tests_open_decisions.py` (+4 testy) — zrobione, #23 |
 | US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` (13 testów) — zrobione, #23 |
-| US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` |
+| US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` (13 testów) — zrobione, #23 |
 | US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` |
 | US-018 | Should | NFR-026, FR-017 | T3 | `tests_services_fixes.py`, `tests_concurrency_pg.py` |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | n/d (CI) |

@@ -38,8 +38,8 @@
 12. **`/demo/` loguje kontem demo na GET** (link do README/YouTube) — świadomy wyjątek od
     „zmiany tylko na POST”, tylko przy `DEMO_MODE` i tylko gdy nikt nie jest zalogowany
     (link podsunięty zalogowanemu adminowi nie zmieni mu sesji). Nie dodawaj tam `next`.
-13. **„Przywróć dane demo” (`demo_reset`) = `seed_demo --reset --keep-users`** dla wszystkich
-    odwiedzających naraz. Konta demo zostają (te same `pk`), więc inni nie tracą sesji;
-    blokada 60 s w cache (per proces gunicorna); równoległe resety i zapisy szereguje
-    `LOCK TABLE … IN EXCLUSIVE MODE` w `seed_demo` (PostgreSQL). Bez `--keep-users` reset
-    wylogowuje wszystkich.
+13. **Reset danych demo tylko z harmonogramu (US-016, DEC-6):** `seed_demo --reset --keep-users` w Scheduled Task.
+    Konta demo zostają (te same `pk`), więc nikt nie traci sesji; bez `--keep-users` reset wylogowuje wszystkich.
+    Nie dodawaj resetu z UI — wraca `LOCK TABLE` w żądaniu HTTP. W demo działa `DemoWriteRateLimitMiddleware`
+    (60 POST / 300 s / IP dla zalogowanych) i `services.DemoBudget` (2000 HU / 500 lokalizacji) — nowa ścieżka
+    tworząca palety lub lokalizacje musi wołać `DemoBudget().take(...)`.

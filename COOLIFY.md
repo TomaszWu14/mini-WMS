@@ -206,25 +206,28 @@ z własną bazą, nigdy na danych produkcyjnych.
    plus **`DEMO_MODE=1`**. Tryb demo włącza baner „Wersja demonstracyjna — dane
    fikcyjne…”, przycisk **„Wejdź jako demo”** i loginy kont demo na stronie logowania,
    panel „Od czego zacząć” na pulpicie, blokuje edycję kont demo, ogranicza importy do
-   500 wierszy i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP)
+   500 wierszy, magazyn do 2000 palet i 500 lokalizacji, zapisy (POST) do 60 na 5 min z jednego
+   IP i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP)
    działa zawsze, także bez trybu demo. Opcjonalnie: `DEMO_USER` (konto przycisku,
    domyślnie `demo_operator`) i `DEMO_PASSWORD` (domyślnie `demo1234`).
 2. Po pierwszym deployu zasiej dane (terminal kontenera `web` w Coolify):
    `python manage.py seed_demo`
 3. **Reset co 24 h** — zakładka zasobu **Scheduled Tasks → + Add**:
    - Name: `reset-demo`
-   - Command: `python manage.py seed_demo --reset`
+   - Command: `python manage.py seed_demo --reset --keep-users`
    - Frequency: `0 3 * * *` (codziennie 03:00)
    - Container: `web`
 
-   `--reset` czyści wszystkie dane magazynowe i konta demo, po czym zasiewa
-   je od nowa (deterministycznie). Bez `DEMO_MODE=1` komenda odmawia resetu.
+   `--reset` czyści wszystkie dane magazynowe, po czym zasiewa je od nowa
+   (deterministycznie); `--keep-users` zostawia konta demo, więc zalogowani nie tracą sesji.
+   To jedyny reset danych demo — przycisk „Przywróć dane demo” usunięto (US-016, DEC-6).
+   Bez `DEMO_MODE=1` komenda odmawia resetu.
    Cron nie jest częścią obrazu — harmonogram trzyma Coolify.
 
 Konta demo: `demo_operator` (Operator) i `demo_podglad` (Podgląd), hasło
 `demo1234`. Konto administratora z `DJANGO_SUPERUSER_*` zostaje prywatne.
 Przy `DEMO_MODE=1` panel `/admin/` jest wyłączony (404); dane demo odnawia Scheduled Task
-`python manage.py seed_demo --reset`, a zadania serwisowe robi się przez `manage.py` w kontenerze.
+`python manage.py seed_demo --reset --keep-users`, a zadania serwisowe robi się przez `manage.py` w kontenerze.
 
 ---
 
