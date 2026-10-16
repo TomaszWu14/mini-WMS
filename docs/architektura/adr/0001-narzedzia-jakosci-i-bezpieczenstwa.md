@@ -69,6 +69,11 @@ usługi (SaaS SAST, Snyk, Semgrep AppSec Platform).
   (DoD), ale PO może obniżyć próg decyzją DEC-3.
 - Trivy może zablokować pipeline przez CVE w obrazie bazowym `python:3.11-slim` zanim pojawi się
   poprawiony obraz; wtedy: `.trivyignore` z datą przeglądu albo bump obrazu — nigdy `exit-code: 0`.
+- Pierwszy skan obrazu (2026-10-16) wykazał 8 podatności HIGH wyłącznie w narzędziach instalacyjnych
+  (setuptools i jego vendorowane `wheel`/`jaraco.context`, vendorowane w pip `urllib3`/`msgpack`).
+  Decyzja: **obraz runtime nie zawiera pip, setuptools ani wheel** (usuwane w obu etapach Dockerfile);
+  gunicorn i `manage.py` ich nie potrzebują, a mniejsza powierzchnia ataku to bonus. Konsekwencja:
+  nowe pakiety trafiają do obrazu wyłącznie przez rebuild — `pip install` w kontenerze nie zadziała.
 - Semgrep pobiera reguły z rejestru `semgrep.dev` i przy tym wysyła anonimowe metryki
   (`SEMGREP_SEND_METRICS=off` ogranicza je do minimum). Lokalnie za proxy blokującym `semgrep.dev`
   można użyć kopii reguł: `git clone --depth 1 --sparse https://github.com/semgrep/semgrep-rules` i

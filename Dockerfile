@@ -11,7 +11,11 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Po instalacji zależności usuwamy z venv narzędzia instalacyjne: w runtime nic ich nie
+# używa, a ich podatności (setuptools/wheel/vendorowane pakiety pip) blokowałyby skan
+# obrazu w CI (ADR-0001). Nowe pakiety trafiają do obrazu tylko przez rebuild.
+RUN pip install --upgrade pip && pip install -r requirements.txt \
+    && pip uninstall -y pip setuptools wheel
 
 
 # --- Etap 2: runtime — chudy obraz produkcyjny, bez narzędzi budowania ------
@@ -24,6 +28,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Venv z etapu builder (bez kompilatorów i cache pip w finalnym obrazie).
 COPY --from=builder /opt/venv /opt/venv
+
+# To samo dla interpretera bazowego obrazu: pip/setuptools/wheel z systemowego
+# site-packages nie są potrzebne gunicornowi ani manage.py (PATH wskazuje venv).
+RUN /usr/local/bin/python -m pip uninstall -y pip setuptools wheel
 
 # Użytkownik nie-root.
 RUN useradd --create-home --uid 1000 app

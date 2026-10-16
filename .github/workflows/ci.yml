@@ -93,7 +93,7 @@ jobs:
         run: |
           coverage xml -o reports/coverage.xml || true
           coverage html -d reports/htmlcov || true
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: reports-coverage
@@ -176,7 +176,7 @@ jobs:
           PY
           exit "${status:-0}"
 
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: reports-sast
@@ -216,7 +216,7 @@ jobs:
           fi
           exit "${status:-0}"
 
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: reports-sca
@@ -247,7 +247,9 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Build image
-        run: docker build -t miniwms:ci .
+        run: |
+          mkdir -p reports
+          docker build -t miniwms:ci .
 
       - name: Smoke test — kontener wstaje i jest healthy
         run: |
@@ -303,7 +305,7 @@ jobs:
           format: table
           skip-setup-trivy: true
 
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: reports-image

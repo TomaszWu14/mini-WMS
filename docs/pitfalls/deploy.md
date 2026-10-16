@@ -32,3 +32,4 @@
     tylko z uzasadnieniem: `# nosec`/`# nosemgrep` z powodem, `.gitleaksignore`, `.trivyignore` z datą
     przeglądu. `semgrep` nie siedzi w `requirements-dev.txt` (konflikt `tomli` z pip-audit) —
     `pipx install semgrep==1.146.0`; za proxy blokującym `semgrep.dev` użyj kopii reguł z GitHuba.
+    **Obraz runtime nie ma pip/setuptools/wheel** (skan trivy) — pakiety tylko przez rebuild.

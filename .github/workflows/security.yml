@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: mkdir -p reports
       - name: Skan repozytorium (tabela w logu, wszystkie poziomy)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -53,7 +54,7 @@ jobs:
           format: sarif
           output: reports/trivy-fs.sarif
           skip-setup-trivy: true
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: weekly-trivy
@@ -82,7 +83,7 @@ jobs:
           semgrep scan --config p/python --config p/django --config p/owasp-top-ten \
             --config p/security-audit --config p/secrets \
             --exclude warehouse/static/warehouse/vendor . || true
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: weekly-semgrep
@@ -111,7 +112,7 @@ jobs:
         run: |
           bandit -c pyproject.toml -r warehouse config manage.py -f json -o reports/bandit-full.json || true
           bandit -c pyproject.toml -r warehouse config manage.py -q || true
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: weekly-deps-sast
