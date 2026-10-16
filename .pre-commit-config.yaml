@@ -1,0 +1,35 @@
+# pre-commit (ADR-0001): te same kontrole, które blokują CI, zanim commit opuści komputer.
+#   pip install pre-commit && pre-commit install
+#   pre-commit run --all-files      # jednorazowo na całym repo
+# Wersje przypięte do tagów; Dependabot nie aktualizuje tego pliku — podbijaj razem
+# z requirements-dev.txt (ruff) i security.yml (gitleaks).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^warehouse/static/warehouse/vendor/
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^warehouse/static/warehouse/vendor/
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^warehouse/static/warehouse/vendor/
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.29.1
+    hooks:
+      - id: gitleaks

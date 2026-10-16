@@ -84,8 +84,10 @@ ruff format .           # formatowanie (jak black+isort)
 python manage.py check --deploy   # audyt konfiguracji produkcyjnej
 ```
 
-CI (GitHub Actions) uruchamia lint (Ruff), `check --deploy`, kontrolę migracji
-i testy na każdym pushu/PR.
+CI (GitHub Actions) uruchamia przy każdym pushu/PR: lint (Ruff), mypy, `check --deploy`,
+kontrolę migracji, testy z progiem pokrycia (SQLite i PostgreSQL), SAST (bandit, semgrep),
+SCA (pip-audit), skan sekretów (gitleaks), build i skan obrazu (trivy). Szczegóły i polecenia
+lokalne: [CONTRIBUTING.md](../CONTRIBUTING.md) §6, [ADR-0001](architektura/adr/0001-narzedzia-jakosci-i-bezpieczenstwa.md).
 
 ## Struktura
 

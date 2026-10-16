@@ -79,7 +79,8 @@ class ConcurrentIssueTests(TransactionTestCase):
         workers = [threading.Thread(target=worker, args=(d,)) for d in docs]
         for w in workers:
             w.start()
-        time.sleep(1)  # oba wątki czekają już na blokadę palety
+        # Celowe opóźnienie: oba wątki mają już czekać na blokadę palety (test wyścigu).
+        time.sleep(1)  # nosemgrep
         release.set()
         for t in [h, *workers]:
             t.join(15)

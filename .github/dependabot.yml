@@ -1,0 +1,59 @@
+# Dependabot: aktualizacje zależności Pythona, akcji GitHub i obrazu bazowego Dockera.
+# Uzasadnienie: docs/architektura/adr/0001-narzedzia-jakosci-i-bezpieczenstwa.md (R10).
+# Każdy PR Dependabota przechodzi pełne CI (testy, SAST, SCA, skan obrazu).
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dev-tools:
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "django-stubs*"
+          - "pytest*"
+          - "coverage"
+          - "bandit"
+          - "pip-audit"
+          - "semgrep"
+          - "mutmut"
+          - "playwright"
+    ignore:
+      # Django: tylko łatki w ramach 5.2 LTS (pyproject: >=5.2,<5.3); nowa gałąź to decyzja PO.
+      - dependency-name: "Django"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "chore(ci)"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(docker)"
+    ignore:
+      # Obraz bazowy: tylko łatki 3.11.x (zgodność z pyproject / CI).
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

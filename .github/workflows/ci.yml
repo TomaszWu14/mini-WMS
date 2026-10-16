@@ -1,57 +1,73 @@
 name: CI
 
+# Pipeline (ADR-0001): lint → typy → testy z progiem pokrycia → SAST → SCA → skan sekretów
+# → build obrazu → skan obrazu. Wyniki skanów trafiają do artefaktów (reports-*).
+# Błąd wysokiej wagi blokuje pipeline; co jest doradcze — opisane przy kroku.
+# Akcje przypięte do SHA (Dependabot podbija je co tydzień).
+
 on:
   push:
     branches: ["**"]
   pull_request:
     branches: ["**"]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
   lint:
+    name: 1. Lint i format (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-
-      - name: Install dev tooling
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff==0.15.20
-
+      - name: Instalacja ruff
+        run: pip install ruff==0.15.20
       - name: Ruff lint
-        run: ruff check .
-
+        run: ruff check --output-format=github .
       - name: Ruff format (check)
         run: ruff format --check .
 
-  test:
+  typecheck:
+    name: 2. Typy (mypy — cały kod aplikacji)
+    needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+      - name: Instalacja zależności
+        run: pip install -r requirements.txt mypy==1.13.0 "django-stubs[compatible-mypy]==5.2.9"
+      - name: mypy
+        run: mypy warehouse config
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  test:
+    name: 3. Testy (SQLite) + pokrycie
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalacja zależności
+        run: pip install -r requirements.txt pytest==9.1.1 pytest-django==4.14.0 coverage==7.6.9
 
       - name: Django system check
         run: python manage.py check
-
-      - name: Type check (mypy — warstwa logiki)
-        run: |
-          pip install mypy==1.13.0 "django-stubs[compatible-mypy]==5.2.9"
-          mypy warehouse/services.py config/log.py config/urls.py
 
       - name: Production deploy check
         env:
@@ -64,13 +80,33 @@ jobs:
       - name: Verify migrations are up to date
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Run tests
-        run: python manage.py test --verbosity=2
+      - name: Testy z pomiarem pokrycia (pytest, config.settings.test)
+        run: coverage run -m pytest -q -p no:cacheprovider
+
+      - name: Próg pokrycia — 80 % ogółem (pyproject fail_under), 90 % warehouse/services.py
+        run: |
+          coverage report
+          coverage report --include=warehouse/services.py --fail-under=90
+
+      - name: Raport pokrycia (artefakt)
+        if: always()
+        run: |
+          coverage xml -o reports/coverage.xml || true
+          coverage html -d reports/htmlcov || true
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: reports-coverage
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14
 
   test-postgres:
-    # Produkcja działa na PostgreSQL: blokady wierszy (select_for_update) i
-    # zapytania typu FOR UPDATE na złączeniach sprawdzi tylko prawdziwy Postgres.
-    # Tu działa też warehouse.tests_concurrency_pg (na SQLite jest pomijany).
+    # Produkcja działa na PostgreSQL: blokady wierszy (select_for_update) i FOR UPDATE
+    # na złączeniach sprawdzi tylko prawdziwy Postgres. Tu działa też
+    # warehouse.tests_concurrency_pg (na SQLite jest pomijany).
+    name: 3b. Testy (PostgreSQL 16)
+    needs: lint
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -86,32 +122,133 @@ jobs:
     env:
       DATABASE_URL: postgres://wms:wms@localhost:5432/wms
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+      - name: Instalacja zależności
+        run: pip install -r requirements.txt pytest==9.1.1 pytest-django==4.14.0
+      - name: Testy (pytest, PostgreSQL)
+        run: pytest -q -p no:cacheprovider
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run tests (PostgreSQL)
-        run: python manage.py test --verbosity=2
-
-  docker-build:
-    # Buduje obraz produkcyjny tak jak Coolify i URUCHAMIA go, sprawdzając, czy
-    # kontener staje się „healthy" — łapie błędy Dockerfile (collectstatic jako
-    # non-root) ORAZ runtime (np. healthcheck z 301 przez SSL redirect) zanim
-    # trafią na deploy.
+  sast:
+    name: 4. SAST (bandit, semgrep)
+    needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalacja skanerów
+        run: pip install bandit==1.9.4 semgrep==1.146.0
+
+      - name: Bandit (blokuje przy waga ≥ średnia i pewność ≥ średnia)
+        run: |
+          mkdir -p reports
+          bandit -c pyproject.toml -r warehouse config manage.py -ll -ii -f json -o reports/bandit.json || status=$?
+          bandit -c pyproject.toml -r warehouse config manage.py -ll -ii -q
+          exit "${status:-0}"
+
+      - name: Semgrep — reguły OWASP Top 10 i Django (blokuje przy ERROR)
+        env:
+          SEMGREP_SEND_METRICS: "off"
+        run: |
+          # Zakres jak bandit: kod aplikacji. Narzędzia deweloperskie (.claude/hooks, tools/)
+          # skanuje doradczo security.yml — ich zgłoszenia (subprocess bez stałego polecenia)
+          # nie dotyczą środowiska produkcyjnego.
+          semgrep scan --config p/owasp-top-ten --config p/django \
+            --severity ERROR --error --sarif --output reports/semgrep.sarif \
+            --exclude warehouse/static/warehouse/vendor \
+            warehouse config manage.py || status=$?
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("reports/semgrep.sarif")
+          if p.exists():
+              runs = json.loads(p.read_text()).get("runs", [])
+              results = [r for run in runs for r in run.get("results", [])]
+              print(f"semgrep: {len(results)} ustaleń ERROR")
+              for r in results:
+                  loc = r["locations"][0]["physicalLocation"]
+                  print(f"- {loc['artifactLocation']['uri']}:{loc['region']['startLine']} {r['ruleId']}: {r['message']['text'][:160]}")
+          PY
+          exit "${status:-0}"
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: reports-sast
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  sca:
+    name: 5. SCA (pip-audit)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalacja pip-audit
+        run: pip install pip-audit==2.10.1
+
+      - name: pip-audit — zależności produkcyjne (blokuje przy znanej podatności)
+        run: |
+          mkdir -p reports
+          pip-audit -r requirements.txt --progress-spinner off --desc on \
+            -f json -o reports/pip-audit-prod.json || status=$?
+          python -m json.tool reports/pip-audit-prod.json | head -80 || true
+          exit "${status:-0}"
+
+      - name: pip-audit — zależności deweloperskie (doradczo)
+        continue-on-error: true
+        run: |
+          pip-audit -r requirements-dev.txt --progress-spinner off --desc on \
+            -f json -o reports/pip-audit-dev.json || status=$?
+          python -m json.tool reports/pip-audit-dev.json | head -80 || true
+          if [ "${status:-0}" != "0" ]; then
+            echo "::warning::pip-audit znalazł podatności w zależnościach deweloperskich — patrz artefakt reports-sca"
+          fi
+          exit "${status:-0}"
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: reports-sca
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  secrets:
+    name: 6. Skan sekretów (gitleaks, pełna historia)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    # Buduje obraz produkcyjny tak jak Coolify, URUCHAMIA go (kontener musi być „healthy")
+    # i skanuje obraz Trivy: podatności HIGH/CRITICAL z dostępną poprawką blokują,
+    # błędy konfiguracji (Dockerfile, compose) są raportowane doradczo.
+    name: 7. Build obrazu, smoke test i skan obrazu (trivy)
+    needs: [test, typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
       - name: Build image
         run: docker build -t miniwms:ci .
+
       - name: Smoke test — kontener wstaje i jest healthy
         run: |
           docker run -d --name miniwms-ci \
@@ -126,4 +263,50 @@ jobs:
             sleep 3
           done
           echo "--- logi kontenera ---"; docker logs miniwms-ci | tail -30
+          docker rm -f miniwms-ci >/dev/null 2>&1 || true
           test "$status" = "healthy"
+
+      - name: "Trivy — podatności w obrazie (blokuje: HIGH/CRITICAL z poprawką)"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: miniwms:ci
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          trivyignores: .trivyignore
+
+      - name: Trivy — raport SARIF z obrazu (artefakt)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: miniwms:ci
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          format: sarif
+          output: reports/trivy-image.sarif
+          skip-setup-trivy: true
+
+      - name: Trivy — konfiguracja (Dockerfile, compose; doradczo)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          format: table
+          skip-setup-trivy: true
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: reports-image
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30

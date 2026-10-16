@@ -209,7 +209,7 @@ realna, przetestowana (`test_hooks.py`) wartość, którą zespół powinien utr
 
 - Autoryzacja po stronie serwera dla **każdego** z 47 widoków i 16 endpointów skanera
   (`login_required` 22, `operator_required` 36, `admin_required` 5); zmiany stanu tylko na POST;
-  rola z `Profile`, superuser = Administrator; nowe konto = Podgląd.
+  rola z `Profile`, superuser = Administrator; konto bez profilu = Podgląd (formularz „Nowy użytkownik” podpowiada jednak rolę Operator — `forms.py:141`).
 - CSRF: middleware, `{% csrf_token %}` w każdym formularzu POST, skaner wysyła `X-CSRFToken`;
   brak `csrf_exempt`. Brak `|safe`/`mark_safe`/`autoescape off`; brak surowego SQL poza
   `LOCK TABLE` z nazwami tabel z modeli (`seed_demo.py:116`).

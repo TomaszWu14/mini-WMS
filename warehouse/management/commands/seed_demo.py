@@ -113,7 +113,9 @@ class Command(BaseCommand):
         ]
         tables = ", ".join(connection.ops.quote_name(m._meta.db_table) for m in models)
         with connection.cursor() as cur:
-            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608 (nazwy z modeli)
+            # Nazwy tabel pochodzą z _meta.db_table i przechodzą przez quote_name —
+            # żadnych danych od użytkownika, więc wyjątek dla skanerów SQL injection.
+            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608  # nosemgrep
 
     def _reset(self, keep_users=False):
         StockMovement.objects.all().delete()

@@ -23,10 +23,12 @@
    w Coolify musi być włączone **Preserve Repository During Deployment** — bez tego
    `backup` restartuje się w kółko. Domenę w Coolify wpisuj bez `:8000` (port z
    `SERVICE_FQDN_WEB_8000`).
-9. **CI (`ci.yml`) uruchamia testy przez `manage.py test` (bez MD5 hashera) — ~5 min**, raz na
-   SQLite (`test`) i raz na PostgreSQL 16 (`test-postgres`).
-   Lokalnie i w Stop hooku: `pytest` (~11–40 s). Wyniki powinny być identyczne; różnica to
-   tylko hasher.
-10. **mypy w CI sprawdza tylko `services.py`, `config/log.py`, `config/urls.py`**; Stop hook
-    sprawdza każdy zmieniony plik `warehouse/`/`config/` — dotknięcie `documents.py` lub
-    `issue_import.py` ujawni ich istniejące błędy typów (6 sztuk).
+9. **CI (`ci.yml`) uruchamia testy przez `pytest` z `config.settings.test`** (MD5 hasher, ~15 s),
+   raz na SQLite (`test`, z pomiarem pokrycia) i raz na PostgreSQL 16 (`test-postgres`). Próg
+   pokrycia: 80 % ogółem (`fail_under` w `pyproject.toml`) i 90 % dla `services.py` — nowa logika
+   bez testów zatrzyma PR. Pełny opis pipeline'u: ADR-0001.
+10. **Skanery w CI blokują PR:** bandit (≥ średnia waga i pewność), semgrep (ERROR), pip-audit
+    (`requirements.txt`), gitleaks (historia), trivy (HIGH/CRITICAL z poprawką w obrazie). Wyjątek
+    tylko z uzasadnieniem: `# nosec`/`# nosemgrep` z powodem, `.gitleaksignore`, `.trivyignore` z datą
+    przeglądu. `semgrep` nie siedzi w `requirements-dev.txt` (konflikt `tomli` z pip-audit) —
+    `pipx install semgrep==1.146.0`; za proxy blokującym `semgrep.dev` użyj kopii reguł z GitHuba.

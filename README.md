@@ -54,6 +54,24 @@ ile, skąd i dokąd.
 | [06 — Decyzje](docs/06-decyzje.md) | dziennik decyzji: kontekst, opcje, uzasadnienie, skutki |
 | [07 — Ograniczenia](docs/07-ograniczenia.md) | czego aplikacja nie robi, znane problemy, co dalej |
 
+## Proces zespołowy i dokumentacja projektowa
+
+Repozytorium jest prowadzone jak przez trzyosobowy zespół — **[BA]** analityk, **[DEV]** developer,
+**[SEC]** bezpieczeństwo — z Product Ownerem podejmującym decyzje. Jak pracujemy, Definition of
+Ready/Done i narzędzia: [CONTRIBUTING.md](CONTRIBUTING.md). Zgłaszanie podatności: [SECURITY.md](SECURITY.md).
+Historia zmian: [CHANGELOG.md](CHANGELOG.md).
+
+| Obszar | Dokumenty |
+|---|---|
+| Stan wyjściowy | [docs/AUDYT.md](docs/AUDYT.md) — audyt BA/DEV/SEC, top 10 ryzyk, pytania i decyzje dla PO |
+| [BA] analiza | [WIZJA](docs/analiza/WIZJA.md) · [INTERESARIUSZE](docs/analiza/INTERESARIUSZE.md) · [PROCESY](docs/analiza/PROCESY.md) · [WYMAGANIA](docs/analiza/WYMAGANIA.md) · [HISTORYJKI](docs/analiza/HISTORYJKI.md) (backlog) · [SLOWNIK](docs/analiza/SLOWNIK.md) · [ZALOZENIA](docs/analiza/ZALOZENIA.md) · [SLEDZENIE](docs/analiza/SLEDZENIE.md) |
+| [DEV] architektura | [ARCHITEKTURA](docs/architektura/ARCHITEKTURA.md) (C4) · [MODEL_DANYCH](docs/architektura/MODEL_DANYCH.md) · [API](docs/architektura/API.md) · [ADR](docs/architektura/adr/README.md) |
+| [SEC] bezpieczeństwo | [KLASYFIKACJA_DANYCH](docs/bezpieczenstwo/KLASYFIKACJA_DANYCH.md) · [THREAT_MODEL](docs/bezpieczenstwo/THREAT_MODEL.md) · [RYZYKA](docs/bezpieczenstwo/RYZYKA.md) · [RODO](docs/bezpieczenstwo/RODO.md) · [CHECKLISTA_ASVS](docs/bezpieczenstwo/CHECKLISTA_ASVS.md) |
+| Testy i operacje | [STRATEGIA_TESTOW](docs/testy/STRATEGIA_TESTOW.md) · [RUNBOOK](docs/operacje/RUNBOOK.md) · [docs/operator/](docs/operator/) (instrukcja operatora per branch) |
+
+Dokumentacja analityczna `docs/01–07` (wyżej) pozostaje źródłem prawdy o wymaganiach; nowe dokumenty
+ją uzupełniają. Status wszystkich nowych dokumentów: **szkic 0.1 — do akceptacji Product Ownera**.
+
 ## Jak uruchomić
 
 Wymagany Python 3.11+. Komendy przetestowane od zera w czystym katalogu.
@@ -84,6 +102,7 @@ Bez `DEMO_MODE` aplikacja startuje z pustą bazą — konto administratora:
 struktura kodu: [docs/wdrozenie.md](docs/wdrozenie.md).
 
 [![ci](https://github.com/TomaszWu14/miniWMS-public/actions/workflows/ci.yml/badge.svg)](https://github.com/TomaszWu14/miniWMS-public/actions/workflows/ci.yml)
+[![security](https://github.com/TomaszWu14/miniWMS-public/actions/workflows/security.yml/badge.svg)](https://github.com/TomaszWu14/miniWMS-public/actions/workflows/security.yml)
 
 ## Stack i dlaczego taki
 

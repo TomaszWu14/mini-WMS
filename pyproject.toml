@@ -26,6 +26,7 @@ dev = [
     "mutmut==3.8.0",
     "pip-audit==2.10.1",
     "bandit==1.9.4",
+    # semgrep==1.146.0 instalowany osobno (pipx / CI): wymaga tomli~=2.0, a pip-audit tomli>=2.2.
 ]
 
 [build-system]
@@ -97,4 +98,12 @@ skips = ["B101"]  # assert w testach
 # --- Coverage ---------------------------------------------------------------
 [tool.coverage.run]
 source = ["warehouse", "config"]
-omit = ["*/migrations/*", "*/tests.py"]
+# tests*.py poza pomiarem — inaczej pliki testów (zawsze ~100 %) zawyżają wynik.
+omit = ["*/migrations/*", "*/tests.py", "*/tests_*.py"]
+
+[tool.coverage.report]
+# Próg z ADR-0001 (założenie Z-08): 80 % ogółem; 90 % dla warehouse/services.py
+# sprawdza osobno CI (`coverage report --include=warehouse/services.py --fail-under=90`).
+fail_under = 80
+show_missing = true
+skip_covered = false
