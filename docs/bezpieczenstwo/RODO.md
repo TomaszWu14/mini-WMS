@@ -92,8 +92,8 @@ Okresy propozycją do potwierdzenia przez PO. Status: **wdrożone**, **brak mech
 
 | Zasób | Okres | Uzasadnienie | Mechanizm | Status |
 |---|---|---|---|---|
-| `LoginEvent` (DA-10, DA-12) | 90 dni (Z-09, DEC-5) | bezpieczeństwo bez nadmiarowego przechowywania | `manage.py purge_login_events` + Scheduled Task; `seed_demo --reset` ich nie czyści | brak mechanizmu (US-005) |
-| Sesje `django_session` (DA-13) | wygasają po 30 min bezczynności; fizyczne usunięcie codziennie | minimalizacja, rozdęcie tabeli w demo (R5) | wygaśnięcie logiczne: `base.py:185-186`; usuwanie: `manage.py clearsessions` w Scheduled Task | częściowo (wygaśnięcie wdrożone; usuwanie — brak mechanizmu, US-005) |
+| `LoginEvent` (DA-10, DA-12) | 90 dni (Z-09, DEC-5) | bezpieczeństwo bez nadmiarowego przechowywania | `manage.py purge_login_events` + Scheduled Task (COOLIFY §10a) i przy starcie kontenera; w demo bez IP i UA (Z-38) | wdrożone (US-005, #23) |
+| Sesje `django_session` (DA-13) | wygasają po 30 min bezczynności; fizyczne usunięcie codziennie | minimalizacja, rozdęcie tabeli w demo (R5) | wygaśnięcie logiczne: `base.py:185-186`; usuwanie: `manage.py clearsessions` w Scheduled Task | wdrożone (US-005, #23: `clearsessions` w Scheduled Task i przy starcie) |
 | Konta (DA-08) | do dezaktywacji + N miesięcy (N — do ustalenia przez PO) | koniec stosunku pracy, rozliczenia | dezaktywacja: ekran „Użytkownicy”; usunięcie: `/admin/` (superuser) | częściowo (ręcznie) |
 | `created_by` i ruchy (DA-07, DA-11) | okres ewidencji magazynowej (do ustalenia przez administratora; mogą dotyczyć przepisów księgowych) | rozliczalność | `on_delete=SET_NULL` anonimizuje znacznik po usunięciu konta; ruchów nie usuwamy automatycznie | wdrożone (anonimizacja); okres do ustalenia |
 | Backupy (DA-17) | 7 dni (`BACKUP_KEEP_DAYS`) | ciągłość działania | `pg_backup.sh:24` (`find -mtime`) | wdrożone; dane usunięte z bazy zostają w kopiach do 7 dni |

@@ -49,6 +49,9 @@ if DEMO_MODE:
 DEMO_USER = os.environ.get("DEMO_USER", "demo_operator")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
 DEMO_IMPORT_MAX_ROWS = 500
+# US-005 / SEC-036: dziennik logowań starszy niż tyle dni usuwa `purge_login_events`
+# (decyzja PO 2026-10-16, Z-09).
+LOGIN_EVENT_RETENTION_DAYS = 90
 # US-004 / R4: limity każdego importu CSV/XLSX poza demo (Z-23: L_WIERSZE, L_ROZP).
 IMPORT_MAX_ROWS = 10_000
 # Suma rozmiarów plików w archiwum XLSX po rozpakowaniu (zip bomb).

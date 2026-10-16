@@ -144,7 +144,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **administrator danych (ST-07)** chcę, aby dziennik logowań i sesje miały ograniczony czas życia, a anonimowe wejścia demo — limit żądań, aby nie gromadzić danych osobowych bezterminowo i nie dopuścić do zalania bazy przez boty. |
 | MoSCoW · rozmiar | Must · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R7** (Ś) i **R5** (Ś, część), §3.4 pkt 5; Z-09, DEC-5, DEC-6; `signals.py:57-89`, `demo.py:86-143` |
 | Wymagania | SEC-005, SEC-035, SEC-036, SEC-040; także: FR-024, NFR-012 |
 | Zależności | parametry RETENCJA, K / W (PYT-09, PYT-22); harmonogram w Coolify (ST-05); opis retencji w `RODO.md` (US-023) |
@@ -159,7 +159,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 6. **Given** `DEMO_MODE`; **When** udane wejście `/demo/`; **Then** `LoginEvent.ip` jest pusty (pole nullable — bez migracji); user-agent — wg PYT-09.
 7. **Given** brak `DEMO_MODE`; **When** GET `/demo/` i POST `/login/demo/`; **Then** nadal 404 (`DemoEntryOffTests` zielone).
 
-**Test do napisania:** `PurgeLoginEventsTests`, `ClearSessionsTests` w `warehouse/tests_retention.py` (nowy); `DemoEntryRateLimitTests` w `tests_demo_entry.py`.
+**Testy:** `warehouse/tests_retention.py` — `PurgeLoginEventsTests` (5: domyślne 90 dni, `--days`, granica 89 dni, `--days 0` odrzucone, stała 90), `ClearSessionsTests` (1), `LoginEventPrivacyTests` (2: w demo brak IP i UA, poza demo bez zmian); `tests_demo_entry.DemoEntryRateLimitTests` (4: `/demo/` i `/login/demo/` — (K+1)-sze żądanie 429 bez sesji i `LoginEvent`, limit per IP, udane wejście bez IP). Przed poprawką 9 testów czerwonych. Parametry: RETENCJA = 90 dni (**decyzja PO 2026-10-16**, Z-09), K / W = 10 / 300 s (Z-37, do potwierdzenia), w demo `LoginEvent` bez IP i user-agenta (Z-38, do potwierdzenia — PYT-09; poza demo bez zmian). Kryterium 4: COOLIFY.md §10a (dwa Scheduled Tasks); dodatkowo `entrypoint.sh` uruchamia obie komendy przy starcie. Limiter jest per proces gunicorna (LocMem, jak limit logowań — pułapka auth #6). Odbiór [BA] 2026-10-16: kryteria 1–3 i 5–7 spełnione; 4 — do sprawdzenia ręcznie na środowisku po deployu.
 
 ### US-006 — Łańcuch dostaw i CI: blokujące skany, Dependabot, SECURITY.md
 

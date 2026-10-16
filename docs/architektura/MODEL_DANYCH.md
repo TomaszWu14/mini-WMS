@@ -30,7 +30,7 @@ zatwierdzony do realizacji.
 | Limity ilości i liczby palet (`max_value` w formularzach i importach) | R3 (US-002), T16 | **nie** | walidacja w `forms.py`, `receipt_import.py`, `stock_import.py` i API skanera; kolumny `IntegerField` zostają | planowane (US-002, US-013) |
 | Górny limit ilości jako `CheckConstraint` | T16 | tak (opcjonalnie) | obrona w głąb po stronie bazy; wymaga decyzji o wartości granicznej | nie planowane — do decyzji PO po US-002 |
 | Domknięcie luk integralności z docs/04 (np. #1 status HU ↔ ilość/lokalizacja, #5 `picked_qty ≤ requested_qty`) | [docs/04](../04-model-danych.md) „obserwacje, nie zadania” | tak (constrainty, migracja danych) | tylko po analizie istniejących danych; D-09 świadomie dopuszcza HU z ilością 0 i statusem ZMAGAZYNOWANY | brak decyzji PO |
-| Retencja / czyszczenie `django_session` | R5 | **nie** | `manage.py clearsessions` w harmonogramie | planowane razem z R5 (US-005) |
+| Retencja / czyszczenie `django_session` | R5 | **tak** | `manage.py clearsessions` w harmonogramie i przy starcie | US-005, #23 |
 
 Zmiana z tej tabeli, która wymaga migracji, przechodzi procedurę z sekcji 2 i trafia do
 `docs/operator/<branch>.md` z planem wycofania (`docs/operator/TEMPLATE.md` §3–4).

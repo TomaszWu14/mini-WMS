@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
-from .models import HandlingUnit, Material, Role, Unit
+from .models import HandlingUnit, LoginEvent, Material, Role, Unit
 from .tests_recruiter import _demo_user
 
 
@@ -105,3 +105,48 @@ class DemoEntryOffTests(TestCase):
         self.client.force_login(user)
         self.assertEqual(self.client.post("/demo/przywroc/").status_code, 404)
         self.assertNotContains(self.client.get("/"), "Przywróć dane demo")
+
+
+@override_settings(DEMO_MODE=True)
+class DemoEntryRateLimitTests(TestCase):
+    """US-005 / SEC-040: limit anonimowych wejść do demo na IP."""
+
+    def setUp(self):
+        from .demo import DEMO_ENTRY_RATE_LIMIT
+
+        cache.clear()
+        self.limit = DEMO_ENTRY_RATE_LIMIT
+        _demo_user()
+
+    def test_demo_start_limited_without_new_session(self):
+        for _ in range(self.limit):
+            self.client.logout()
+            self.assertEqual(self.client.get("/demo/").status_code, 302)
+        self.client.logout()
+        events = LoginEvent.objects.count()
+        resp = self.client.get("/demo/")
+        self.assertEqual(resp.status_code, 429)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(LoginEvent.objects.count(), events)
+
+    def test_demo_login_post_limited(self):
+        for _ in range(self.limit):
+            self.client.post("/login/demo/")
+        self.client.logout()
+        events = LoginEvent.objects.count()
+        self.assertEqual(self.client.post("/login/demo/").status_code, 429)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(LoginEvent.objects.count(), events)
+
+    def test_limit_is_per_ip(self):
+        for _ in range(self.limit + 1):
+            self.client.get("/demo/", REMOTE_ADDR="198.51.100.1")
+        self.client.logout()
+        resp = self.client.get("/demo/", REMOTE_ADDR="198.51.100.2")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_successful_entry_logs_no_ip(self):
+        self.client.get("/demo/", REMOTE_ADDR="198.51.100.9")
+        event = LoginEvent.objects.get(kind=LoginEvent.Kind.LOGIN)
+        self.assertIsNone(event.ip)
+        self.assertEqual(event.user_agent, "")

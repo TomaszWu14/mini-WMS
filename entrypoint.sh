@@ -70,6 +70,11 @@ else:
 PY
 fi
 
+# US-005: retencja dziennika logowań i wygasłe sesje — przy każdym starcie; codziennie
+# robi to Scheduled Task (COOLIFY.md §10a). Błąd sprzątania nie blokuje startu.
+python manage.py purge_login_events || echo "Ostrzeżenie: purge_login_events nie powiodło się."
+python manage.py clearsessions || echo "Ostrzeżenie: clearsessions nie powiodło się."
+
 # Start serwera produkcyjnego (gunicorn).
 echo "Startuję gunicorn na :8000..."
 exec gunicorn config.wsgi:application \

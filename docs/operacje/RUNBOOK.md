@@ -410,7 +410,9 @@ Czego nie robić: `docker compose down -v`, `docker volume rm`; restartu `db` w 
    `docker exec "$DB" psql -U wms -d wms -c "SELECT relname, pg_size_pretty(pg_total_relation_size(relid)) FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;"`.
    Typowi winowajcy: `django_session`, `warehouse_loginevent` (brak retencji — R5, R7), `warehouse_stockmovement`, wolumen `db_backups`.
 2. **Zwolnij miejsce poza danymi:** nieużywane obrazy (`docker image prune` — **nie** `volume prune`); logi kontenerów (rotacja `json-file` — konfiguracja Dockera do uzupełnienia przez INFRA).
-3. **Sesje:** `python manage.py clearsessions` w kontenerze `web` (komenda Django, usuwa tylko wygasłe).
+3. **Sesje i dziennik logowań:** `python manage.py clearsessions` (usuwa tylko wygasłe) i
+   `python manage.py purge_login_events` (wpisy starsze niż 90 dni; `--days N` jednorazowo) w kontenerze `web`.
+   Codziennie robią to Scheduled Tasks (COOLIFY.md §10a) oraz start kontenera.
 4. **Dziennik logowań** (po decyzji PO; docelowo komenda retencji z US-005, Z-09: 90 dni): superuser w `/admin/` → Dziennik logowań → filtr po dacie → „Usuń zaznaczone”, albo w `manage.py shell`: `LoginEvent.objects.filter(created_at__lt=<data>).delete()`. Najpierw zabezpiecz ślady, jeśli to incydent (8.3).
 5. **Miejsce po usunięciu:** zwykły `VACUUM` nie oddaje miejsca systemowi; `VACUUM FULL` blokuje tabelę — tylko w oknie serwisowym.
 6. **Trwale:** powiększ dysk (INFRA); kopia off-site zamiast rosnącego `db_backups` (R9).

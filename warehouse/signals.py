@@ -54,25 +54,38 @@ def _user_agent(request):
     return request.META.get("HTTP_USER_AGENT", "")[:300]
 
 
+def _log_client(request):
+    """(ip, user_agent) do dziennika logowań.
+
+    US-005 / SEC-035: publiczne demo odwiedzają anonimowe osoby — nie zapisujemy
+    ich IP ani przeglądarki (Z-38). Limit prób działa na IP z żądania, nie z bazy.
+    """
+    if settings.DEMO_MODE:
+        return None, ""
+    return _client_ip(request), _user_agent(request)
+
+
 @receiver(user_logged_in)
 def on_logged_in(sender, request, user, **kwargs):
+    ip, user_agent = _log_client(request)
     LoginEvent.objects.create(
         user=user,
         username=user.get_username(),
         kind=LoginEvent.Kind.LOGIN,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )
 
 
 @receiver(user_logged_out)
 def on_logged_out(sender, request, user, **kwargs):
+    ip, user_agent = _log_client(request)
     LoginEvent.objects.create(
         user=user if user is not None else None,
         username=user.get_username() if user is not None else "",
         kind=LoginEvent.Kind.LOGOUT,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )
 
 
@@ -81,9 +94,10 @@ def on_login_failed(sender, credentials, request=None, **kwargs):
     # .get(key, "") nie chroni, gdy klucz istnieje z wartością None — wtedy
     # zwraca None i None[:150] rzuca TypeError, wywracając ścieżkę logowania.
     raw_username = (credentials or {}).get("username") or ""
+    ip, user_agent = _log_client(request)
     LoginEvent.objects.create(
         username=str(raw_username)[:150],
         kind=LoginEvent.Kind.FAILED,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )

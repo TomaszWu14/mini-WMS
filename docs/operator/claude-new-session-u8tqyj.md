@@ -5,7 +5,7 @@
 | Branch | `claude/new-session-u8tqyj` (nazwa techniczna sesji Claude) |
 | PR | #23 (draft) |
 | Data | 2026-10-16 |
-| Ryzyko | średnie — cztery poprawki bezpieczeństwa zmieniają zachowanie (US-001…US-004; US-003 — wdrożenie bez sekretów nie wstaje); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
+| Ryzyko | średnie — pięć poprawek bezpieczeństwa zmienia zachowanie (US-001…US-005; US-003 — wdrożenie bez sekretów nie wstaje); obraz Dockera bez pip/setuptools/wheel; nowe joby blokujące w CI |
 
 ## 1. Co zmieniono
 - **Zmiany widoczne dla użytkowników:**
@@ -23,6 +23,14 @@
     stany, przyjęcia, wydania) obejmuje najwyżej 10 000 wierszy także poza demo; w demo — 500
     jak dotąd. W XLSX puste wiersze wliczają się do limitu, a kolumny od 51. są pomijane
     (importy używają kilku pierwszych). Zaszyfrowany XLSX jest odrzucany.
+  - (US-005) Demo: więcej niż 10 wejść przez `/demo/` lub „Wejdź jako demo” w 5 minut z jednego
+    adresu daje stronę „Zbyt wiele wejść do demo…” (HTTP 429). W trybie demo dziennik logowań nie
+    pokazuje IP ani przeglądarki. Na produkcji dziennik działa jak dotąd, ale wpisy starsze niż
+    90 dni są usuwane.
+- **Zmiany dla administratora infrastruktury (US-005):** nowa komenda `python manage.py
+  purge_login_events`; przy każdym starcie kontenera w logach pojawiają się linie
+  „Usunięto N wpisów dziennika logowań…” i (cicho) `clearsessions`. Do dodania w Coolify dwa
+  Scheduled Tasks — COOLIFY.md §10a.
 - **Zmiany dla administratora infrastruktury (US-003):**
   - Produkcja (`DJANGO_DEBUG=0`) nie startuje, gdy `DJANGO_SECRET_KEY` ma mniej niż 50 znaków, jest
     zaślepką (`zmien-mnie-w-produkcji`, `YOUR_DJANGO_SECRET_KEY_HERE`) albo zaczyna się od
@@ -79,6 +87,9 @@
 | 10 | admin infrastruktury | dowolna maszyna z Dockerem, katalog repo, bez `.env` | `docker compose config` | błąd „required variable DJANGO_SECRET_KEY is missing…” |
 | 12 | Operator | `/lokalizacje/import/` | wgrać plik CSV przemianowany na `.xlsx` | komunikat „Plik nie jest poprawnym XLSX…”, brak zmian |
 | 13 | Operator | `/stany/import/` | wgrać zwykły XLSX z kilkoma wierszami | import jak dotąd |
+| 14 | admin infrastruktury | Coolify (prod i demo) → Scheduled Tasks | dodać `purge-login-events` i `clearsessions` wg COOLIFY.md §10a, uruchomić ręcznie „Execute now” | log „Usunięto N wpisów…”, brak błędów |
+| 15 | anonim (przeglądarka prywatna) | demo: `/demo/` | odświeżyć 11 razy w ciągu minuty (wylogowując się) | 11. raz: „Zbyt wiele wejść do demo…” |
+| 16 | Administrator | demo: `/uzytkownicy/dziennik/` | spojrzeć na nowe wpisy | kolumny IP i przeglądarka puste |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
 ## 3. Checklista wdrożenia
@@ -87,7 +98,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (281 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (293 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 

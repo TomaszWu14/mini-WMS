@@ -38,9 +38,13 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   otwarciem pliku; uszkodzony plik daje komunikat zamiast błędu 500; limit 10 000 wierszy obowiązuje także poza demo (puste wiersze XLSX się wliczają, czytane jest najwyżej 50 kolumn,
   zaszyfrowane archiwa są odrzucane);
   `defusedxml` w zależnościach produkcyjnych. Testy: `warehouse/tests_imports_hardening.py`.
+- **US-005 / R7, R5:** `manage.py purge_login_events` usuwa dziennik logowań starszy niż 90 dni (`--days N`); obie komendy
+  sprzątające (`purge_login_events`, `clearsessions`) uruchamia start kontenera i Scheduled Task (COOLIFY.md §10a);
+  `/demo/` i `/login/demo/` mają limit 10 wejść na 5 min z jednego IP (429); w trybie demo dziennik logowań nie zapisuje
+  IP ani user-agenta. Testy: `warehouse/tests_retention.py`, `DemoEntryRateLimitTests`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
-  w `docs/analiza/HISTORYJKI.md` (US-001…US-004 zrobione).
+  w `docs/analiza/HISTORYJKI.md` (US-001…US-005 zrobione).
 
 ## [0.1.0] — 2026-10-13
 

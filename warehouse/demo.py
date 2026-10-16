@@ -31,6 +31,9 @@ DEMO_ACCOUNTS = {
 
 LOGIN_RATE_LIMIT = 10  # prób POST
 LOGIN_RATE_WINDOW = 300  # sekund
+# US-005 / SEC-040: anonimowe wejścia /demo/ i /login/demo/ (Z-37 — jak logowanie).
+DEMO_ENTRY_RATE_LIMIT = 10
+DEMO_ENTRY_RATE_WINDOW = 300
 DEMO_RESET_COOLDOWN = 60  # sekund między resetami (wspólne dla wszystkich)
 
 
@@ -50,6 +53,32 @@ def demo_context(request):
     }
 
 
+def _over_limit(prefix: str, request, limit: int, window: int) -> bool:
+    """Licznik żądań na IP w oknie `window` s; True, gdy przekroczono `limit`."""
+    key = f"{prefix}:{_client_ip(request)}"
+    cache.add(key, 0, window)
+    try:
+        hits = cache.incr(key)
+    except ValueError:  # klucz wygasł między add a incr
+        hits = 1
+    return hits > limit
+
+
+def _too_many(message: str) -> HttpResponse:
+    return HttpResponse(message, status=429, content_type="text/plain; charset=utf-8")
+
+
+def _demo_entry_limited(request) -> bool:
+    return _over_limit(
+        "demo-rl", request, DEMO_ENTRY_RATE_LIMIT, DEMO_ENTRY_RATE_WINDOW
+    )
+
+
+DEMO_TOO_MANY = (
+    "Zbyt wiele wejść do demo z tego adresu. Spróbuj ponownie za kilka minut."
+)
+
+
 class LoginView(auth_views.LoginView):
     """LoginView z prostym limitem prób POST na IP (zawsze, nie tylko w demo).
 
@@ -60,17 +89,9 @@ class LoginView(auth_views.LoginView):
     template_name = "warehouse/login.html"
 
     def post(self, request, *args, **kwargs):
-        key = f"login-rl:{_client_ip(request)}"
-        cache.add(key, 0, LOGIN_RATE_WINDOW)
-        try:
-            attempts = cache.incr(key)
-        except ValueError:  # klucz wygasł między add a incr
-            attempts = 1
-        if attempts > LOGIN_RATE_LIMIT:
-            return HttpResponse(
-                "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut.",
-                status=429,
-                content_type="text/plain; charset=utf-8",
+        if _over_limit("login-rl", request, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW):
+            return _too_many(
+                "Zbyt wiele prób logowania. Spróbuj ponownie za kilka minut."
             )
         return super().post(request, *args, **kwargs)
 
@@ -87,6 +108,8 @@ def demo_login(request):
     """„Wejdź jako demo” — loguje kontem settings.DEMO_USER bez wpisywania hasła."""
     if not settings.DEMO_MODE:
         raise Http404
+    if _demo_entry_limited(request):
+        return _too_many(DEMO_TOO_MANY)
     user = _demo_user()
     if user is None:
         messages.error(request, "Konto demo nie jest jeszcze utworzone (seed_demo).")
@@ -110,6 +133,8 @@ def demo_start(request):
     """
     if not settings.DEMO_MODE:
         raise Http404
+    if _demo_entry_limited(request):
+        return _too_many(DEMO_TOO_MANY)
     if not request.user.is_authenticated:
         user = _demo_user()
         if user is None:

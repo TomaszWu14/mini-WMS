@@ -14,7 +14,7 @@
 5. **`_client_ip` ufa `X-Forwarded-For` tylko przy `TRUSTED_PROXY_COUNT` > 0** (`signals.py`)
    i bierze N-ty wpis od końca. Nowe proxy przed aplikacją (np. Cloudflare przed Traefikiem)
    = podbij `DJANGO_TRUSTED_PROXY_COUNT`, inaczej wszyscy dzielą IP proxy i jeden limit.
-6. **Limit logowań jest per proces gunicorna** (LocMem cache) — przy 3 workerach realnie
+6. **Limit logowań i wejść demo (`_over_limit` w `demo.py`) jest per proces gunicorna** (LocMem cache) — przy 3 workerach realnie
    ~30 prób/5 min. Działa zawsze (nie tylko w demo) — testy POST na `/login/` czyszczą cache.
 7. **„Wejdź jako demo” (`demo.demo_login`) loguje bez hasła** — tylko przy `DEMO_MODE` i tylko
    kontem z `DEMO_ACCOUNTS` (`DEMO_USER` spoza listy = odmowa). Nie rozszerzaj listy o konto z

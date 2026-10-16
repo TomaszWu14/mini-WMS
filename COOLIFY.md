@@ -178,6 +178,21 @@ docker exec "$B" sh -c 'gunzip -c /backups/wms-XXXX.sql.gz' \
 
 ---
 
+## 10a. Sprzątanie dziennika logowań i sesji (codziennie)
+
+Dziennik logowań przechowujemy 90 dni (decyzja PO, `docs/bezpieczenstwo/RODO.md`), a wygasłe
+sesje usuwamy z bazy. Zakładka zasobu **Scheduled Tasks → + Add** — dwa zadania, oba w
+kontenerze `web`, na produkcji **i** na demo:
+
+| Name | Command | Frequency |
+|---|---|---|
+| `purge-login-events` | `python manage.py purge_login_events` | `15 3 * * *` (codziennie 03:15) |
+| `clearsessions` | `python manage.py clearsessions` | `20 3 * * *` (codziennie 03:20) |
+
+`purge_login_events` wypisuje liczbę usuniętych wpisów (podgląd w **Scheduled Tasks → Logs**);
+`--days N` zmienia retencję jednorazowo. Obie komendy uruchamiają się też przy każdym starcie
+kontenera (`entrypoint.sh`), więc instalacja bez harmonogramu sprząta przynajmniej przy deployu.
+
 ## 11. Instancja demo (opcjonalnie)
 
 Publiczne demo to osobny zasób z tym samym `docker-compose.coolify.yml` —
