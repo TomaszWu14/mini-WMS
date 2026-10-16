@@ -37,7 +37,7 @@ flowchart TB
 |---|---|---|---|---|
 | **Jednostkowe / regułowe** | reguły domenowe w `services.py` (FEFO→FIFO, limity, blokady stanu, korekty, spis), `split_quantity`, walidacja formularzy, parsowanie importów | Django `TestCase` / `SimpleTestCase`, `unittest.mock` | `tests.py`, `tests_services_fixes.py`, `tests_imports_fixes.py`, `tests_open_decisions.py` | jest; `services.py` 91 % |
 | **Integracyjne** | widoki, role (403/302), API skanera, importy z plikiem, eksporty (CSV, formuły), PDF, tryb demo — przez klienta testowego z prawdziwą bazą | `django.test.Client` | `tests.py`, `tests_views_fixes.py`, `tests_scanner_fixes.py`, `tests_demo*.py`, `tests_recruiter.py` | jest; `views.py` 70 %, `exports.py` 53 % |
-| **Współbieżność** | dwa równoległe wydania z jednej palety nie schodzą poniżej stanu | `TransactionTestCase` + wątki, **tylko PostgreSQL** | `tests_concurrency_pg.py` (2 testy; na SQLite pomijane) | jest; CI `test-postgres` |
+| **Współbieżność** | dwa równoległe wydania z jednej palety nie schodzą poniżej stanu | `TransactionTestCase` + wątki, **tylko PostgreSQL** | `tests_concurrency_pg.py` (3 testy; na SQLite pomijane) | jest; CI `test-postgres` |
 | **Cały zestaw na PostgreSQL** | blokady `FOR UPDATE`, constrainty, typy | ten sam zestaw z `DATABASE_URL` | CI `test-postgres` | jest |
 | **Bezpieczeństwa** | role, CSRF, nagłówki, limit uploadu, formuły CSV, hardening | `TestCase` | `tests.py` (`ViewAccessTests`, `SecurityTests`, `HardeningTests`), `tests_recruiter.py` | częściowe — brak macierzy rola × trasa (sekcja 5) |
 | **Mutacyjne** | czy testy wykrywają zmiany w logice `services.py` | mutmut 3.8.0 | `scripts/mutate.sh` | brak zapisanych wyników (sekcja 6) |
@@ -67,7 +67,7 @@ na SQLite (współbieżność). Dodatkowo 4 testy hooków harnessu w `.claude/ho
 | `tests_record_video.py` | 8 | `tools/record_video.py` (napisy, rozdziały — bez nagrywania) |
 | `tests_demo_tour.py` | 4 | scenariusz prezentacji |
 | `tests_imports_fixes.py` | 4 | import lokalizacji: pojemność 0, atomowość |
-| `tests_concurrency_pg.py` | 2 | wyścig WZ (PostgreSQL) |
+| `tests_concurrency_pg.py` | 3 | wyścig WZ: dwa dokumenty, podwójne „Realizuj”, skaner vs „Realizuj” (PostgreSQL) |
 
 Konfiguracja: `pyproject.toml` → `[tool.pytest.ini_options]` (`DJANGO_SETTINGS_MODULE=config.settings.test`,
 `python_files = tests.py tests_*.py test_*.py`, `-p no:cacheprovider`). Style: `TestCase`, klient

@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Wydania skanerem (US-018):** dokument WZ zamyka się po ostatnim pobraniu jak dotąd; równoczesne „Realizuj” w panelu
+  i skaner na tym samym WZ nie kończą się już błędem serwera. Bez migracji i zmiennych.
 - **Kod widoków (US-017):** `warehouse/views.py` rozbity na pakiet `warehouse/views/` — bez zmian w działaniu, adresach
   i uprawnieniach; nic do zrobienia przy wdrożeniu.
 - **Demo (US-016):** znika przycisk „Przywróć dane demo” (i `POST /demo/przywroc/`). Przyjęcia i importy w demo
@@ -138,6 +140,7 @@
 | 26 | Podgląd | `/hu/` (ponad 100 palet) | ustawić filtr statusu, przejść „Następna →” | strona 2 z tym samym filtrem; licznik „Strona 2 z N” |
 | 27 | admin infrastruktury | Coolify (demo) → Scheduled Tasks → `reset-demo` | zmienić Command na `python manage.py seed_demo --reset --keep-users`, uruchomić ręcznie (Execute) przy zalogowanym demo w drugiej karcie | log „Dane demo zasiane.”; w drugiej karcie po odświeżeniu sesja trwa, dane w stanie początkowym |
 | 28 | `demo_operator` | demo: baner | spojrzeć na żółty baner | brak przycisku „Przywróć dane demo” |
+| 29 | `demo_operator` / Operator | skaner → Kompletacja zlecenia | pobrać całą ilość ostatniej pozycji | komunikat o wydaniu, zlecenie oznaczone jako zrealizowane; w panelu WZ „Zrealizowany” |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -147,7 +150,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (412 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (418 passed, 3 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

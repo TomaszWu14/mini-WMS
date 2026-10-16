@@ -286,7 +286,8 @@ sequenceDiagram
     SVC->>DB: UPDATE HU, INSERT StockMovement (WYDANIE, ujemna ilość), UPDATE picked_qty
     SVC->>DB: COMMIT
     SVC-->>API: HU po zmianie
-    API->>DB: odświeżenie WZ, gdy pozostało 0 to status ZREALIZOWANY (poza serwisem, T3)
+    API->>SVC: complete_if_picked(WZ)
+    SVC->>DB: SELECT FOR UPDATE WZ, gdy wszystko pobrane to ZREALIZOWANY (idempotentnie)
     API-->>JS: 200, JSON ok=true, hu, document, opcjonalnie warning
     JS-->>Op: potwierdzenie i dźwięk
 ```
@@ -378,7 +379,7 @@ architektury. Każda jest kandydatem na ADR lub historyjkę ([adr/README.md](adr
 | ID | Ograniczenie | Skutek | Kierunek | Powiązanie |
 |---|---|---|---|---|
 | **T2** | `views.py` ma 1405 linii i ~47 widoków (pulpit, wydania, użytkownicy, eksporty w jednym pliku) | koszt zmian, konflikty, trudny review | pakiet `views/` (`dashboard`, `issues`, `users`, `exports`) bez zmiany URL-i | US-017 — zrobione (ADR-0006, #23) |
-| **T3** | `api_pick` ustawia `ZREALIZOWANY` po ostatnim pobraniu **poza** `services.py`, bez blokady dokumentu | łamie D-05; logika domknięcia WZ w dwóch miejscach | przenieść do `services` (np. `complete_if_picked`) pod `select_for_update` | US-018 |
+| **T3** | `api_pick` ustawia `ZREALIZOWANY` po ostatnim pobraniu **poza** `services.py`, bez blokady dokumentu | łamie D-05; logika domknięcia WZ w dwóch miejscach | przenieść do `services` (np. `complete_if_picked`) pod `select_for_update` | US-018 — zrobione (`complete_if_picked`, #23) |
 | **T7** | zależności w `pyproject.toml` i `requirements.txt` utrzymywane ręcznie, bez lockfile; `Django>=5.2,<5.3`; `pip install --upgrade pip` w Dockerfile | niereprodukowalny build | `pip-compile` z hashami albo `uv lock`; Dockerfile instaluje z locka | US-020; kandydat na ADR „lock zależności” |
 | **T8** | cache LocMem per proces dla limitu logowań i blokady resetu demo | limit ×3 przy 3 workerach; blokada resetu nie jest globalna | `DatabaseCache` (bez nowej usługi) albo Redis, gdy workerów przybędzie | US-009; kandydat na ADR „cache współdzielony”; R6 |
 | **T9** | eksport ruchów buduje wszystkie wiersze w pamięci; lista ruchów ucina do 500 bez filtra dat | długi request przy dziesiątkach tysięcy ruchów | `StreamingHttpResponse` dla CSV, filtr zakresu dat | US-028; [views.md #9](../pitfalls/views.md) |

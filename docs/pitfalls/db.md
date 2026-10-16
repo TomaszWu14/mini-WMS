@@ -10,6 +10,11 @@
 3. **Blokuj wiersz przed odczytem ilości.** Wzór z `pick_from_hu`/`repack_hu`:
    `HandlingUnit.objects.select_for_update().get(pk=hu.pk)` na początku transakcji, potem
    walidacja. Walidacja na obiekcie przekazanym z widoku czyta nieaktualny stan.
+3a. **Kolejność blokad: dokument WZ → pozycja → HU (US-018).** Każdy wiersz osobnym
+   `select_for_update()` — **nie** `select_for_update().select_related(...)`: zapytanie z JOIN blokuje
+   wszystkie złączone wiersze w nieustalonej kolejności i daje `deadlock detected` z inną ścieżką.
+   Zmiana stanu WZ tylko w serwisie (`complete_if_picked`, `execute_issue_document`, `pack/ship`).
+   Palety między sobą nie mają jeszcze jednej kolejności (US-053).
 4. **Numeracja WZ/SP może kolidować.** `_next_daily_number` liczy max+1 bez blokady —
    zapis zawsze przez `save_with_unique_number` (savepoint + ponowienie po
    `IntegrityError`). Numer HU idzie inną drogą: licznik `HUNumberingConfig` z

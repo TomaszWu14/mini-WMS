@@ -410,7 +410,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[DEV]** chcę, aby zamknięcie dokumentu WZ po ostatnim pobraniu ze skanera odbywało się w `services.py` pod blokadą, aby zmiana stanu miała jedno miejsce (D-05) i nie było wyścigu. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T3**; `scanner_views.py:357-363`; D-05 |
 | Wymagania | NFR-026; FR-017 |
 | Zależności | — |
@@ -421,7 +421,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** dokument już zrealizowany równolegle („Realizuj” w panelu); **When** skaner pobiera ostatnią ilość; **Then** brak podwójnego zamknięcia i brak błędu (idempotencja).
 3. **Given** PostgreSQL; **When** skaner i „Realizuj” równolegle na tym samym WZ; **Then** łączna ilość nie przekracza żądanej (rozszerzenie `tests_concurrency_pg.py`).
 
-**Test do napisania:** `CompleteIfPickedTests` w `warehouse/tests_services_fixes.py` (rozszerzenie) i przypadek w `tests_concurrency_pg.py`.
+**Testy:** `warehouse/tests_services_fixes.py` — `CompleteIfPickedTests` (6: zamknięcie dopiero po pełnym pobraniu, idempotencja po „Realizuj” — `completed_at` bez zmian, nieaktualny obiekt odświeżany pod blokadą, dokument bez pozycji nie jest zamykany, API skanera woła serwis przy ostatnim pobraniu, skaner domyka w pełni pobrany otwarty WZ przy kolejnej próbie — z przeglądu [DB]); `tests_concurrency_pg.test_scanner_pick_and_execute_on_same_document` (PostgreSQL). Implementacja: `services.complete_if_picked(document)`; `api_pick` nie przypisuje statusu. **Znaleziony przy kryterium 3 błąd (istniał wcześniej):** `pick_from_hu` blokował pozycję i dokument jednym `select_for_update().select_related("document")` w nieustalonej kolejności wierszy → `deadlock detected` (500) przy skanerze i „Realizuj” na tym samym WZ; teraz dokument → pozycja → HU osobnymi zapytaniami (5/5 przebiegów zielonych lokalnie na PostgreSQL 16). Przegląd [DB]: dwa wcześniejsze problemy poza zakresem → US-052, US-053. Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione.
 
 ### US-019 — CI: pełny mypy, próg pokrycia, pytest
 
@@ -714,4 +714,36 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** `LoginEvent.Meta.indexes` z `created_at`; **When** `makemigrations --check`; **Then** migracja `AddIndex` w repo, odwracalna.
 2. **Given** PostgreSQL; **When** `EXPLAIN` zapytania `purge_login_events`; **Then** plan używa indeksu.
+
+### US-052 — Dodawanie i usuwanie pozycji WZ pod blokadą dokumentu (z przeglądu [DB] US-018)
+
+| | |
+|---|---|
+| Historyjka | Jako **Operator** chcę, aby dodanie lub usunięcie pozycji WZ nie mogło trafić w dokument właśnie zamykany, aby zrealizowany dokument nie miał niepobranej pozycji. |
+| MoSCoW · rozmiar | Should · S |
+| Status | do zrobienia |
+| Źródło | przegląd `db-reviewer` US-018: `views/issues.py` (`issue_line_add`, `issue_line_delete`) sprawdzają `status == OTWARTY` bez blokady dokumentu |
+| Wymagania | NFR-026; FR-016 |
+| Zależności | — |
+
+**Kryteria akceptacji**
+
+1. **Given** WZ zamykany równolegle („Realizuj” lub skaner); **When** dodanie pozycji; **Then** odmowa „Dokument nie jest otwarty”, pozycja nie powstaje (serwis z `_lock_and_sync` dokumentu).
+2. **Given** pobranie czeka na pozycję usuwaną równolegle; **When** usunięcie się zatwierdzi; **Then** skaner dostaje komunikat (400), nie 500 (`DoesNotExist`).
+
+### US-053 — Jedna kolejność blokad palet (z przeglądu [DB] US-018)
+
+| | |
+|---|---|
+| Historyjka | Jako **[DEV]** chcę, aby wszystkie ścieżki blokowały palety (HU) w tej samej kolejności, aby równoległe „Realizuj”, przepakowanie i zamknięcie spisu nie kończyły się deadlockiem (500). |
+| MoSCoW · rozmiar | Could · M |
+| Status | do zrobienia |
+| Źródło | przegląd `db-reviewer` US-018: `execute_issue_document` — kolejność pozycji × FEFO, `repack_hu` — pk, `close_stocktake` — `location_code, id`; `pick_by_material` liczy `take` z niezablokowanego odczytu |
+| Wymagania | NFR-026 |
+| Zależności | US-018 |
+
+**Kryteria akceptacji**
+
+1. **Given** dwa WZ z materiałami X, Y i Y, X; **When** „Realizuj” równolegle (PostgreSQL); **Then** bez `deadlock detected`, oba kończą się sukcesem albo komunikatem.
+2. **Given** `allow_partial=True` i równoległe pobranie z tej samej palety; **When** realizacja; **Then** brak błędu „HU jest pusty” — pobiera tyle, ile jest pod blokadą.
 

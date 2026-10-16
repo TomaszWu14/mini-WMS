@@ -61,7 +61,7 @@ FR-008, FR-011, FR-025, FR-026 (domknięte po wdrożeniu pierwotnym).
 | FR-014 | W-14 | — | `AuditFixTests.test_execute_rejects_specific_hu_wrong_material` | historyczny (przed procesem) |
 | FR-015 | W-15 | — | `PickingTests.test_pick_to_zero_marks_empty_and_frees_location` | historyczny (przed procesem) |
 | FR-016 | W-16 | — | `PickingProTests.test_pack_and_ship_flow`; `PickingProTests.test_pack_requires_realized`; `AuditFixTests.test_cannot_add_line_to_packed_document` | historyczny (przed procesem) |
-| FR-017 | W-17 | US-018 | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `ConcurrentIssueTests` (PostgreSQL) | historyczny (przed procesem) |
+| FR-017 | W-17 | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `ConcurrentIssueTests` (PostgreSQL); `CompleteIfPickedTests` (US-018) | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `ConcurrentIssueTests` (PostgreSQL) | historyczny (przed procesem) |
 | FR-018 | W-18 | US-013 | `CorrectionTests.test_correction_logs_movement`; `WebInventoryTests.test_web_inventory_add`; `AdjustHuQuantityTests`; `AuditFixTests.test_correct_reactivates_emptied_hu` | historyczny (przed procesem) |
 | FR-019 | W-19 | — | `RepackTests`; `WebRepackTests` | historyczny (przed procesem) |
 | FR-020 | W-20 | US-030, US-038, US-042 | `StocktakeTests`; `StocktakeOverlapTests` | historyczny (przed procesem) |
@@ -106,7 +106,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-023 | US-019 | n/d — miara CI | #23 |
 | NFR-024 | US-019 | n/d — kroki CI (ruff, mypy, bandit) | #23 |
 | NFR-025 | US-020 | n/d — build obrazu w CI | #23 |
-| NFR-026 | US-018, US-030, US-038 | `ConcurrentIssueTests` (PostgreSQL); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests` | historyczny (przed procesem; #13) |
+| NFR-026 | US-018, US-030, US-038 | `ConcurrentIssueTests` (PostgreSQL, +1 US-018); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests`; `CompleteIfPickedTests` | historyczny (przed procesem; #13) |
 | NFR-027 | US-017, US-029 | `tests_urls.UrlSnapshotTests`; porównanie AST przy podziale (ADR-0006) | #23 |
 | NFR-028 | — | n/d — kroki CI (`check`, build obrazu) | historyczny (przed procesem) |
 
@@ -182,7 +182,9 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-015 | Should | NFR-003, NFR-006, NFR-010, SEC-021 | R5 | `tests_pagination.py` (13 testów) — zrobione, #23 |
 | US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` (15 testów) — zrobione, #23 |
 | US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` (migawka tras) + macierz US-007 — zrobione, #23 |
-| US-018 | Should | NFR-026, FR-017 | T3 | `tests_services_fixes.py`, `tests_concurrency_pg.py` |
+| US-018 | Should | NFR-026, FR-017 | T3 | `CompleteIfPickedTests` (6), `test_scanner_pick_and_execute_on_same_document` (PG) — zrobione, #23 |
+| US-052 | Should | NFR-026, FR-016 | przegląd [DB] US-018 | — |
+| US-053 | Could | NFR-026 | przegląd [DB] US-018 | — |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | n/d (CI) |
 | US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | n/d (CI) |
 | US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | `tests_alerts.py` |

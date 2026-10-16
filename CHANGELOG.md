@@ -73,6 +73,8 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   usunięte — dane wraca wyłącznie Scheduled Task `seed_demo --reset --keep-users` (DEC-6, Z-41).
 - **US-017:** `warehouse/views.py` podzielony na pakiet `warehouse/views/` (10 modułów wg obszaru, ADR-0006) — bez zmian
   w działaniu, adresach i uprawnieniach; migawka tras w `warehouse/tests_urls.py`.
+- **US-018:** zamknięcie WZ po ostatnim pobraniu ze skanera robi serwis pod blokadą dokumentu (`complete_if_picked`,
+  idempotentnie). Naprawiony deadlock (błąd 500) przy równoczesnym skanerze i „Realizuj” na tym samym WZ.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).
