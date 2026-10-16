@@ -494,13 +494,13 @@ def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=N
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
     if line is not None:
-        locked_line = (
-            IssueLine.objects.select_for_update()
-            .select_related("document")
-            .get(pk=line.pk)
-        )
-        if locked_line.document.status != IssueStatus.OTWARTY:
-            raise WMSError(f"Dokument {locked_line.document.number} nie jest otwarty.")
+        # US-018: najpierw dokument, potem pozycja — osobnymi zapytaniami.
+        # `select_for_update().select_related("document")` blokował oba wiersze
+        # jednym zapytaniem w nieustalonej kolejności → deadlock z „Realizuj”.
+        locked_doc = IssueDocument.objects.select_for_update().get(pk=line.document_id)
+        locked_line = IssueLine.objects.select_for_update().get(pk=line.pk)
+        if locked_doc.status != IssueStatus.OTWARTY:
+            raise WMSError(f"Dokument {locked_doc.number} nie jest otwarty.")
         remaining = locked_line.requested_qty - locked_line.picked_qty
         if quantity > remaining:
             raise WMSError(f"Na pozycji pozostało {remaining}, żądane {quantity}.")
@@ -617,6 +617,27 @@ def execute_issue_document(
     document.completed_at = timezone.now()
     document.save(update_fields=["status", "completed_at"])
     return document
+
+
+@transaction.atomic
+def complete_if_picked(document: IssueDocument) -> bool:
+    """Zamyka WZ („Zrealizowany”), gdy wszystkie pozycje są w pełni pobrane (D-05, US-018).
+
+    Jedno miejsce zmiany stanu po pobraniu ze skanera: dokument blokowany jak w
+    `execute_issue_document`, warunek sprawdzany na świeżych danych pod blokadą.
+    Idempotentne — dokument już zamknięty (np. równolegle przez „Realizuj”) zostaje
+    bez zmian i bez błędu. Zwraca True tylko wtedy, gdy to wywołanie go zamknęło.
+    """
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        return False
+    lines = document.lines.all()
+    if not lines.exists() or lines.filter(picked_qty__lt=F("requested_qty")).exists():
+        return False
+    document.status = IssueStatus.ZREALIZOWANY
+    document.completed_at = timezone.now()
+    document.save(update_fields=["status", "completed_at"])
+    return True
 
 
 def picking_plan(material: Material, quantity: int) -> dict:

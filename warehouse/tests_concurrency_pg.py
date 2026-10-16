@@ -109,3 +109,67 @@ class ConcurrentIssueTests(TransactionTestCase):
         self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
         self.hu.refresh_from_db()
         self.assertEqual(self.hu.quantity, 6)
+
+    def test_scanner_pick_and_execute_on_same_document(self):
+        """US-018 kryterium 3: skaner (pobranie + domknięcie) i „Realizuj” równolegle."""
+        doc = self._doc("WZ-S", 4)
+        line = doc.lines.get()
+        locked, release = threading.Event(), threading.Event()
+        results: list[str] = []
+
+        def holder():
+            try:
+                with transaction.atomic():
+                    IssueDocument.objects.select_for_update().get(pk=doc.pk)
+                    IssueLine.objects.select_for_update().get(pk=line.pk)
+                    locked.set()
+                    release.wait(10)
+            finally:
+                connections.close_all()
+
+        def scanner():
+            try:
+                services.pick_from_hu(
+                    hu=self.hu, quantity=4, user=self.user, document=doc, line=line
+                )
+                services.complete_if_picked(doc)
+                results.append("scanner-ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            finally:
+                connections.close_all()
+
+        def panel():
+            try:
+                services.execute_issue_document(document=doc, user=self.user)
+                results.append("panel-ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            finally:
+                connections.close_all()
+
+        h = threading.Thread(target=holder)
+        h.start()
+        locked.wait(10)
+        workers = [threading.Thread(target=scanner), threading.Thread(target=panel)]
+        for w in workers:
+            w.start()
+        time.sleep(1)  # nosemgrep — oba wątki czekają na blokadę
+        release.set()
+        for t in [h, *workers]:
+            t.join(15)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        line.refresh_from_db()
+        doc.refresh_from_db()
+        self.assertEqual(line.picked_qty, 4, results)
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 6)
+        self.assertEqual(
+            sum(
+                m.quantity_delta
+                for m in StockMovement.objects.filter(issue_document=doc)
+            ),
+            -4,
+        )

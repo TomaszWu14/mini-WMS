@@ -271,3 +271,88 @@ class PickLineGuardTests(BaseSetup):
             )
         hu.refresh_from_db()
         self.assertEqual(hu.quantity, 50)
+
+
+class CompleteIfPickedTests(BaseSetup):
+    """US-018: domknięcie WZ po ostatnim pobraniu — w serwisie, idempotentnie."""
+
+    def _doc(self, qty=5):
+        doc = IssueDocument.objects.create(number=f"WZ-C{qty}", created_by=self.user)
+        line = IssueLine.objects.create(
+            document=doc, material=self.material, requested_qty=qty
+        )
+        return doc, line
+
+    def _hu(self, qty=10):
+        return HandlingUnit.objects.create(
+            number=f"HU-C{qty}",
+            material=self.material,
+            quantity=qty,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+
+    def test_closes_only_when_everything_picked(self):
+        doc, line = self._doc(5)
+        hu = self._hu()
+        services.pick_from_hu(
+            hu=hu, quantity=3, user=self.user, document=doc, line=line
+        )
+        self.assertFalse(services.complete_if_picked(doc))
+        self.assertEqual(doc.status, IssueStatus.OTWARTY)
+        services.pick_from_hu(
+            hu=hu, quantity=2, user=self.user, document=doc, line=line
+        )
+        self.assertTrue(services.complete_if_picked(doc))
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertIsNotNone(doc.completed_at)
+
+    def test_idempotent_when_already_completed(self):
+        """Kryterium 2: „Realizuj” zamknął dokument równolegle — bez podwójnego zamknięcia."""
+        doc, _ = self._doc(4)
+        self._hu()
+        services.execute_issue_document(document=doc, user=self.user)
+        doc.refresh_from_db()
+        completed_at = doc.completed_at
+        self.assertFalse(services.complete_if_picked(doc))
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertEqual(doc.completed_at, completed_at)
+
+    def test_stale_object_is_refreshed_under_lock(self):
+        doc, line = self._doc(2)
+        stale = IssueDocument.objects.get(pk=doc.pk)
+        services.pick_from_hu(
+            hu=self._hu(), quantity=2, user=self.user, document=doc, line=line
+        )
+        IssueDocument.objects.filter(pk=doc.pk).update(status=IssueStatus.SPAKOWANY)
+        self.assertFalse(services.complete_if_picked(stale))
+        self.assertEqual(stale.status, IssueStatus.SPAKOWANY)
+
+    def test_document_without_lines_not_closed(self):
+        doc = IssueDocument.objects.create(number="WZ-EMPTY", created_by=self.user)
+        self.assertFalse(services.complete_if_picked(doc))
+
+    def test_scanner_last_pick_closes_via_service(self):
+        """Kryterium 1: API skanera nie ustawia statusu samo — woła serwis."""
+        from unittest.mock import patch
+
+        from .models import Profile, Role
+
+        Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
+        self.client.force_login(self.user)
+        doc, _ = self._doc(3)
+        hu = self._hu()
+        with patch(
+            "warehouse.scanner_views.services.complete_if_picked",
+            wraps=services.complete_if_picked,
+        ) as spy:
+            resp = self.client.post(
+                "/skaner/api/pick/",
+                {"hu": hu.number, "quantity": "3", "document": str(doc.pk)},
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        spy.assert_called_once()
+        self.assertTrue(resp.json()["document"]["completed"])
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)

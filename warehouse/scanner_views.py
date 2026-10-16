@@ -8,7 +8,6 @@ import re
 
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from . import services
@@ -373,14 +372,9 @@ def api_pick(request):
     }
     if warning:
         response["warning"] = warning
-    doc.refresh_from_db()
-    payload = _doc_payload(doc)
-    if payload["remaining_total"] == 0 and doc.status == IssueStatus.OTWARTY:
-        doc.status = IssueStatus.ZREALIZOWANY
-        doc.completed_at = timezone.now()
-        doc.save(update_fields=["status", "completed_at"])
-        payload = _doc_payload(doc)
-    response["document"] = payload
+    # US-018 / D-05: stan WZ zmienia tylko serwis (pod blokadą dokumentu).
+    services.complete_if_picked(doc)
+    response["document"] = _doc_payload(doc)
     return JsonResponse(response)
 
 
