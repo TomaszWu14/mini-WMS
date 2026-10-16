@@ -4,6 +4,7 @@ Django>=5.2,<5.3
 reportlab==5.0.0
 qrcode[pil]==8.2
 openpyxl==3.1.5
+argon2-cffi==25.1.0               # hasher haseł (US-008); koła binarne, bez kompilatora
 defusedxml==0.7.1                 # openpyxl używa go do parsowania XML (US-004)
 gunicorn==23.0.0
 whitenoise==6.8.2

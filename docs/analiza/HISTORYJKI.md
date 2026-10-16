@@ -212,7 +212,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **Administrator** chcę, aby hasła były przechowywane algorytmem argon2, aby wyciek bazy nie pozwalał szybko łamać haseł. |
 | MoSCoW · rozmiar | Should · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §3.3 **R6** (Ś); DEC-4 (argon2: tak) |
 | Wymagania | SEC-001 |
 | Zależności | `argon2-cffi` w `requirements.txt` (koła binarne — obraz bez kompilatorów); miękko US-020 |
@@ -224,7 +224,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** `config.settings.test`; **Then** szybki hasher (MD5) zostaje wyłącznie tam (pitfalls/auth #11), a `prod.py` / `dev.py` go nie zawierają.
 4. **Given** obraz budowany w CI; **When** smoke test; **Then** kontener jest healthy (instalacja `argon2-cffi` bez kompilatora).
 
-**Test do napisania:** `PasswordHasherTests` w `warehouse/tests_passwords.py` (nowy): `test_new_password_uses_argon2` (z `override_settings`), `test_pbkdf2_hash_upgraded_on_login`.
+**Testy:** `warehouse/tests_passwords.py` — `PasswordHasherTests` (3: nowe i zmienione hasło → `argon2$`, hash PBKDF2 podniesiony do argon2 przy poprawnym logowaniu, błędne hasło nie zmienia hasha), `HasherConfigTests` (3: argon2 pierwszy w `base.py`, MD5 tylko w `test.py`, `argon2-cffi` przypięty). Przed zmianą testy czerwone (brak `PASSWORD_HASHERS` w `base.py`). Sprawdzenie [DEV]: ustawienia produkcyjne (`DJANGO_DEBUG=0`) tworzą hash `argon2$`. Kryterium 4 — smoke test obrazu w CI (`argon2-cffi-bindings` ma koła `abi3` dla Linuksa, bez kompilatora). Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione; 4 — CI na PR.
 
 ### US-009 — Limit prób logowania per konto i wspólny dla workerów
 

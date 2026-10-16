@@ -40,7 +40,7 @@ Numery linii dotyczą stanu `main` @ `f5be158` z audytu; zmiany wykonywane równ
 | 2.1.1, 2.1.7 | 1 | Hasła mają co najmniej 12 znaków i są sprawdzane względem znanych list wycieków | ⚠️ | `base.py:145-152`: 4 walidatory Django, min. 8 znaków, lista popularnych haseł; TM-02 | R6 (Should) |
 | 2.1.5, 2.1.6, 2.3.1 | 1 | Użytkownik sam zmienia hasło (podając obecne); hasło początkowe nie staje się trwałe | ❌ | brak widoku zmiany hasła, hasło ustawia Administrator (`views.py:1296-1335`); TM-38, Z-16 | RR-22 (decyzja PO) |
 | 2.2.1 | 1 | Skuteczna ochrona przed zgadywaniem haseł i credential stuffing | ⚠️ | limit 10 prób / 5 min / IP per proces (`demo.py:32-75`), brak blokady per konto; TM-01, W-4 | R6 (Should) |
-| 2.4.1, 2.4.3 | 2 | Hasła solone i hashowane zatwierdzonym algorytmem (PBKDF2, ≥ 100 tys. iteracji) | ✅ | domyślny `PASSWORD_HASHERS` Django 5.2 (PBKDF2-SHA256, iteracje ≫ 100 tys.); MD5 tylko w `config/settings/test.py` | — (argon2: R6) |
+| 2.4.1, 2.4.3 | 2 | Hasła solone i hashowane zatwierdzonym algorytmem (PBKDF2, ≥ 100 tys. iteracji) | ✅ | domyślny `PASSWORD_HASHERS` Django 5.2 (PBKDF2-SHA256, iteracje ≫ 100 tys.); MD5 tylko w `config/settings/test.py` | — (argon2 od US-008, #23; stare hashe PBKDF2 podnoszone przy logowaniu) |
 | 2.5.4 | 1 | Brak kont współdzielonych i domyślnych (`admin`, `root`) | ⚠️ | domyślne `admin` / `admin` w `docker-compose.yml:53` (R2); jawne konta demo (W-1) | US-003 |
 | 2.10.4 | 2 | Hasła i klucze nie leżą w kodzie źródłowym | ⚠️ | sekrety w env (`prod.py`, `COOLIFY.md` §6); wartości domyślne w `docker-compose.yml:18,53,65` (R2) | US-003 |
 

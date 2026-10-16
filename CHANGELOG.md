@@ -44,9 +44,11 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
   sprzątające (`purge_login_events`, `clearsessions`) uruchamia start kontenera i Scheduled Task (COOLIFY.md §10a);
   `/demo/` i `/login/demo/` mają limit 10 wejść na 5 min z jednego IP (429); w trybie demo dziennik logowań nie zapisuje
   IP ani user-agenta. Testy: `warehouse/tests_retention.py`, `DemoEntryRateLimitTests`.
+- **US-008 / R6:** hasła zapisywane algorytmem argon2 (`argon2-cffi`); istniejące hashe PBKDF2 są podnoszone do argon2
+  przy następnym udanym logowaniu. Testy: `warehouse/tests_passwords.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
-  w `docs/analiza/HISTORYJKI.md` (US-001…US-005 zrobione).
+  w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008 zrobione).
 
 ## [0.1.0] — 2026-10-13
 

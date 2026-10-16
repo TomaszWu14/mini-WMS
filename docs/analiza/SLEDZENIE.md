@@ -116,7 +116,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 
 | SEC | US | Test (istniejący) | PR |
 |---|---|---|---|
-| SEC-001 | US-008 | brak — do napisania | #23 |
+| SEC-001 | US-008 | `tests_passwords.PasswordHasherTests` (3), `HasherConfigTests` (3); smoke test obrazu w CI | #23 |
 | SEC-002 | — (powiązane: US-041) | `SecurityTests.test_weak_password_rejected_on_create`; `SecurityTests.test_password_similar_to_username_rejected`; `SecurityTests.test_strong_password_accepted_on_create` | historyczny (przed procesem) |
 | SEC-003 | US-009 | `DemoModeViewTests.test_rate_limit_also_without_demo_mode` (limit per proces; globalnego brak) | #23 |
 | SEC-004 | US-009 | brak — do napisania | #23 |
@@ -172,7 +172,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py` (8), `tests_demo_entry.DemoEntryRateLimitTests` (5) — zrobione, #23 |
 | US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` (5 testów) — zrobione, #23 |
-| US-008 | Should | SEC-001 | R6 | `tests_passwords.py` |
+| US-008 | Should | SEC-001 | R6 | `tests_passwords.py` (6 testów) — zrobione, #23 |
 | US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` |
 | US-010 | Should | SEC-006 | R6 | `tests_2fa.py` |
 | US-011 | Should | SEC-022, SEC-024, SEC-025 | R8 | `tests_security_headers.py` |

@@ -67,6 +67,9 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Hasła (US-008):** nowe i zmieniane hasła są zapisywane algorytmem argon2. Istniejące konta
+  logują się jak dotąd; przy pierwszym udanym logowaniu hasło przechodzi na argon2 (bez działania
+  użytkownika). Logowanie trwa ułamek sekundy dłużej. Nowa zależność `argon2-cffi` w obrazie.
 - **Testy (US-007):** macierz dostępu rola × trasa — tylko testy, bez zmian w działaniu aplikacji.
 - **Kod:** dwa komentarze `# nosemgrep` z uzasadnieniem (`seed_demo.py` — `LOCK TABLE` z nazwami
   tabel z modeli; test wyścigu — celowe `sleep`); komentarz w `scanner.js` (numer pułapki).
@@ -91,6 +94,7 @@
 | 14 | admin infrastruktury | Coolify (prod i demo) → Scheduled Tasks | dodać `purge-login-events` i `clearsessions` wg COOLIFY.md §10a, uruchomić ręcznie „Execute now” | log „Usunięto N wpisów…”, brak błędów |
 | 15 | anonim (przeglądarka prywatna) | demo: `/demo/` | odświeżyć 11 razy w ciągu minuty (wylogowując się) | 11. raz: „Zbyt wiele wejść do demo…” |
 | 16 | Administrator | demo: `/uzytkownicy/dziennik/` | spojrzeć na nowe wpisy | kolumny IP i przeglądarka puste |
+| 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
 ## 3. Checklista wdrożenia
@@ -99,7 +103,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ nie dotyczy — brak migracji |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (299 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (305 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu | ☐ nie dotyczy — brak migracji |
 
@@ -111,7 +115,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 |---|---|---|---|
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
-| — (zależność) | nowa: `defusedxml==0.7.1` w `requirements.txt` | instalowana w obrazie | ☐ nie dotyczy (rebuild obrazu) |
+| — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
 Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma
