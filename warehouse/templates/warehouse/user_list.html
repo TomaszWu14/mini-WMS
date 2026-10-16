@@ -19,7 +19,7 @@
         <td><span class="badge badge-{{ r.role }}">{{ r.role }}</span></td>
         <td>{% if r.user.is_active %}<span class="badge badge-ZMAGAZYNOWANY">aktywny</span>{% else %}<span class="badge badge-PUSTY">nieaktywny</span>{% endif %}</td>
         <td class="nowrap">{{ r.user.last_login|date:"Y-m-d H:i"|default:"—" }}</td>
-        <td class="text-right">{% if r.user.is_superuser and not user.is_superuser %}<span class="muted" title="Konto superusera może edytować tylko superuser">—</span>{% else %}<a class="btn btn-sm btn-secondary" href="{% url 'user_edit' r.user.pk %}">Edytuj</a>{% endif %}</td>
+        <td class="text-right">{% if r.user.is_superuser or r.user.is_staff %}{% if not user.is_superuser %}<span class="muted" title="Konto z dostępem do panelu administracyjnego może edytować tylko superuser">—</span>{% else %}<a class="btn btn-sm btn-secondary" href="{% url 'user_edit' r.user.pk %}">Edytuj</a>{% endif %}{% else %}<a class="btn btn-sm btn-secondary" href="{% url 'user_edit' r.user.pk %}">Edytuj</a>{% endif %}</td>
       </tr>
     {% empty %}
       <tr><td colspan="6" class="muted">Brak użytkowników.</td></tr>

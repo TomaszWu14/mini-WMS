@@ -74,3 +74,32 @@ class SuperuserProtectionTests(TestCase):
         )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Profile.objects.get(user=self.operator).role, Role.VIEWER)
+
+    def test_admin_cannot_edit_staff_account(self):
+        staff = User.objects.create_user(
+            "panel", password="StaffPass123!", is_staff=True
+        )
+        self._login_admin()
+        resp = self.client.post(
+            f"/uzytkownicy/{staff.pk}/",
+            {"role": Role.ADMIN, "is_active": "on", "new_password": "Przejete123!"},
+        )
+        self.assertEqual(resp.status_code, 403)
+        staff.refresh_from_db()
+        self.assertTrue(staff.check_password("StaffPass123!"))
+
+    def test_admin_cannot_grant_superuser_via_extra_fields(self):
+        self._login_admin()
+        resp = self.client.post(
+            f"/uzytkownicy/{self.operator.pk}/",
+            {
+                "role": Role.ADMIN,
+                "is_active": "on",
+                "is_superuser": "on",
+                "is_staff": "on",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.operator.refresh_from_db()
+        self.assertFalse(self.operator.is_superuser)
+        self.assertFalse(self.operator.is_staff)

@@ -1296,12 +1296,12 @@ def user_create(request):
 @admin_required
 def user_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
-    # US-001 / R1: konto superusera (dostęp do /admin/, edycja ruchów i dziennika)
-    # zmienia tylko superuser — inaczej rola Administrator przejęłaby je resetem hasła.
-    if user.is_superuser and not request.user.is_superuser:
+    # US-001 / R1: konta z dostępem do /admin/ (superuser, staff) zmienia tylko
+    # superuser — inaczej rola Administrator przejęłaby je resetem hasła.
+    if (user.is_superuser or user.is_staff) and not request.user.is_superuser:
         raise PermissionDenied(
-            "Konto superusera może edytować tylko superuser (panel /admin/ "
-            "albo `manage.py changepassword`)."
+            "Konto z dostępem do panelu administracyjnego może edytować tylko "
+            "superuser (panel /admin/ albo `manage.py changepassword`)."
         )
     if is_demo_account(user):
         return HttpResponseForbidden(

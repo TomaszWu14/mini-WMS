@@ -124,7 +124,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-006 | US-010 | brak — do napisania | #23 |
 | SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `DemoResetTests.test_viewer_forbidden` | historyczny (przed procesem) |
 | SEC-008 | US-007 | brak — do napisania (są testy punktowe, brak macierzy rola × trasa) | #23 |
-| SEC-009 | US-001 | `tests_security.SuperuserProtectionTests` (7 testów) | #23 |
+| SEC-009 | US-001 | `tests_security.SuperuserProtectionTests` (9 testów) | #23 |
 | SEC-010 | — (powiązane: US-041) | `DemoModeViewTests.test_demo_account_cannot_change_password`; `AdminHiddenInDemoTests.test_admin_404_in_demo`; `DemoAccountPermissionTests.test_demo_operator_gets_403_on_admin_pages`; `DemoLoginTests.test_only_demo_accounts_can_be_entered` | historyczny (przed procesem) |
 | SEC-011 | — | n/d — decyzja (Z-06) | — |
 | SEC-012 | — | n/d — bandit w CI | historyczny (przed procesem) |

@@ -70,7 +70,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 4. **Given** superuser; **When** POST edycji dowolnego konta, także innego superusera; **Then** 302 i zmiana zapisana (brak regresji).
 5. **Given** Administrator A; **When** POST edycji konta Operatora; **Then** 302 (brak regresji względem `UserManagementTests.test_edit_user_role_and_password`).
 
-**Testy:** `warehouse/tests_security.py` `SuperuserProtectionTests` (7 testów: hasło, dezaktywacja, rola, GET, lista bez linku, superuser edytuje superusera, Administrator edytuje Operatora). Odbiór [BA] 2026-10-16: kryteria 1–5 spełnione.
+**Testy:** `warehouse/tests_security.py` `SuperuserProtectionTests` (9 testów: hasło, dezaktywacja, rola, GET, lista bez linku, konto staff, próba nadania is_superuser, superuser edytuje superusera, Administrator edytuje Operatora; ochrona obejmuje też konta `is_staff` — uwaga z przeglądu [SEC]). Odbiór [BA] 2026-10-16: kryteria 1–5 spełnione.
 
 ### US-002 — Limity liczby palet i ilości w przyjęciu i imporcie
 

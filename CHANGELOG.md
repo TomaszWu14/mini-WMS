@@ -25,7 +25,7 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - Cotygodniowe skany bezpieczeństwa (`security.yml`) zamiast miesięcznych; akcje GitHub przypięte do SHA.
 
 ### Security
-- **US-001 / R1:** rola Administrator nie może już zmienić hasła, roli ani statusu konta superusera (403); lista
+- **US-001 / R1:** rola Administrator nie może już zmienić hasła, roli ani statusu konta superusera ani konta `is_staff` (403); lista
   użytkowników nie pokazuje dla takich kont przycisku „Edytuj”. Testy: `warehouse/tests_security.py`.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
