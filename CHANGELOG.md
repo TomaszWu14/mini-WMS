@@ -7,6 +7,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 ## [Unreleased]
 
 ### Added
+- **US-012:** kopia bazy poza serwerem — szyfrowana `age` (na serwerze tylko klucz publiczny), wysyłana `rclone` do S3/SFTP,
+  retencja 30 dni, heartbeat po sukcesie (alert przy braku kopii); `manage.py backup_fingerprint` do porównania kopii z produkcją;
+  ćwiczenie odtworzenia w CI (ADR-0005, RUNBOOK §5.0, §5.4).
 - **US-010:** weryfikacja dwuetapowa (TOTP) dla Administratora — włączana na `/2fa/` (Użytkownicy → Moja weryfikacja
   dwuetapowa), wymagana po haśle przy każdym logowaniu, także dla `/admin/`; reset `manage.py reset_2fa <login>` (ADR-0003).
 - Audyt stanu repozytorium z trzech perspektyw ([BA] / [DEV] / [SEC]) z top 10 ryzyk i mapą tras — `docs/AUDYT.md` (#23).
@@ -55,6 +58,7 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-011 / R8:** nagłówek `Content-Security-Policy` z nonce (bez `unsafe-inline` dla skryptów) i `Permissions-Policy`
   (kamera tylko dla własnej domeny, bez geolokalizacji) na wszystkich stronach; atrybuty `on*=` zastąpione `data-*` + `ui.js`;
   HSTS bez `preload`. Awaryjnie `DJANGO_CSP_REPORT_ONLY=1`. Testy: `warehouse/tests_security_headers.py` (ADR-0004).
+- **US-012:** skrypt backupu nie raportuje już „OK” przy nieudanym `pg_dump` (zrzut bez potoku, kontrola rozmiaru i `gzip -t`).
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

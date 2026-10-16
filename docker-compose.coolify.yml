@@ -57,9 +57,12 @@ services:
       timeout: 3s
       retries: 10
 
-  # Automatyczny backup bazy (pg_dump -> gzip) z retencją.
+  # Automatyczny backup bazy (US-012): pg_dump -> gzip lokalnie, szyfrowana kopia (age)
+  # poza serwerem (rclone), heartbeat. Konfiguracja: COOLIFY.md §10.
   backup:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -70,10 +73,22 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-wms}
       BACKUP_INTERVAL: ${BACKUP_INTERVAL:-86400}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      # Off-site (puste = tylko kopia lokalna). Klucz PUBLICZNY age; prywatny offline u PO.
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
+      BACKUP_OFFSITE_KEEP_DAYS: ${BACKUP_OFFSITE_KEEP_DAYS:-30}
+      BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
+      # Zdalny cel rclone wyłącznie ze zmiennych (przykład S3 — COOLIFY.md §10).
+      RCLONE_CONFIG_OFFSITE_TYPE: ${RCLONE_CONFIG_OFFSITE_TYPE:-}
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${RCLONE_CONFIG_OFFSITE_PROVIDER:-}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${RCLONE_CONFIG_OFFSITE_ENDPOINT:-}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY:-}
+      RCLONE_CONFIG_OFFSITE_HOST: ${RCLONE_CONFIG_OFFSITE_HOST:-}
+      RCLONE_CONFIG_OFFSITE_USER: ${RCLONE_CONFIG_OFFSITE_USER:-}
+      RCLONE_CONFIG_OFFSITE_PASS: ${RCLONE_CONFIG_OFFSITE_PASS:-}
     volumes:
-      - ./scripts/pg_backup.sh:/pg_backup.sh:ro
       - db_backups:/backups
-    entrypoint: ["sh", "/pg_backup.sh"]
 
 volumes:
   db_data:

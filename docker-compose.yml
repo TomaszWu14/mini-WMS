@@ -24,9 +24,12 @@ services:
       timeout: 3s
       retries: 10
 
-  # Automatyczny backup bazy (pg_dump -> gzip) z retencją.
+  # Automatyczny backup bazy (US-012): pg_dump -> gzip lokalnie, szyfrowana kopia (age)
+  # poza serwerem (rclone), heartbeat. Konfiguracja: RUNBOOK §5.
   backup:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -37,10 +40,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-wms}
       BACKUP_INTERVAL: ${BACKUP_INTERVAL:-86400}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
+      BACKUP_OFFSITE_KEEP_DAYS: ${BACKUP_OFFSITE_KEEP_DAYS:-30}
+      BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
+    env_file:
+      # Opcjonalnie: zmienne RCLONE_CONFIG_OFFSITE_* (cel off-site) — RUNBOOK §5.
+      - path: .env.backup
+        required: false
     volumes:
-      - ./scripts/pg_backup.sh:/pg_backup.sh:ro
       - db_backups:/backups
-    entrypoint: ["sh", "/pg_backup.sh"]
 
   web:
     build: .

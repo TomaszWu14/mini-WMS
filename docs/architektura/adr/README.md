@@ -100,6 +100,7 @@ względem opcji odrzuconych.
 | ADR-0002 | Cache wspólny dla workerów: DatabaseCache w PostgreSQL | zaakceptowany (PO, 2026-10-16) | 2026-10-16 | [0002-cache-wspolny-w-bazie.md](0002-cache-wspolny-w-bazie.md) |
 | ADR-0003 | Weryfikacja dwuetapowa (TOTP) przez `django-otp` | zaakceptowany (zespół; tryb dobrowolny — Z-39 do potwierdzenia przez PO) | 2026-10-16 | [0003-2fa-totp-django-otp.md](0003-2fa-totp-django-otp.md) |
 | ADR-0004 | CSP z nonce: własny middleware zamiast `django-csp` | zaakceptowany (zespół) | 2026-10-16 | [0004-csp-z-nonce-wlasny-middleware.md](0004-csp-z-nonce-wlasny-middleware.md) |
+| ADR-0005 | Backup poza serwerem: age + rclone + heartbeat | zaakceptowany (PO, 2026-10-16) | 2026-10-16 | [0005-backup-off-site-age-rclone.md](0005-backup-off-site-age-rclone.md) |
 
 Powiązania ADR-0001: T4, T5, T6, R10, Z-08, Z-10 ([AUDYT](../../AUDYT.md)).
 

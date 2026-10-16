@@ -67,6 +67,10 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Backup (US-012):** kontener `backup` ma teraz własny obraz (`docker/backup.Dockerfile`: PostgreSQL 16 +
+  `age`, `rclone`, `curl`) — Coolify go zbuduje przy deployu. Bez nowych zmiennych działa jak dotąd (kopia
+  lokalna, 7 dni), ale błąd `pg_dump` nie daje już fałszywego „OK”. Kopia poza serwerem włącza się po
+  ustawieniu zmiennych z RUNBOOK §5.0 (klucz publiczny age, cel rclone, URL heartbeat).
 - **Nagłówki bezpieczeństwa (US-011):** przeglądarka dostaje `Content-Security-Policy` i `Permissions-Policy`.
   Wygląd i działanie bez zmian. Gdyby po deployu coś na stronie przestało działać (np. przycisk nic nie
   robi), w konsoli przeglądarki będzie „Refused to execute… Content Security Policy” — wtedy ustawić
@@ -111,6 +115,8 @@
 | 19 | superuser | kontener `web` → Terminal | `python manage.py reset_2fa <login>` | „Usunięto 1 urządzeń 2FA…”; logowanie samym hasłem |
 | 20 | `demo_operator` na telefonie | demo przez HTTPS: `/skaner/rozmieszczanie/` | „Skanuj aparatem”, zeskanować etykietę palety | kamera startuje, kod odczytany (US-011 kryt. 3) |
 | 21 | dowolne | dowolna strona → narzędzia deweloperskie → Konsola | przejść kilka ekranów | brak komunikatów „Content Security Policy” |
+| 22 | admin infrastruktury | Coolify → `backup` → Logs (po ustawieniu §5.0) | Restart kontenera `backup` | `OK -> /backups/wms-…`, `off-site OK -> offsite:…`; zielony ping w Healthchecks |
+| 23 | PO | komputer z kluczem prywatnym | pobrać plik `.age` z bucketu, `age -d -i miniwms-backup.key … > kopia.sql.gz`, `gunzip -t kopia.sql.gz` | odszyfrowanie i test OK; wpis w RUNBOOK §5.4 |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -120,7 +126,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (352 passed, 2 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (361 passed, 2 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 
@@ -136,6 +142,7 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | `DJANGO_SECRET_KEY` | zmieniona (wymóg: ≥ 50 losowych znaków) | bez zmian — już spełnia (Z-36) | ☐ sprawdzić na demo i prod przed deployem |
 | `DJANGO_SUPERUSER_PASSWORD` | zmieniona (wariant prywatny: wymagana; nowe konto: walidatory Django) | bez zmian | ☐ nie dotyczy (Coolify już wymaga) |
 | — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0`, `django-otp==1.7.4` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
+| `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`, `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS`, `RCLONE_CONFIG_OFFSITE_*` | nowe, opcjonalne (US-012) | wg RUNBOOK §5.0 (klucz publiczny, cel off-site, URL Healthchecks) | ☐ ustawić w zasobie prod i demo; klucz prywatny — tylko offline u PO |
 | `DJANGO_CSP_REPORT_ONLY` | nowa, opcjonalna (domyślnie `0` = CSP egzekwowana) | nie ustawiać | ☐ nie dotyczy (tylko awaryjnie `1`) |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 

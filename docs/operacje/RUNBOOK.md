@@ -228,13 +228,37 @@ Docelowo kopia off-site, retencja 30 dni i alert — kandydat na ADR „backup o
 
 ---
 
-## 5. Odtworzenie z kopii — NIEPRZEĆWICZONE (R9)
+## 5.0 Kopia poza serwerem — konfiguracja (US-012, ADR-0005)
+
+Jednorazowo, przed pierwszym deployem z off-site:
+
+1. **Klucz (PO, na własnym komputerze, nie na serwerze):** `age-keygen -o miniwms-backup.key`.
+   Plik zawiera klucz **prywatny** — zapisz go w menedżerze haseł i drugą kopię offline (wydruk / pendrive w sejfie).
+   Linia `# public key: age1…` to klucz **publiczny** → zmienna `BACKUP_AGE_RECIPIENT` w Coolify.
+2. **Cel off-site** (inny dostawca/lokalizacja niż serwer) — zmienne w Coolify (zasób → Environment Variables):
+   - S3 (Backblaze B2, Cloudflare R2, AWS): `RCLONE_CONFIG_OFFSITE_TYPE=s3`, `RCLONE_CONFIG_OFFSITE_PROVIDER=Other`
+     (lub `Cloudflare`, `AWS`), `RCLONE_CONFIG_OFFSITE_ENDPOINT=https://…`, `RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID`,
+     `RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY`; `BACKUP_RCLONE_REMOTE=offsite:<bucket>/miniwms`.
+     Klucz API tylko z prawem zapisu/listy/usuwania w tym jednym buckecie.
+   - SFTP (Hetzner Storage Box): `RCLONE_CONFIG_OFFSITE_TYPE=sftp`, `RCLONE_CONFIG_OFFSITE_HOST`,
+     `RCLONE_CONFIG_OFFSITE_USER`, `RCLONE_CONFIG_OFFSITE_PASS` (wartość z `rclone obscure 'hasło'`);
+     `BACKUP_RCLONE_REMOTE=offsite:miniwms`.
+3. **Alert:** w Healthchecks.io (lub Uptime Kuma „Push”) utwórz check: okres 1 dzień, tolerancja 2 h, powiadomienie e-mail
+   do PO/INFRA. URL pingu → `BACKUP_HEARTBEAT_URL`. Brak pingu przez ~26 h = alert (kopia się nie udała albo kontener nie działa).
+4. **Retencja off-site:** `BACKUP_OFFSITE_KEEP_DAYS=30` (domyślnie). Lokalnie `BACKUP_KEEP_DAYS=7`.
+5. **Sprawdzenie:** Redeploy → kontener `backup` → Logs: `off-site OK -> offsite:…/wms-….sql.gz.age`; w Healthchecks — zielony ping;
+   w buckecie plik `.age`. Bez `BACKUP_AGE_RECIPIENT` kontener **odmawia** wysyłki (`nie wysyłam kopii bez szyfrowania`).
+
+Instalacja LAN (`docker-compose.yml`): te same zmienne `BACKUP_*` w `.env`, a `RCLONE_CONFIG_OFFSITE_*` w pliku `.env.backup`
+(opcjonalny, nie w repozytorium).
+
+## 5. Odtworzenie z kopii (R9)
 
 | | |
 |---|---|
 | Kto | INFRA (wykonanie), DEV (pomoc), PO (decyzja) |
 | Kiedy | utrata/uszkodzenie danych, nieodwracalna migracja, awaria hosta |
-| Status | **nieprzećwiczona** — nie wdrażać u klienta przed pierwszym udanym ćwiczeniem |
+| Status | łańcuch backup → szyfrowanie → off-site → odtworzenie ćwiczony automatycznie w CI (job „3b”); **na prawdziwej kopii produkcyjnej — nieprzećwiczony** (§5.4) |
 | RPO / RTO | RPO do 24 h (interwał kopii); RTO — nieustalony (do zmierzenia w ćwiczeniu) |
 
 **Dlaczego rozszerzono COOLIFY.md §10.** Zrzut jest zwykłym SQL bez `--clean`. Wczytanie go
@@ -248,7 +272,7 @@ operatorów o wstrzymanie pracy (D-07).
 1. **Zatrzymaj** `web` **i `backup`** w Coolify. Zatrzymanie `backup` jest konieczne: inaczej kolejny cykl zrzuci uszkodzoną/pustą bazę, a po `BACKUP_KEEP_DAYS` dobre kopie zostaną usunięte.
 2. **Zabezpiecz obecny stan** (dowód i źródło ruchów po kopii):
    `docker exec "$DB" pg_dump -U wms wms | gzip > broken-$(date +%Y%m%d-%H%M).sql.gz`
-3. **Wybierz kopię** — najnowszą sprzed incydentu: `docker exec "$BK" ls -lh /backups`; sprawdź `gunzip -t`; skopiuj ją poza wolumen: `docker cp "$BK":/backups/wms-XXXX.sql.gz .`
+3. **Wybierz kopię** — najnowszą sprzed incydentu: lokalnie `docker exec "$BK" ls -lh /backups` (sprawdź `gunzip -t`, skopiuj: `docker cp "$BK":/backups/wms-XXXX.sql.gz .`), a gdy serwer/wolumen przepadł — z off-site: pobierz `wms-XXXX.sql.gz.age` (panel dostawcy albo `rclone copy`) i na komputerze z kluczem: `age -d -i miniwms-backup.key wms-XXXX.sql.gz.age > wms-XXXX.sql.gz`.
 4. **Utwórz pustą bazę** (po wykonaniu kroku 2!):
    ```bash
    docker exec "$DB" psql -U wms -d postgres \
@@ -268,6 +292,15 @@ Czego nie robić: nie wczytywać kopii do bazy z danymi; nie kasować wolumenów
 nie odtwarzać kopii produkcyjnej na demo/dev; nie pomijać `--single-transaction` (częściowe
 wczytanie jest gorsze niż żadne); nie zostawiać `backup` włączonego w trakcie odtwarzania.
 
+### 5.4 Ćwiczenie odtworzenia — co miesiąc (US-012 kryterium 4)
+
+1. Pobierz najnowszą kopię **off-site** (`.age`) i odszyfruj kluczem prywatnym (krok 3 wyżej) — to sprawdza też, że klucz działa.
+2. Odtwórz na jednorazowej instancji (poniżej) i uruchom aplikację na tej bazie: `python manage.py check`,
+   `python manage.py showmigrations warehouse` (wszystkie `[X]`).
+3. Porównaj `python manage.py backup_fingerprint` z instancji testowej i z produkcji (kontener `web`) —
+   liczba palet i suma ilości mają się zgadzać (różnica tylko o operacje po godzinie kopii).
+4. Wpisz wynik do tabeli na końcu tej sekcji.
+
 ### Ćwiczenie odtworzenia (wymagane; R9)
 
 Na jednorazowej instancji, **nie na produkcji** (kopia produkcyjna zostaje w kontrolowanym
@@ -277,14 +310,16 @@ Na jednorazowej instancji, **nie na produkcji** (kopia produkcyjna zostaje w kon
 docker run -d --name restore-test -e POSTGRES_USER=wms -e POSTGRES_PASSWORD=test -e POSTGRES_DB=wms -p 5433:5432 postgres:16-alpine
 gunzip -c wms-XXXX.sql.gz | docker exec -i restore-test psql -U wms -d wms -v ON_ERROR_STOP=1 --single-transaction
 DATABASE_URL=postgres://wms:test@localhost:5433/wms python manage.py showmigrations warehouse
+DATABASE_URL=postgres://wms:test@localhost:5433/wms python manage.py backup_fingerprint
 docker rm -f restore-test
 ```
 
-Zapisz wynik poniżej (po każdym ćwiczeniu, minimum raz na kwartał — częstotliwość do decyzji PO):
+Zapisz wynik poniżej (po każdym ćwiczeniu, **raz w miesiącu** — US-012):
 
 | Data | Kto | Plik kopii | Czas odtworzenia | Wynik (migracje `[X]`, liczba HU) | Uwagi |
 |---|---|---|---|---|---|
-| — | — | — | — | — | jeszcze nie wykonano |
+| 2026-10-16 | CI (job „3b”) | kopia danych demo z `seed_demo` | — | `check` OK, migracje `[X]`, `backup_fingerprint` zgodny | automatycznie przy każdym PR; nie zastępuje ćwiczenia na kopii produkcyjnej |
+| — | — | kopia produkcyjna off-site | — | — | jeszcze nie wykonano |
 
 ---
 

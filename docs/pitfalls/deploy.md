@@ -33,3 +33,7 @@
     przeglądu. `semgrep` nie siedzi w `requirements-dev.txt` (konflikt `tomli` z pip-audit) —
     `pipx install semgrep==1.146.0`; za proxy blokującym `semgrep.dev` użyj kopii reguł z GitHuba.
     **Obraz runtime nie ma pip/setuptools/wheel** (skan trivy) — pakiety tylko przez rebuild.
+11. **Backup (US-012): kontener `backup` budowany z `docker/backup.Dockerfile`** (nie montuje już skryptu).
+   Zmiana `scripts/pg_backup.sh` = rebuild obrazu. Off-site wymaga `BACKUP_AGE_RECIPIENT` (bez niego skrypt odmawia
+   wysyłki); klucz prywatny age nigdy na serwer. Skrypt musi działać w `sh` (busybox i dash) — bez `pipefail`,
+   sprawdza `shellcheck` w CI.

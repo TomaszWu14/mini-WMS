@@ -23,7 +23,7 @@ env:
 
 jobs:
   lint:
-    name: 1. Lint i format (ruff)
+    name: 1. Lint i format (ruff, shellcheck)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -37,6 +37,10 @@ jobs:
         run: ruff check --output-format=github .
       - name: Ruff format (check)
         run: ruff format --check .
+      - name: Shellcheck skryptów (US-012)
+        run: |
+          pip install shellcheck-py==0.10.0.1
+          shellcheck scripts/*.sh entrypoint.sh
 
   typecheck:
     name: 2. Typy (mypy — cały kod aplikacji)
@@ -131,6 +135,35 @@ jobs:
         run: pip install -r requirements.txt pytest==9.1.1 pytest-django==4.14.0
       - name: Testy (pytest, PostgreSQL)
         run: pytest -q -p no:cacheprovider
+      - name: "Ćwiczenie odtworzenia kopii (US-012): backup → age → off-site → odtworzenie → porównanie"
+        env:
+          DEMO_MODE: "1"
+        run: |
+          set -eu
+          sudo apt-get install -y -qq age >/dev/null
+          python manage.py migrate --noinput -v0
+          python manage.py seed_demo
+          python manage.py backup_fingerprint > before.txt
+          age-keygen -o key.txt 2>/dev/null
+          RECIPIENT="$(grep 'public key' key.txt | cut -d' ' -f4)"
+          mkdir -p out
+          # Prawdziwy skrypt backupu w obrazie PostgreSQL (jak kontener `backup`); off-site = katalog lokalny rclone.
+          docker run --rm --network host -v "$PWD/scripts:/s:ro" -v "$PWD/out:/backups" \
+            -e PGPASSWORD=wms -e DB_HOST=localhost -e POSTGRES_USER=wms -e POSTGRES_DB=wms \
+            -e BACKUP_ONCE=1 -e BACKUP_AGE_RECIPIENT="$RECIPIENT" -e BACKUP_RCLONE_REMOTE=/backups/offsite \
+            postgres:16-alpine sh -c "apk add --no-cache -q age rclone curl && sh /s/pg_backup.sh"
+          ENC="$(ls out/offsite/wms-*.sql.gz.age)"
+          if gunzip -t "$ENC" 2>/dev/null; then echo "kopia off-site NIE jest zaszyfrowana"; exit 1; fi
+          age -d -i key.txt "$ENC" | gunzip > restore.sql
+          PSQL="docker run --rm -i --network host -e PGPASSWORD=wms postgres:16-alpine psql -h localhost -U wms"
+          $PSQL -d wms -c "CREATE DATABASE restore_test OWNER wms;"
+          $PSQL -d restore_test -v ON_ERROR_STOP=1 --single-transaction -q < restore.sql
+          export DATABASE_URL="${DATABASE_URL%/wms}/restore_test"
+          python manage.py check
+          if python manage.py showmigrations --plan | grep -F "[ ]"; then echo "niezastosowane migracje po odtworzeniu"; exit 1; fi
+          python manage.py backup_fingerprint > after.txt
+          diff before.txt after.txt
+          echo "Odtworzenie zgodne z danymi przed backupem:"; cat after.txt
 
   sast:
     name: 4. SAST (bandit, semgrep)
@@ -250,6 +283,9 @@ jobs:
         run: |
           mkdir -p reports
           docker build -t miniwms:ci .
+          # US-012: obraz kontenera backupu (age, rclone, curl) i jego narzędzia.
+          docker build -f docker/backup.Dockerfile -t miniwms-backup:ci .
+          docker run --rm --entrypoint sh miniwms-backup:ci -c "age --version && rclone version | head -1 && curl --version | head -1 && pg_dump --version"
 
       - name: Compose (wariant prywatny) odmawia startu bez sekretów — US-003
         run: |

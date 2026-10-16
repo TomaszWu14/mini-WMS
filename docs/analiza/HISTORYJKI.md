@@ -293,7 +293,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **administrator infrastruktury (ST-05)** chcę kopii zapasowej poza hostem bazy, szyfrowanej, z alertem i przećwiczonym odtworzeniem, aby awaria dysku lub pomyłka operatora nie niszczyły bazy i kopii naraz. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia — start po decyzji PO (PYT-16) |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji); konfiguracja off-site i pierwsze ćwiczenie na kopii produkcyjnej — po stronie PO/INFRA |
 | Źródło | AUDYT §3.3 **R9** (Ś); `scripts/pg_backup.sh`, COOLIFY.md §10; PROCESY P-07, L-03 |
 | Wymagania | SEC-039; NFR-018, NFR-019; także: NFR-014 |
 | Zależności | lokalizacja off-site i klucz szyfrujący (PYT-16); retencja kopii a RODO (PYT-09); RUNBOOK |
@@ -305,9 +305,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** brak świeżej kopii przez czas dłuższy niż próg (PYT-16); **Then** alert do administratora.
 4. **Given** miesięczny test odtworzenia; **When** odtworzenie na środowisku testowym; **Then** aplikacja wstaje, `manage.py check` przechodzi, a liczba palet zgadza się z produkcją; wynik zapisany w RUNBOOK.
 
-**Test do napisania:** brak testu jednostkowego — skrypt `pg_backup.sh` sprawdzany `shellcheck`, przebieg odtworzenia opisany w RUNBOOK (karta odbioru).
-
-**Uwaga [DEV] (2026-10-16):** `scripts/pg_backup.sh` nie ustawia `pipefail`, więc przy błędzie `pg_dump` w potoku `pg_dump | gzip` log może pokazać „OK” przy pustym pliku; poprawka skryptu (i sprawdzanie rozmiaru kopii) wchodzi w zakres tej historyjki.
+**Testy:** `warehouse/tests_backup_script.py` — `BackupScriptTests` (8: pełny sukces — szyfrowanie, wysyłka, retencja `--min-age 30d`, heartbeat; prawdziwy `age` — kopia nieczytelna bez klucza prywatnego i odszyfrowywalna nim; błąd `pg_dump` nie daje „OK”, wysyłki ani pingu; pusta kopia odrzucona; błąd wysyłki = brak pingu; off-site bez szyfrowania odmówiony; tryb tylko lokalny bez zmian; własna retencja), `BackupFingerprintTests` (1). `shellcheck` w CI (job 1). CI job „3b”: ćwiczenie odtworzenia na PostgreSQL — seed → `pg_backup.sh` w obrazie PostgreSQL → `age` → `rclone` → odszyfrowanie → odtworzenie do pustej bazy → `check`, migracje, `backup_fingerprint` identyczny. CI job 7: build obrazu `backup`. Decyzje PO 2026-10-16 (PYT-16): rclone (dowolny S3/SFTP), age z kluczem prywatnym offline u PO, heartbeat, retencja off-site 30 dni (ADR-0005). Uwaga [DEV] rozwiązana: `pg_dump -Z 6 -f` zamiast potoku (kod wyjścia z pg_dump), kontrola rozmiaru i `gzip -t`. Odbiór [BA] 2026-10-16: kryteria 1–3 spełnione w kodzie (aktywne po ustawieniu zmiennych — RUNBOOK §5.0); 4 — mechanizm i procedura gotowe (§5.4), pierwsze ćwiczenie na kopii produkcyjnej do wykonania przez INFRA.
 
 ### US-013 — Walidacja zakresów, długości i nagłówków z danych użytkownika
 

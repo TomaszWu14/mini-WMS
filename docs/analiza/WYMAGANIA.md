@@ -270,7 +270,7 @@ do czasu odpowiedzi (pozycje z numerem Z-nn są w [ZALOZENIA.md](ZALOZENIA.md)).
 | PYT-13 | Trivy: Z-10 mówi „tygodniowo, doradczo”, audyt R10 — „blokujący dla CRITICAL”, a robocze `ci.yml` (ADR-0001, w toku) blokuje HIGH/CRITICAL z poprawką. Które obowiązuje i czy zaktualizować Z-10? | SEC-028, US-006, ADR-0001 | wariant z ADR-0001 po akceptacji PO |
 | PYT-14 | FEFO przy skanerze: zostaje ostrzeżenie (wdrożone), czy ma być odmowa (docs/05: „ostrzeżeniem lub odmową”)? | FR-011, BR-012 | ostrzeżenie |
 | PYT-15 | Kanał alertów o błędach 500 (Sentry / GlitchTip / `ADMINS` / alert Coolify)? | NFR-021, US-021 | do decyzji |
-| PYT-16 | Backup off-site: gdzie (S3 / B2 / inny host), retencja (audyt: 30 dni), próg alertu przy braku kopii? | SEC-039, US-012 | do decyzji |
+| PYT-16 | Backup off-site: gdzie (S3 / B2 / inny host), retencja (audyt: 30 dni), próg alertu przy braku kopii? | SEC-039, US-012 | **odpowiedziane 2026-10-16:** rclone (dowolny S3/SFTP), age z kluczem offline u PO, heartbeat (~26 h), off-site 30 dni |
 | PYT-17 | Czy pozycje „poza zakresem” (ERP, zwroty / anulowanie WZ, blokada po terminie, rezerwacje, wiele magazynów, atrybuty logistyczne) pozostają poza zakresem? | US-044…US-049 | tak (docs/01) |
 | PYT-18 | Czy zestaw mierników M-01…M-06 z [WIZJA.md](WIZJA.md) jest właściwy i kto zmierzy punkt odniesienia (pytania 2–4 w WIZJA)? | US-036 | M-01…M-06 „do potwierdzenia”, baza: brak danych |
 | PYT-19 | Które wyjątki z AUDYT §3.5 akceptujesz (publiczny Operator w demo, brak 2FA do wdrożenia, backup lokalny)? Czy cel repo to portfolio, wdrożenie, czy oba (Z-04)? | SEC-042, US-024 | Z-04, Z-05 |

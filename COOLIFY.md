@@ -156,6 +156,10 @@ robi zrzut bazy (`pg_dump` → `gzip`) i trzyma kopie w wolumenie `db_backups`.
 - Częstotliwość i retencja w `.env`:
   - `BACKUP_INTERVAL` — co ile sekund (domyślnie `86400` = 24h),
   - `BACKUP_KEEP_DAYS` — ile dni trzymać kopie (domyślnie `7`).
+- **Kopia poza serwerem (zalecane, US-012):** zaszyfrowana kluczem publicznym `age` i wysyłana przez `rclone`
+  do S3/SFTP innego dostawcy, z alertem o braku kopii — zmienne `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`,
+  `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS` (30) i `RCLONE_CONFIG_OFFSITE_*`. Krok po kroku:
+  `docs/operacje/RUNBOOK.md` §5.0. Klucz prywatny **nigdy** nie trafia do Coolify.
 - Podgląd logów backupu: w Coolify wybierz kontener **backup → Logs** (wpisy
   `[backup] ... OK -> /backups/wms-...sql.gz`).
 
