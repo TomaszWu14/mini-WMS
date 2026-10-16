@@ -85,8 +85,20 @@ def import_receipts(filename: str, data: bytes, user):
         )
         return {"created_hus": 0, "pallets": 0, "errors": errors}
 
+    # Materiały blokujemy i odczytujemy na nowo przed zapisem: między przebiegami
+    # ktoś mógł zmienić limit na paletę albo usunąć materiał bez palet.
+    fresh = {
+        m.pk: m
+        for m in Material.objects.select_for_update().filter(
+            pk__in={p[2].pk for p in planned}
+        )
+    }
     created_hus = 0
-    for i, ref, material, quantities, lot, expiry, delivery in planned:
+    for i, ref, stale, quantities, lot, expiry, delivery in planned:
+        material = fresh.get(stale.pk)
+        if material is None:
+            errors.append(f"Wiersz {i}: materiał '{ref}' został usunięty — pominięto.")
+            continue
         try:
             result = services.receive_material(
                 material=material,

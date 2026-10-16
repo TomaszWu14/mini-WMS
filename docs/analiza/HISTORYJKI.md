@@ -92,7 +92,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 5. **Given** plik, którego suma palet po wszystkich wierszach > L_HU_PLIK; **When** import; **Then** cały plik odrzucony **przed** pierwszym zapisem z komunikatem o limicie, baza bez zmian.
 6. **Given** użytkownik z rolą Podgląd; **When** POST `/przyjecie/`; **Then** nadal 403 (brak regresji SEC-007).
 
-**Testy:** `warehouse/tests_input_limits.py` — `ReceiveFormLimitTests` (5), `ServiceLimitTests` (2), `ReceiptImportLimitTests` (3). Wartości: L_PAL = 500, L_QTY = 1 000 000, L_HU_PLIK = 2 000 (`services.MAX_*`, Z-23/Z-35). Odbiór [BA] 2026-10-16: kryteria 1–6 spełnione; komunikaty mówią, co zrobić („podziel dostawę / plik”).
+**Testy:** `warehouse/tests_input_limits.py` — `ReceiveFormLimitTests` (5), `ServiceLimitTests` (2), `ReceiptImportLimitTests` (3). Wartości: L_PAL = 500, L_QTY = 1 000 000, L_HU_PLIK = 2 000 (`services.MAX_*`, Z-23/Z-35). Odbiór [BA] 2026-10-16: kryteria 1–6 spełnione. Po przeglądach [SEC]/[DB]: limit objął też import stanów (`StockImportLimitTests`, 2 testy), import przyjęć blokuje i odświeża materiały przed zapisem; komunikaty mówią, co zrobić („podziel dostawę / plik”).
 
 ### US-003 — Wdrożenie nie startuje ze słabymi sekretami; konta demo tylko w trybie demo
 
@@ -685,3 +685,19 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 | Wersja | Data | Zmiana |
 |---|---|---|
 | 0.1 | 2026-10-16 | Pierwszy szkic backlogu: 49 historyjek (Must 6, Should 20, Could 17, Won't 6), 3 iteracje. |
+
+### US-050 — Rezerwacja zakresu numerów HU jednym zapisem (z przeglądu [DB] US-002)
+
+| | |
+|---|---|
+| Historyjka | Jako **Operator** chcę, aby duży import nie wstrzymywał innych przyjęć na czas całego pliku, aby praca na hali nie stała przy imporcie. |
+| MoSCoW · rozmiar | Could · M |
+| Status | do zrobienia |
+| Źródło | przegląd `db-reviewer` US-002: blokada `HUNumberingConfig` trwa do końca transakcji importu (do 2 000 palet, ~10 tys. zapytań) |
+| Wymagania | NFR-003; SEC-021 |
+
+**Kryteria akceptacji**
+
+1. **Given** import 2 000 palet; **When** trwa zapis; **Then** blokada licznika jest brana raz (rezerwacja `next_number += N`), HU i ruchy zapisywane `bulk_create`, liczba zapytań stała względem N (`assertNumQueries`).
+2. **Given** dwa równoległe przyjęcia; **When** jedno to import; **Then** numery HU nadal unikalne i ciągłe (test PostgreSQL jak `tests_concurrency_pg.py`).
+

@@ -14,6 +14,7 @@ from .models import (
     Unit,
 )
 from .receipt_import import import_receipts
+from .stock_import import import_stock
 
 
 class _Base(TestCase):
@@ -47,7 +48,7 @@ class ReceiveFormLimitTests(_Base):
             services.MAX_PALLETS_PER_RECEIPT + 1, services.MAX_PALLETS_PER_RECEIPT + 1
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, str(services.MAX_PALLETS_PER_RECEIPT))
+        self.assertIn("pallets", resp.context["form"].errors)
         self.assertEqual(HandlingUnit.objects.count(), 0)
         self.assertEqual(StockMovement.objects.count(), 0)
         self.assertEqual(self._next_number(), before)
@@ -75,6 +76,12 @@ class ReceiveFormLimitTests(_Base):
             },
         )
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(HandlingUnit.objects.count(), 0)
+
+    def test_zero_pallets_rejected(self):
+        resp = self._post_receive(10, 0)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("pallets", resp.context["form"].errors)
         self.assertEqual(HandlingUnit.objects.count(), 0)
 
     def test_viewer_still_forbidden(self):
@@ -139,3 +146,25 @@ class ReceiptImportLimitTests(_Base):
         result = import_receipts("p.csv", data, self.user)
         self.assertEqual(result["created_hus"], 1)
         self.assertTrue(any("Wiersz 2" in e for e in result["errors"]))
+
+
+class StockImportLimitTests(_Base):
+    """Uwagi z przeglądu [SEC] US-002: import stanów to druga ścieżka tworzenia HU."""
+
+    def test_file_over_row_limit_rejected_before_any_write(self):
+        rows = ["REF;ilosc"] + ["MAT-L;1"] * (services.MAX_HU_PER_IMPORT + 1)
+        before = self._next_number()
+        result = import_stock("s.csv", ("\n".join(rows) + "\n").encode(), self.user)
+        self.assertEqual(result["created"], 0)
+        self.assertTrue(
+            any(str(services.MAX_HU_PER_IMPORT) in e for e in result["errors"])
+        )
+        self.assertEqual(HandlingUnit.objects.count(), 0)
+        self.assertEqual(self._next_number(), before)
+
+    def test_overflow_and_huge_quantity_reported_not_500(self):
+        data = b"REF;ilosc\nMAT-L;1e999\nMAT-L;10000000000\nMAT-L;5\n"
+        result = import_stock("s.csv", data, self.user)
+        self.assertEqual(result["created"], 1)
+        self.assertTrue(any("Wiersz 2" in e for e in result["errors"]))
+        self.assertTrue(any("Wiersz 3" in e for e in result["errors"]))

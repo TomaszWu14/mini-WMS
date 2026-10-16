@@ -110,6 +110,20 @@ def _over_capacity_codes(location_pks: set[int]) -> list[str]:
 def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS"):
     """Importuje stan początkowy. Zwraca słownik z podsumowaniem i błędami."""
     rows = parse_locations_file(filename, data)
+    # US-002 / R3: każdy wiersz tworzy jedną paletę — plik ponad limit odrzucamy
+    # w całości, zanim powstanie pierwszy HU (blokada licznika numeracji).
+    if len(rows) > services.MAX_HU_PER_IMPORT:
+        return {
+            "created": 0,
+            "materials_created": 0,
+            "locations_created": 0,
+            "zero_qty": 0,
+            "over_capacity": [],
+            "errors": [
+                f"Plik ma {len(rows)} wierszy — limit jednego importu stanów to "
+                f"{services.MAX_HU_PER_IMPORT} palet. Podziel plik; nic nie zapisano."
+            ],
+        }
     unit, _ = Unit.objects.get_or_create(code=default_unit_code)
 
     created = 0
@@ -137,11 +151,17 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
         qty_raw = _get(row, "ilosc", "ilość", "quantity", "qty")
         try:
             qty = parse_int_cell(qty_raw) or 0
-        except ValueError:
+        except (ValueError, OverflowError):
             errors.append(f"Wiersz {i} ({ref}): zła ilość '{qty_raw}'.")
             continue
         if qty < 0:
             qty = 0
+        if qty > services.MAX_RECEIPT_QUANTITY:
+            errors.append(
+                f"Wiersz {i} ({ref}): ilość ponad {services.MAX_RECEIPT_QUANTITY} — "
+                "pominięto."
+            )
+            continue
 
         loc_raw = _norm(_get(row, "lokalizacja", "location", "lok"))
         location = None

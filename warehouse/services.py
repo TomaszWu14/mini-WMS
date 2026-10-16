@@ -37,7 +37,9 @@ class WMSError(Exception):
 
 # --- Limity wejścia (US-002 / R3; wartości startowe — założenia Z-23, Z-35) ---
 # Jedno przyjęcie ani jeden import nie mogą utworzyć tylu palet, by zająć workera
-# na minuty i trzymać blokadę licznika numeracji HU dla wszystkich użytkowników.
+# na minuty. Uwaga: blokada licznika HU trwa do końca transakcji wołającego (import
+# przyjęć = cały plik), więc limit skraca ją, ale nie usuwa — rezerwacja zakresu
+# numerów jednym UPDATE to osobna historyjka (US-050).
 MAX_PALLETS_PER_RECEIPT = 500
 MAX_RECEIPT_QUANTITY = 1_000_000
 MAX_HU_PER_IMPORT = 2_000
