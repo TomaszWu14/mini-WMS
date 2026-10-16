@@ -1,11 +1,11 @@
-"""Tryb demo (DEMO_MODE): konta demo, „Wejdź jako demo”, link /demo/,
-„Przywróć dane demo”, powitanie, baner; do tego limit prób logowania.
+"""Tryb demo (DEMO_MODE): konta demo, „Wejdź jako demo”, link /demo/, powitanie,
+baner, limiter zapisów; do tego limit prób logowania. Reset danych demo — wyłącznie
+Scheduled Task `seed_demo --reset --keep-users` (US-016, DEC-6).
 
 Limit logowań działa zawsze; reszta — tylko przy DEMO_MODE.
 """
 
 import hashlib
-import io
 
 from django.conf import settings
 from django.contrib import messages
@@ -14,15 +14,13 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.core.management import call_command
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
 from .login_limits import account_locked
 from .models import LoginEvent, Role
-from .roles import operator_required
 from .signals import _client_ip, log_client
 
 # Hasło: settings.DEMO_PASSWORD (env, domyślnie jawne „demo1234” z README).
@@ -36,7 +34,14 @@ LOGIN_RATE_WINDOW = 300  # sekund
 # US-005 / SEC-040: anonimowe wejścia /demo/ i /login/demo/ (Z-37 — jak logowanie).
 DEMO_ENTRY_RATE_LIMIT = 10
 DEMO_ENTRY_RATE_WINDOW = 300
-DEMO_RESET_COOLDOWN = 60  # sekund między resetami (wspólne dla wszystkich)
+# US-016 / DEC-6: POST zalogowanych w demo (przyjęcia, importy, wydania, skaner) —
+# decyzja PO 2026-10-16: 60 na 300 s z jednego IP (ok. 1 akcja na 5 s średnio).
+DEMO_WRITE_RATE_LIMIT = 60
+DEMO_WRITE_RATE_WINDOW = 300
+DEMO_WRITE_EXEMPT = ("/logout/",)
+DEMO_TOO_MANY_WRITES = (
+    "Zbyt wiele operacji z tego adresu w demo. Spróbuj ponownie za kilka minut."
+)
 
 
 def is_demo_account(user) -> bool:
@@ -187,31 +192,37 @@ def demo_start(request):
     return redirect("/?demo=1")
 
 
-@operator_required
-@require_POST
-def demo_reset(request):
-    """„Przywróć dane demo” — seed_demo --reset --keep-users, najwyżej raz na minutę.
-
-    ponytail: blokada w cache domyślnym (LocMem) jest per proces gunicorna —
-    przy N workerach do N resetów na minutę; równoległe resety i zapisy
-    szereguje LOCK TABLE w seed_demo (PostgreSQL).
-    """
-    if not settings.DEMO_MODE:
-        raise Http404
-    if not cache.add("demo-reset-lock", 1, DEMO_RESET_COOLDOWN):
-        messages.info(
-            request, "Dane demo przywrócono przed chwilą — spróbuj za minutę."
-        )
-    else:
-        call_command("seed_demo", reset=True, keep_users=True, stdout=io.StringIO())
-        request.session.pop("welcome_dismissed", None)
-        messages.success(request, "Przywrócono dane demo do stanu początkowego.")
-    return redirect("dashboard")
-
-
 @login_required
 @require_POST
 def welcome_dismiss(request):
     """Ukrywa panel „Od czego zacząć” do końca sesji."""
     request.session["welcome_dismissed"] = True
     return redirect("dashboard")
+
+
+class DemoWriteRateLimitMiddleware:
+    """US-016: w demo każdy może być Operatorem — limit POST zalogowanych na IP.
+
+    Logowanie i wejście do demo mają własne limity (anonimowe POST-y tu nie wchodzą);
+    wylogowanie zawsze przechodzi. API skanera dostaje JSON jak inne błędy skanera.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if (
+            settings.DEMO_MODE
+            and request.method == "POST"
+            and request.user.is_authenticated
+            and request.path not in DEMO_WRITE_EXEMPT
+            and _over_limit(
+                "demo-write", request, DEMO_WRITE_RATE_LIMIT, DEMO_WRITE_RATE_WINDOW
+            )
+        ):
+            if request.path.startswith("/skaner/api/"):
+                return JsonResponse(
+                    {"ok": False, "error": DEMO_TOO_MANY_WRITES}, status=429
+                )
+            return _too_many(DEMO_TOO_MANY_WRITES)
+        return self.get_response(request)

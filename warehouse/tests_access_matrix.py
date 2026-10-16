@@ -54,7 +54,6 @@ MATRIX = {
     "movement_list": LOGGED_IN,
     "movement_export": LOGGED_IN,
     # Operator i Administrator
-    "demo_reset": OPERATOR,
     "scanner_home": OPERATOR,
     "scanner_putaway": OPERATOR,
     "scanner_picking": OPERATOR,
@@ -196,13 +195,14 @@ class AccessMatrixTests(_MatrixBase):
 
 @override_settings(DEMO_MODE=True)
 class DemoAccessMatrixTests(_MatrixBase):
-    """Trasy demo przy DEMO_MODE: reset danych tylko Operator i Administrator."""
+    """Trasy demo przy DEMO_MODE: reset danych nie jest dostępny z UI (US-016, DEC-6)."""
 
-    def test_demo_reset_requires_operator(self):
-        routes = dict(_named_routes())
-        url = _url("demo_reset", routes["demo_reset"])
-        self.assertEqual(self._client_for(None).post(url).status_code, 302)
-        self.assertEqual(self._client_for(Role.VIEWER).post(url).status_code, 403)
+    def test_demo_reset_route_removed(self):
+        self.assertNotIn("demo_reset", dict(_named_routes()))
+        for role, _ in self.ROLES:
+            with self.subTest(role=role or "anonim"):
+                resp = self._client_for(role).post("/demo/przywroc/")
+                self.assertEqual(resp.status_code, 404)
 
 
 class AdminSiteAccessTests(_MatrixBase):

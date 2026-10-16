@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Case, F, IntegerField, Sum, Value, When
 from django.utils import timezone
@@ -139,6 +140,43 @@ class ReceiveResult:
     handling_units: list[HandlingUnit]
 
 
+# US-016 / DEC-6: publiczne demo — łączna liczba obiektów (L_DEMO, decyzja PO 2026-10-16).
+DEMO_MAX_HANDLING_UNITS = 2000
+DEMO_MAX_LOCATIONS = 500
+DEMO_LIMIT_SUFFIX = "Dane demo wracają do stanu początkowego codziennie o 03:00."
+
+
+class DemoBudget:
+    """Ile palet (HU) i lokalizacji można jeszcze utworzyć w demo; poza demo bez limitu.
+
+    Liczone raz na operację (import — raz na plik). Równoległe żądania mogą przekroczyć
+    limit o rozmiar jednej operacji — to bezpiecznik na boty, nie księgowość.
+    """
+
+    def __init__(self):
+        self.limited = bool(settings.DEMO_MODE)
+        self.hus = self.locations = 0
+        if self.limited:
+            self.hus = DEMO_MAX_HANDLING_UNITS - HandlingUnit.objects.count()
+            self.locations = DEMO_MAX_LOCATIONS - Location.objects.count()
+
+    def take(self, *, hus: int = 0, locations: int = 0) -> None:
+        if not self.limited:
+            return
+        if hus and hus > self.hus:
+            raise WMSError(
+                f"Limit demo: najwyżej {DEMO_MAX_HANDLING_UNITS} palet (HU). "
+                + DEMO_LIMIT_SUFFIX
+            )
+        if locations and locations > self.locations:
+            raise WMSError(
+                f"Limit demo: najwyżej {DEMO_MAX_LOCATIONS} lokalizacji. "
+                + DEMO_LIMIT_SUFFIX
+            )
+        self.hus -= hus
+        self.locations -= locations
+
+
 @transaction.atomic
 def receive_material(
     *,
@@ -168,6 +206,7 @@ def receive_material(
                     f"Ilość {qty} przekracza maks. {material.max_per_pallet} "
                     f"na palecie dla materiału {material.index}."
                 )
+    DemoBudget().take(hus=len(quantities))
 
     created: list[HandlingUnit] = []
     for qty in quantities:

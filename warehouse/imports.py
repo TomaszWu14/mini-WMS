@@ -18,6 +18,7 @@ from django.conf import settings
 from django.db import transaction
 
 from .models import Location, LocationType
+from .services import DemoBudget, WMSError
 
 
 class ImportError_(Exception):
@@ -221,6 +222,7 @@ def import_locations(filename: str, data: bytes):
     rows = parse_locations_file(filename, data)
     created = updated = 0
     errors: list[str] = []
+    budget = DemoBudget()
 
     for i, row in enumerate(rows, start=2):  # wiersz 1 to nagłówek
         code = str(row.get("kod") or row.get("code") or "").strip()
@@ -239,6 +241,12 @@ def import_locations(filename: str, data: bytes):
             errors.append(f"Wiersz {i} ({code}): {exc}")
             continue
 
+        if budget.limited and not Location.objects.filter(code=code).exists():
+            try:
+                budget.take(locations=1)
+            except WMSError as exc:
+                errors.append(f"Wiersz {i} ({code}): {exc}")
+                continue
         obj, was_created = Location.objects.update_or_create(
             code=code,
             defaults={"type": loc_type, "capacity": capacity},

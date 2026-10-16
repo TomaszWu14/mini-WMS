@@ -11,7 +11,6 @@ from warehouse.demo import (
     LoginView,
     admin_login,
     demo_login,
-    demo_reset,
     demo_start,
     welcome_dismiss,
 )
@@ -40,7 +39,6 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("login/demo/", demo_login, name="demo_login"),
     path("demo/", demo_start, name="demo_start"),
-    path("demo/przywroc/", demo_reset, name="demo_reset"),
     path("powitanie/ukryj/", welcome_dismiss, name="welcome_dismiss"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("warehouse.urls")),

@@ -353,9 +353,15 @@ def location_create(request):
     if request.method == "POST":
         form = LocationForm(request.POST)
         if form.is_valid():
-            loc = form.save()
-            messages.success(request, f"Dodano lokalizację {loc.code}.")
-            return redirect("location_list")
+            try:
+                services.DemoBudget().take(locations=1)
+            except WMSError as exc:
+                messages.error(request, str(exc))
+                return redirect("location_list")
+            else:
+                loc = form.save()
+                messages.success(request, f"Dodano lokalizację {loc.code}.")
+                return redirect("location_list")
     else:
         form = LocationForm()
     return render(

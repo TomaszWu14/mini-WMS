@@ -89,6 +89,8 @@ MIDDLEWARE = [
     # US-010: sesja zna stan 2FA; konto z TOTP po samym haśle → ekran kodu.
     "django_otp.middleware.OTPMiddleware",
     "warehouse.two_factor.TwoFactorRequiredMiddleware",
+    # US-016: limit POST zalogowanych w DEMO_MODE (poza demo — przepuszcza).
+    "warehouse.demo.DemoWriteRateLimitMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # US-011: CSP z nonce i Permissions-Policy (ADR-0004).

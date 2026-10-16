@@ -127,6 +127,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             ],
         }
     unit, _ = Unit.objects.get_or_create(code=default_unit_code)
+    budget = services.DemoBudget()
 
     created = 0
     zero_qty = 0
@@ -186,6 +187,18 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
                 errors.append(f"Wiersz {i}: HU '{hu_number}' już istnieje — pominięto.")
                 continue
 
+        receiving = loc_raw.lower() in RECEIVING_TOKENS
+        new_location = (
+            budget.limited
+            and not receiving
+            and not Location.objects.filter(code__iexact=loc_raw).exists()
+        )
+        try:
+            budget.take(hus=1, locations=int(new_location))
+        except services.WMSError as exc:
+            errors.append(f"Wiersz {i}: {exc}")
+            continue
+
         material, m_created = get_or_create_ci(
             Material, "index", ref, {"name": name, "unit": unit}
         )
@@ -194,7 +207,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
 
         location = None
         status = HUStatus.DO_ULOZENIA
-        if loc_raw.lower() not in RECEIVING_TOKENS:
+        if not receiving:
             location, l_created = get_or_create_ci(
                 Location, "code", loc_raw, {"type": LocationType.ZAPAS}
             )
