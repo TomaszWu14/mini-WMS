@@ -331,3 +331,46 @@ class ConcurrentIssueTests(TransactionTestCase):
         self.assertEqual(doc.lines.get().picked_qty, 5)
         self.hu.refresh_from_db()
         self.assertEqual(self.hu.quantity, 0)
+
+    def test_import_and_receipt_in_parallel_keep_numbers_unique_and_contiguous(self):
+        """US-050 kryterium 2: import i zwykłe przyjęcie równolegle — numery bez kolizji i dziur."""
+        from .receipt_import import import_receipts
+
+        data = "indeks;ilosc;palety\n" + "MAT-C;40;40\n" * 3
+        results: list[str] = []
+        start = threading.Barrier(3)
+
+        def run(body):
+            try:
+                start.wait(5)
+                with transaction.atomic():
+                    body()
+                results.append("ok")
+            except Exception as exc:  # noqa: BLE001 — przyczyna widoczna w asercji
+                results.append(f"{type(exc).__name__}:{exc}")
+            finally:
+                connections.close_all()
+
+        bodies = [
+            lambda: import_receipts("p.csv", data.encode(), self.user),
+            lambda: services.receive_material(
+                material=self.material, quantities=[1, 1, 1], user=self.user
+            ),
+            lambda: services.receive_material(
+                material=self.material, quantities=[2, 2], user=self.user
+            ),
+        ]
+        threads = [threading.Thread(target=run, args=(b,)) for b in bodies]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(20)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        self.assertEqual(results, ["ok"] * 3)
+        numbers = list(
+            HandlingUnit.objects.exclude(pk=self.hu.pk).values_list("number", flat=True)
+        )
+        self.assertEqual(len(numbers), 125)
+        digits = sorted(int(n[2:]) for n in numbers)
+        self.assertEqual(digits, list(range(digits[0], digits[0] + 125)))

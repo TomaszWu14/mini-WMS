@@ -168,3 +168,64 @@ class StockImportLimitTests(_Base):
         self.assertEqual(result["created"], 1)
         self.assertTrue(any("Wiersz 2" in e for e in result["errors"]))
         self.assertTrue(any("Wiersz 3" in e for e in result["errors"]))
+
+
+class HUNumberReservationTests(_Base):
+    """US-050: numery HU rezerwowane raz, palety i ruchy zapisywane `bulk_create`."""
+
+    def _receive_queries(self, pallets):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as ctx:
+            services.receive_material(
+                material=self.material, quantities=[1] * pallets, user=self.user
+            )
+        return len(ctx.captured_queries)
+
+    def test_receive_query_count_does_not_grow_with_pallets(self):
+        self._receive_queries(1)  # pierwsze przyjęcie tworzy konfigurację licznika
+        self.assertEqual(self._receive_queries(2), self._receive_queries(40))
+
+    def test_import_query_count_does_not_grow_with_pallets(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def run(pallets):
+            with CaptureQueriesContext(connection) as ctx:
+                result = import_receipts(
+                    "p.csv", _csv([("MAT-L", pallets, pallets)] * 2), self.user
+                )
+            self.assertEqual(result["created_hus"], 2 * pallets)
+            return len(ctx.captured_queries)
+
+        run(1)
+        self.assertEqual(run(2), run(30))
+
+    def test_numbers_are_consecutive_and_counter_advances_once(self):
+        hus = services.receive_material(
+            material=self.material, quantities=[1, 1, 1], user=self.user
+        ).handling_units
+        digits = [int(hu.number[2:]) for hu in hus]
+        self.assertEqual(digits, list(range(digits[0], digits[0] + 3)))
+        self.assertEqual(self._next_number(), digits[-1] + 1)
+        self.assertEqual(StockMovement.objects.filter(handling_unit__in=hus).count(), 3)
+
+    def test_reservation_skips_numbers_taken_manually_case_insensitive(self):
+        HUNumberingConfig.objects.all().delete()
+        HUNumberingConfig.objects.create(prefix="HU", next_number=5, padding=3)
+        HandlingUnit.objects.create(number="hu006", material=self.material, quantity=1)
+        self.assertEqual(services.reserve_hu_numbers(3), ["HU005", "HU007", "HU008"])
+        self.assertEqual(self._next_number(), 9)
+
+    def test_rolled_back_receipt_returns_numbers(self):
+        from django.db import transaction
+
+        before = services.reserve_hu_numbers(1)
+        with self.assertRaises(RuntimeError), transaction.atomic():
+            services.receive_material(
+                material=self.material, quantities=[1, 1], user=self.user
+            )
+            raise RuntimeError
+        after = services.reserve_hu_numbers(1)
+        self.assertEqual(int(after[0][2:]), int(before[0][2:]) + 1)

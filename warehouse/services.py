@@ -7,10 +7,12 @@ Wszystkie operacje zmieniające stan zapisują ruch w `StockMovement`
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Case, F, IntegerField, Sum, Value, When
+from django.db.models.functions import Upper
 from django.utils import timezone
 
 from .models import (
@@ -87,22 +89,51 @@ def save_with_unique_number(instance, number_fn, *, field="number", attempts=6):
 # --- Numeracja HU ------------------------------------------------------------
 
 
-def generate_hu_number() -> str:
-    """Zwraca kolejny unikalny numer HU i zwiększa licznik (atomowo)."""
+def reserve_hu_numbers(count: int) -> list[str]:
+    """US-050: rezerwuje `count` kolejnych numerów HU jednym zapisem licznika.
+
+    Licznik blokowany raz; numery już zajęte (nadane ręcznie w imporcie stanów,
+    przegląd [DB] US-013) pomijane — jedno zapytanie na paczkę kandydatów, nie na
+    numer. Rezerwacja w transakcji wywołującego: wycofanie przyjęcia cofa też licznik
+    (bez dziur w numeracji), więc zapis palet po rezerwacji ma być krótki (`bulk_create`).
+    """
+    if count < 1:
+        return []
     with transaction.atomic():
         config = HUNumberingConfig.objects.select_for_update().order_by("pk").first()
         if config is None:
-            config = HUNumberingConfig.objects.create()
-            config = HUNumberingConfig.objects.select_for_update().get(pk=config.pk)
-        # Przegląd [DB] US-013: numer z licznika mógł zostać nadany ręcznie w imporcie
-        # stanów — taki pomijamy, zamiast wycofać cały import na unikalności.
-        while True:
-            number = f"{config.prefix}{config.next_number:0{config.padding}d}"
-            config.next_number += 1
-            if not HandlingUnit.objects.filter(number__iexact=number).exists():
-                break
+            # Brak konfiguracji (usunięta w adminie): stały pk=1 — dwa równoległe
+            # przyjęcia nie założą dwóch liczników (drugie dostaje IntegrityError
+            # i czeka na blokadę wiersza pierwszego).
+            try:
+                with transaction.atomic():
+                    HUNumberingConfig.objects.create(pk=1)
+            except IntegrityError:
+                pass
+            config = HUNumberingConfig.objects.select_for_update().get(pk=1)
+        numbers: list[str] = []
+        while len(numbers) < count:
+            need = count - len(numbers)
+            start = config.next_number
+            candidates = [
+                f"{config.prefix}{n:0{config.padding}d}"
+                for n in range(start, start + need)
+            ]
+            taken = {
+                n.upper()
+                for n in HandlingUnit.objects.annotate(_u=Upper("number"))
+                .filter(_u__in=[c.upper() for c in candidates])
+                .values_list("number", flat=True)
+            }
+            numbers += [c for c in candidates if c.upper() not in taken]
+            config.next_number = start + need
         config.save(update_fields=["next_number"])
-    return number
+    return numbers
+
+
+def generate_hu_number() -> str:
+    """Zwraca kolejny unikalny numer HU i zwiększa licznik (atomowo)."""
+    return reserve_hu_numbers(1)[0]
 
 
 # --- Podział ilości na palety -------------------------------------------------
@@ -204,6 +235,23 @@ def receive_material(
     Każda paleta = jeden HU ze statusem DO_ULOZENIA (czeka na alokację).
     Limity sprawdzane przed pobraniem pierwszego numeru HU (US-002).
     """
+    plan = ReceiptPlan(material, quantities, lot, expiry_date, delivery_ref)
+    validate_receipt(plan, budget=budget)
+    return ReceiveResult(handling_units=create_received_hus([plan], user=user))
+
+
+@dataclass
+class ReceiptPlan:
+    material: Material
+    quantities: list[int]
+    lot: str = ""
+    expiry_date: date | None = None
+    delivery_ref: str = ""
+
+
+def validate_receipt(plan: ReceiptPlan, *, budget: DemoBudget | None = None) -> None:
+    """Limity jednego przyjęcia (US-002) i budżet demo (US-016) — bez zapisu."""
+    material, quantities = plan.material, plan.quantities
     if not quantities or len(quantities) > MAX_PALLETS_PER_RECEIPT:
         raise WMSError(f"Przyjęcie musi mieć od 1 do {MAX_PALLETS_PER_RECEIPT} palet.")
     if any(q < 1 for q in quantities) or sum(quantities) > MAX_RECEIPT_QUANTITY:
@@ -220,28 +268,43 @@ def receive_material(
                 )
     (budget or DemoBudget()).take(hus=len(quantities))
 
-    created: list[HandlingUnit] = []
-    for qty in quantities:
-        hu = HandlingUnit.objects.create(
-            number=generate_hu_number(),
-            material=material,
+
+@transaction.atomic
+def create_received_hus(plans: list[ReceiptPlan], *, user) -> list[HandlingUnit]:
+    """US-050: zapis zwalidowanych przyjęć — jedna rezerwacja numerów i `bulk_create`.
+
+    Liczba zapytań nie zależy od liczby palet (poza dzieleniem paczek przez bazę),
+    więc blokada licznika numerów trwa chwilę także przy imporcie 2 000 palet.
+    """
+    total = sum(len(p.quantities) for p in plans)
+    numbers = iter(reserve_hu_numbers(total))
+    hus = [
+        HandlingUnit(
+            number=next(numbers),
+            material=p.material,
             quantity=qty,
-            lot=lot,
-            expiry_date=expiry_date,
+            lot=p.lot,
+            expiry_date=p.expiry_date,
             status=HUStatus.DO_ULOZENIA,
-            delivery_ref=delivery_ref,
+            delivery_ref=p.delivery_ref,
             created_by=user,
         )
-        StockMovement.objects.create(
+        for p in plans
+        for qty in p.quantities
+    ]
+    HandlingUnit.objects.bulk_create(hus)
+    StockMovement.objects.bulk_create(
+        StockMovement(
             type=MovementType.PRZYJECIE,
             handling_unit=hu,
-            material=material,
-            quantity_delta=qty,
+            material=hu.material,
+            quantity_delta=hu.quantity,
             note=f"Przyjęcie HU {hu.number}",
             created_by=user,
         )
-        created.append(hu)
-    return ReceiveResult(handling_units=created)
+        for hu in hus
+    )
+    return hus
 
 
 # --- Alokacja / przesunięcie -------------------------------------------------
