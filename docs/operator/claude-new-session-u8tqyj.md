@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Pozycje WZ (US-052):** przy pozycji, z której już coś pobrano, nie ma przycisku „Usuń” (pobrany towar jest w
+  historii ruchów); usunięcie ostatniej niepobranej pozycji zamyka dokument. Bez migracji i zmiennych.
 - **Dziennik audytowy (US-022):** Użytkownicy → „🗂 Dziennik audytowy” pokazuje, kto komu zmienił rolę, hasło,
   status lub 2FA i kiedy odmówiono zmiany (także zmiany przez `/admin/` i `manage.py`). Wpisy starsze niż rok usuwa
   istniejący Scheduled Task `purge-login-events`. Logi kontenera nie zawierają haseł ani tokenów. Migracja `0011`.
@@ -150,6 +152,7 @@
 | 29 | `demo_operator` / Operator | skaner → Kompletacja zlecenia | pobrać całą ilość ostatniej pozycji | komunikat o wydaniu, zlecenie oznaczone jako zrealizowane; w panelu WZ „Zrealizowany” |
 | 30 | Administrator | `/uzytkownicy/` → edycja konta Operatora | zmienić rolę i hasło, zapisać; otworzyć „Dziennik audytowy” | dwa wpisy (zmiana roli, zmiana hasła) z Twoim loginem; hasła nigdzie nie widać |
 | 31 | admin infrastruktury | kontener `web` → Terminal | `python manage.py changepassword <login>` | w „Dzienniku audytowym” wpis „Zmiana hasła”, kto: `manage.py changepassword` |
+| 32 | Operator | WZ z dwiema pozycjami | skanerem pobrać część pierwszej pozycji; w panelu spróbować usunąć obie | pierwsza bez przycisku „Usuń”; drugą da się usunąć |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -159,7 +162,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (445 passed, 3 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (454 passed, 5 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
 

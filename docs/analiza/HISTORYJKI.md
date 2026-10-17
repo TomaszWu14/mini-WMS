@@ -721,7 +721,7 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 |---|---|
 | Historyjka | Jako **Operator** chcę, aby dodanie lub usunięcie pozycji WZ nie mogło trafić w dokument właśnie zamykany, aby zrealizowany dokument nie miał niepobranej pozycji. |
 | MoSCoW · rozmiar | Should · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | przegląd `db-reviewer` US-018: `views/issues.py` (`issue_line_add`, `issue_line_delete`) sprawdzają `status == OTWARTY` bez blokady dokumentu |
 | Wymagania | NFR-026; FR-016 |
 | Zależności | — |
@@ -730,6 +730,8 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** WZ zamykany równolegle („Realizuj” lub skaner); **When** dodanie pozycji; **Then** odmowa „Dokument nie jest otwarty”, pozycja nie powstaje (serwis z `_lock_and_sync` dokumentu).
 2. **Given** pobranie czeka na pozycję usuwaną równolegle; **When** usunięcie się zatwierdzi; **Then** skaner dostaje komunikat (400), nie 500 (`DoesNotExist`).
+
+**Testy:** `warehouse/tests_services_fixes.py` — `IssueLineLockTests` (9: dodanie i usunięcie odrzucone, gdy dokument zamknięto w międzyczasie; dodanie i usunięcie na otwartym; rezerwacja palety w serwisie — tylko niepobrana część, świeży stan HU; pobranie na usuniętej pozycji → `WMSError`, API skanera 400; widoki przez serwis; pozycji z pobraną ilością nie da się usunąć; usunięcie ostatniej niepobranej pozycji zamyka WZ); `tests_concurrency_pg.py` (PostgreSQL, +2: dodanie pozycji w trakcie „Realizuj”, pobranie w trakcie usuwania pozycji — test sprawdza, że wątek czekał na blokadę). Implementacja: `services.add_issue_line`, `services.delete_issue_line` (blokada dokumentu, potem pozycji), `pick_from_hu` bez `DoesNotExist`. Przegląd [DB]: zakaz usuwania pobranej pozycji, domknięcie po usunięciu, rezerwacja HU bez pobranej części; [SEC]: brak zgłoszeń. Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 
 ### US-053 — Jedna kolejność blokad palet (z przeglądu [DB] US-018)
 

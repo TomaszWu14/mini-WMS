@@ -14,7 +14,8 @@
    `select_for_update()` — **nie** `select_for_update().select_related(...)`: zapytanie z JOIN blokuje
    wszystkie złączone wiersze w nieustalonej kolejności i daje `deadlock detected` z inną ścieżką.
    Zmiana stanu WZ tylko w serwisie (`complete_if_picked`, `execute_issue_document`, `pack/ship`).
-   Palety między sobą nie mają jeszcze jednej kolejności (US-053).
+   Palety między sobą nie mają jeszcze jednej kolejności (US-053). Pozycje WZ dodaje i usuwa tylko
+   `services.add_issue_line` / `delete_issue_line` (US-052) — pozycji z `picked_qty > 0` nie usuwamy.
 4. **Numeracja WZ/SP może kolidować.** `_next_daily_number` liczy max+1 bez blokady —
    zapis zawsze przez `save_with_unique_number` (savepoint + ponowienie po
    `IntegrityError`). Numer HU idzie inną drogą: licznik `HUNumberingConfig` z

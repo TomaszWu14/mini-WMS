@@ -84,6 +84,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-022:** dziennik audytowy zmian kont i odmów dostępu (`/uzytkownicy/audyt/`, tabela `AuditEvent`, migracja `0011`,
   retencja 365 dni) — ślad zostawia panel, `/admin/` i komendy `manage.py`; logi JSON maskują hasła, tokeny i ciasteczka
   (ADR-0008, Z-42).
+- **US-052:** dodanie i usunięcie pozycji WZ sprawdza status pod blokadą dokumentu — równoległe „Realizuj” nie zostawi
+  zrealizowanego WZ z niepobraną pozycją; pozycji z pobraną ilością nie da się usunąć (przycisk ukryty); skaner przy
+  usuniętej w międzyczasie pozycji dostaje komunikat zamiast błędu 500.
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).
