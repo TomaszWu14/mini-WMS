@@ -480,3 +480,66 @@ class IssueLineLockTests(BaseSetup):
         )
         self.assertContains(resp, "Usunięto pozycję")
         self.assertEqual(doc.lines.count(), 1)
+
+    def test_cannot_delete_partially_picked_line(self):
+        """Przegląd [DB] US-052: pobrana część pozycji jest w historii ruchów."""
+        doc, line = self._doc()
+        hu = HandlingUnit.objects.create(
+            number="HU-L3",
+            material=self.material,
+            quantity=5,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        services.pick_from_hu(
+            hu=hu, quantity=1, user=self.user, document=doc, line=line
+        )
+        with self.assertRaisesMessage(WMSError, "pobrano już 1"):
+            services.delete_issue_line(document=doc, line_id=line.pk)
+        self.assertTrue(IssueLine.objects.filter(pk=line.pk).exists())
+
+    def test_deleting_last_unpicked_line_closes_document(self):
+        doc, line = self._doc()
+        hu = HandlingUnit.objects.create(
+            number="HU-L4",
+            material=self.material,
+            quantity=5,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        services.pick_from_hu(
+            hu=hu, quantity=2, user=self.user, document=doc, line=line
+        )
+        extra = services.add_issue_line(
+            document=doc, material=self.material, requested_qty=3
+        )
+        services.delete_issue_line(document=doc, line_id=extra.pk)
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+
+    def test_reservation_counts_only_unpicked_part(self):
+        doc, _ = self._doc()
+        hu = HandlingUnit.objects.create(
+            number="HU-L5",
+            material=self.material,
+            quantity=10,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        first = services.add_issue_line(
+            document=doc, material=self.material, requested_qty=5, specific_hu=hu
+        )
+        services.pick_from_hu(
+            hu=hu, quantity=5, user=self.user, document=doc, line=first
+        )
+        stale_hu = HandlingUnit.objects.get(pk=hu.pk)
+        HandlingUnit.objects.filter(pk=hu.pk).update(
+            quantity=4
+        )  # ktoś pobrał w międzyczasie
+        services.add_issue_line(
+            document=doc, material=self.material, requested_qty=4, specific_hu=stale_hu
+        )
+        with self.assertRaisesMessage(WMSError, "ma tylko 4"):
+            services.add_issue_line(
+                document=doc,
+                material=self.material,
+                requested_qty=1,
+                specific_hu=stale_hu,
+            )

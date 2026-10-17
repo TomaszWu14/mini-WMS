@@ -40,7 +40,7 @@
           {% else %}<span class="muted">—</span>{% endif %}
         </td>
         <td class="text-right">
-          {% if is_operator_role and doc.status == "OTWARTY" %}
+          {% if is_operator_role and doc.status == "OTWARTY" and not line.picked_qty %}
             <form method="post" action="{% url 'issue_line_delete' doc.pk line.pk %}" class="inline"
                   data-confirm="Usunąć pozycję?">
               {% csrf_token %}

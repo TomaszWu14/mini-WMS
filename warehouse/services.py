@@ -643,15 +643,21 @@ def add_issue_line(
     if document.status != IssueStatus.OTWARTY:
         raise WMSError(LINES_ONLY_IN_OPEN)
     if specific_hu is not None:
+        # Przegląd [DB] US-052: rezerwuje tylko niepobrana część pozycji (pobrana już zeszła
+        # z palety), a stan palety czytamy świeży — bez blokady HU (kolejność blokad bez zmian;
+        # przy pobraniu i tak sprawdza go `pick_from_hu` pod blokadą palety).
         already = (
             document.lines.filter(specific_hu=specific_hu).aggregate(
-                s=Sum("requested_qty")
+                s=Sum(F("requested_qty") - F("picked_qty"))
             )["s"]
             or 0
         )
-        if already + requested_qty > specific_hu.quantity:
+        on_hu = HandlingUnit.objects.values_list("quantity", flat=True).get(
+            pk=specific_hu.pk
+        )
+        if already + requested_qty > on_hu:
             raise WMSError(
-                f"HU {specific_hu.number} ma tylko {specific_hu.quantity} szt., a pozycje "
+                f"HU {specific_hu.number} ma tylko {on_hu} szt., a pozycje "
                 f"dokumentu wskazują już {already}."
             )
     return IssueLine.objects.create(
@@ -675,7 +681,17 @@ def delete_issue_line(*, document: IssueDocument, line_id) -> None:
     )
     if line is None:
         raise WMSError("Pozycja nie istnieje albo została już usunięta.")
+    # Przegląd [DB] US-052: towar z tej pozycji fizycznie wyszedł (ruch WYDANIE) — usunięcie
+    # pozycji rozjechałoby dokument z historią ruchów.
+    if line.picked_qty > 0:
+        raise WMSError(
+            f"Z tej pozycji pobrano już {line.picked_qty} — nie można jej usunąć. "
+            "Zrealizuj dokument z brakami albo zwróć towar korektą."
+        )
     line.delete()
+    # Pozostałe pozycje mogą być już w pełni pobrane — dokument zamyka się od razu
+    # (inaczej skaner nie miałby czego pobrać, by go domknąć).
+    complete_if_picked(document)
 
 
 @transaction.atomic

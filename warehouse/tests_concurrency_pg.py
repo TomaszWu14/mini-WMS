@@ -179,16 +179,22 @@ class ConcurrentIssueTests(TransactionTestCase):
         locked, release = threading.Event(), threading.Event()
         results: list[str] = []
 
+        waited: list[float] = []
+
         def holder():
             try:
                 with transaction.atomic():
                     holder_body()
                     locked.set()
                     release.wait(10)
+            except Exception as exc:  # noqa: BLE001 — przyczyna widoczna w asercji
+                results.append(f"holder:{type(exc).__name__}:{exc}")
+                locked.set()
             finally:
                 connections.close_all()
 
         def waiter():
+            start = time.monotonic()
             try:
                 waiter_body()
                 results.append("ok")
@@ -197,6 +203,7 @@ class ConcurrentIssueTests(TransactionTestCase):
             except Exception as exc:  # noqa: BLE001 — test ma pokazać 500 jako porażkę
                 results.append(f"500:{type(exc).__name__}")
             finally:
+                waited.append(time.monotonic() - start)
                 connections.close_all()
 
         h = threading.Thread(target=holder)
@@ -209,6 +216,10 @@ class ConcurrentIssueTests(TransactionTestCase):
         for t in (h, w):
             t.join(15)
             self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+        # Przegląd [DB] US-052: B musiał czekać na blokadę A (inaczej test nie dowodzi wyścigu).
+        self.assertGreaterEqual(
+            waited[0], 0.9, f"wątek B nie czekał na blokadę: {results}"
+        )
         return results
 
     def test_add_line_while_document_is_being_closed(self):
