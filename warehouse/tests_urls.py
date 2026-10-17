@@ -40,6 +40,7 @@ EXPECTED = {
     "location_labels": ("lokalizacje/etykiety/", "location_labels"),
     "location_list": ("lokalizacje/", "location_list"),
     "login": ("login/", "LoginView"),
+    "audit_log": ("uzytkownicy/audyt/", "audit_log"),
     "login_log": ("uzytkownicy/dziennik/", "login_log"),
     "logout": ("logout/", "LogoutView"),
     "material_create": ("materialy/nowy/", "material_create"),

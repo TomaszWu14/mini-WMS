@@ -81,6 +81,7 @@ from .stocktake import (
 )
 from .users import (
     PERMISSION_MATRIX,
+    audit_log,
     login_log,
     user_create,
     user_edit,
@@ -88,6 +89,7 @@ from .users import (
 )
 
 __all__ = [
+    "audit_log",
     "dashboard",
     "HEAT_CELLS_MAX",
     "_heat_level",

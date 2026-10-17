@@ -539,6 +539,61 @@ class LoginEvent(models.Model):
         return f"{self.get_kind_display()} {self.username} ({self.created_at:%Y-%m-%d %H:%M})"
 
 
+class AuditEvent(models.Model):
+    """US-022: kto, co, komu, kiedy i z jakim wynikiem — zmiany kont i odmowy dostępu.
+
+    Loginy zapisane tekstem obok kluczy obcych: wpis przetrwa usunięcie konta.
+    Bez IP i user-agenta (to jest w dzienniku logowań). Retencja: AUDIT_EVENT_RETENTION_DAYS.
+    """
+
+    class Action(models.TextChoices):
+        USER_CREATE = "USER_CREATE", "Utworzenie konta"
+        ROLE_CHANGE = "ROLE_CHANGE", "Zmiana roli"
+        PASSWORD_CHANGE = "PASSWORD_CHANGE", "Zmiana hasła"
+        ACTIVE_CHANGE = "ACTIVE_CHANGE", "Zmiana statusu konta"
+        TWO_FACTOR_ENABLE = "2FA_ENABLE", "Włączenie 2FA"
+        TWO_FACTOR_RESET = "2FA_RESET", "Reset 2FA"
+        ACCESS_DENIED = "ACCESS_DENIED", "Odmowa dostępu"
+
+    class Result(models.TextChoices):
+        OK = "OK", "wykonano"
+        DENIED = "DENIED", "odmowa"
+
+    created_at = models.DateTimeField("kiedy", default=timezone.now, db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="kto",
+    )
+    actor_username = models.CharField("kto (login)", max_length=150, blank=True)
+    target = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="komu",
+    )
+    target_username = models.CharField("komu (login)", max_length=150, blank=True)
+    action = models.CharField("akcja", max_length=20, choices=Action.choices)
+    result = models.CharField("wynik", max_length=10, choices=Result.choices)
+    detail = models.CharField("szczegóły", max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "zdarzenie audytowe"
+        verbose_name_plural = "dziennik audytowy"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return (
+            f"{self.get_action_display()} {self.actor_username} → {self.target_username} "
+            f"({self.get_result_display()}, {self.created_at:%Y-%m-%d %H:%M})"
+        )
+
+
 class LoginFailureCounter(models.Model):
     """US-009: nieudane logowania na konto w bieżącym oknie (klucz = skrót loginu)."""
 

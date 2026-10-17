@@ -23,6 +23,7 @@ from django.views.decorators.cache import never_cache
 from django_otp import login as otp_login
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
+from .audit import Action, record
 from .models import LoginEvent
 from .roles import admin_required
 
@@ -168,6 +169,7 @@ def two_factor_setup(request):
             device.confirmed = True
             device.save(update_fields=["confirmed"])
             otp_login(request, device)
+            record(Action.TWO_FACTOR_ENABLE, actor=request.user, target=request.user)
             messages.success(
                 request,
                 "Weryfikacja dwuetapowa włączona. Przy kolejnym logowaniu podasz kod z aplikacji.",

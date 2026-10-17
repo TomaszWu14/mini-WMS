@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from warehouse.login_limits import purge_expired
-from warehouse.models import LoginEvent
+from warehouse.models import AuditEvent, LoginEvent
 
 MAX_DAYS = 36_500  # 100 lat; więcej przepełnia datetime (OverflowError)
 
@@ -15,7 +15,8 @@ MAX_DAYS = 36_500  # 100 lat; więcej przepełnia datetime (OverflowError)
 class Command(BaseCommand):
     help = (
         "Usuwa wpisy dziennika logowań starsze niż LOGIN_EVENT_RETENTION_DAYS "
-        "(domyślnie 90 dni). Uruchamiać codziennie (Scheduled Task)."
+        "(domyślnie 90 dni) i dziennika audytowego starsze niż AUDIT_EVENT_RETENTION_DAYS "
+        "(365 dni). Uruchamiać codziennie (Scheduled Task)."
     )
 
     def add_arguments(self, parser):
@@ -33,7 +34,14 @@ class Command(BaseCommand):
         cutoff = timezone.now() - timedelta(days=days)
         deleted, _ = LoginEvent.objects.filter(created_at__lt=cutoff).delete()
         counters = purge_expired()
+        # US-022: dziennik audytowy ma własną, dłuższą retencję (nie zależy od --days).
+        audit_days = settings.AUDIT_EVENT_RETENTION_DAYS
+        audit_cutoff = timezone.now() - timedelta(days=audit_days)
+        audit_deleted, _ = AuditEvent.objects.filter(
+            created_at__lt=audit_cutoff
+        ).delete()
         self.stdout.write(
-            f"Usunięto {deleted} wpisów dziennika logowań starszych niż {days} dni"
-            f" i {counters} wygasłych liczników prób."
+            f"Usunięto {deleted} wpisów dziennika logowań starszych niż {days} dni,"
+            f" {counters} wygasłych liczników prób i {audit_deleted} wpisów dziennika"
+            f" audytowego starszych niż {audit_days} dni."
         )

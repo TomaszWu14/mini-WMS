@@ -52,6 +52,8 @@ DEMO_IMPORT_MAX_ROWS = 500
 # US-005 / SEC-036: dziennik logowań starszy niż tyle dni usuwa `purge_login_events`
 # (decyzja PO 2026-10-16, Z-09).
 LOGIN_EVENT_RETENTION_DAYS = 90
+# US-022: dziennik audytowy (zmiany kont, odmowy) — decyzja PO 2026-10-17 (Z-42).
+AUDIT_EVENT_RETENTION_DAYS = 365
 # US-004 / R4: limity każdego importu CSV/XLSX poza demo (Z-23: L_WIERSZE, L_ROZP).
 IMPORT_MAX_ROWS = 10_000
 # Suma rozmiarów plików w archiwum XLSX po rozpakowaniu (zip bomb).
@@ -256,6 +258,12 @@ LOGGING = {
         "django.request": {
             "handlers": ["console"],
             "level": "ERROR",
+            "propagate": False,
+        },
+        # US-022: dziennik audytowy także w logu (poziom INFO, JSON na produkcji).
+        "warehouse.audit": {
+            "handlers": ["console"],
+            "level": "INFO",
             "propagate": False,
         },
     },

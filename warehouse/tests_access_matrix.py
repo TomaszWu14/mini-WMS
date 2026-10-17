@@ -94,6 +94,7 @@ MATRIX = {
     "hu_delivery": ADMIN,
     "user_list": ADMIN,
     "login_log": ADMIN,
+    "audit_log": ADMIN,
     "user_create": ADMIN,
     "user_edit": ADMIN,
     "two_factor_setup": ADMIN,

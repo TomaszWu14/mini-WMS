@@ -6,12 +6,14 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
+from ..audit import Action, Result, record
 from ..demo import is_demo_account
 from ..forms import (
     UserCreateForm,
     UserEditForm,
 )
 from ..models import (
+    AuditEvent,
     LoginEvent,
     Profile,
     Role,
@@ -71,6 +73,18 @@ def login_log(request):
 
 
 @admin_required
+def audit_log(request):
+    """US-022: dziennik audytowy (zmiany kont, odmowy dostępu)."""
+    qs = AuditEvent.objects.all()
+    page, page_query = paginate(request, qs)
+    return render(
+        request,
+        "warehouse/audit_log.html",
+        {"events": page, "page_obj": page, "page_query": page_query},
+    )
+
+
+@admin_required
 def user_create(request):
     if request.method == "POST":
         form = UserCreateForm(request.POST)
@@ -82,6 +96,12 @@ def user_create(request):
             )
             Profile.objects.update_or_create(
                 user=user, defaults={"role": form.cleaned_data["role"]}
+            )
+            record(
+                Action.USER_CREATE,
+                actor=request.user,
+                target=user,
+                detail=f"rola: {Role(form.cleaned_data['role']).label}",
             )
             messages.success(request, f"Utworzono użytkownika {user.username}.")
             return redirect("user_list")
@@ -100,11 +120,26 @@ def user_edit(request, pk):
     # US-001 / R1: konta z dostępem do /admin/ (superuser, staff) zmienia tylko
     # superuser — inaczej rola Administrator przejęłaby je resetem hasła.
     if (user.is_superuser or user.is_staff) and not request.user.is_superuser:
+        record(
+            Action.ACCESS_DENIED,
+            actor=request.user,
+            target=user,
+            result=Result.DENIED,
+            detail=f"edycja konta z dostępem do /admin/ ({request.method})",
+        )
         raise PermissionDenied(
             "Konto z dostępem do panelu administracyjnego może edytować tylko "
             "superuser (panel /admin/ albo `manage.py changepassword`)."
         )
     if is_demo_account(user):
+        if request.method == "POST":
+            record(
+                Action.ACCESS_DENIED,
+                actor=request.user,
+                target=user,
+                result=Result.DENIED,
+                detail="edycja chronionego konta demo",
+            )
         return HttpResponseForbidden(
             "Konta demo są chronione — w trybie demo nie można zmieniać ich "
             "hasła, roli ani statusu."
@@ -115,14 +150,29 @@ def user_edit(request, pk):
         if form.is_valid():
             editing_self = user == request.user
             if editing_self and not form.cleaned_data["is_active"]:
+                record(
+                    Action.ACTIVE_CHANGE,
+                    actor=request.user,
+                    target=user,
+                    result=Result.DENIED,
+                    detail="próba dezaktywacji własnego konta",
+                )
                 messages.error(request, "Nie możesz dezaktywować własnego konta.")
             elif editing_self and form.cleaned_data["role"] != Role.ADMIN:
+                record(
+                    Action.ROLE_CHANGE,
+                    actor=request.user,
+                    target=user,
+                    result=Result.DENIED,
+                    detail="próba odebrania sobie roli Administratora",
+                )
                 messages.error(
                     request,
                     "Nie możesz odebrać sobie roli Administratora — "
                     "poproś innego administratora.",
                 )
             else:
+                old_role, old_active = profile.role, user.is_active
                 profile.role = form.cleaned_data["role"]
                 profile.save(update_fields=["role"])
                 user.is_active = form.cleaned_data["is_active"]
@@ -130,6 +180,28 @@ def user_edit(request, pk):
                 if new_pw:
                     user.set_password(new_pw)
                 user.save()
+                # US-022: osobny wpis na każdą zmianę; wartości hasła nigdy nie zapisujemy.
+                if old_role != profile.role:
+                    record(
+                        Action.ROLE_CHANGE,
+                        actor=request.user,
+                        target=user,
+                        detail=f"{Role(old_role).label} → {Role(profile.role).label}",
+                    )
+                if old_active != user.is_active:
+                    record(
+                        Action.ACTIVE_CHANGE,
+                        actor=request.user,
+                        target=user,
+                        detail="aktywne" if user.is_active else "nieaktywne",
+                    )
+                if new_pw:
+                    record(
+                        Action.PASSWORD_CHANGE,
+                        actor=request.user,
+                        target=user,
+                        detail="hasło ustawione przez Administratora",
+                    )
                 messages.success(request, f"Zaktualizowano {user.username}.")
                 return redirect("user_list")
     else:
