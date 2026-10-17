@@ -28,8 +28,7 @@ Dockerfile robił `pip install --upgrade pip` bez wersji, a obrazy bazowe szły 
   `-c requirements.txt`) i `requirements-mutation.in` (`mutmut`). `pyproject.toml` czyta `requirements.in`
   (`dynamic = ["dependencies"]`).
 - Locki generuje `pip-compile 7.4.1` na Pythonie 3.11 (wersja obrazu i CI) z opcjami
-  `--generate-hashes --allow-unsafe --strip-extras`. Lock dev zawiera jawnie `colorama` i `tzdata`, bo na
-  Windows potrzebują ich pytest i Django. Lock dev jest sprawdzony na 3.11 i 3.13.
+  `--generate-hashes --allow-unsafe --strip-extras`. Lock dev jest sprawdzony na 3.11 i 3.13.
 - `mutmut` dostaje osobny lock. Jego zależność `libcst` wymaga na Pythonie ≥ 3.13 pakietu `pyyaml-ft`,
   którego lock 3.11 nie ma, a `--require-hashes` odrzuca wtedy instalację całego locka dev.
 - Dockerfile instaluje `pip install --require-hashes --no-deps -r requirements.txt`. Lock jest pełnym
