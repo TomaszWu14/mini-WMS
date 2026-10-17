@@ -84,6 +84,11 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-022:** dziennik audytowy zmian kont i odmów dostępu (`/uzytkownicy/audyt/`, tabela `AuditEvent`, migracja `0011`,
   retencja 365 dni) — ślad zostawia panel, `/admin/` i komendy `manage.py`; logi JSON maskują hasła, tokeny i ciasteczka
   (ADR-0008, Z-42).
+- **US-021:** e-mail do administratorów (`DJANGO_ADMINS`) przy błędzie 500 — bez haseł, tokenów i ciasteczek,
+  najwyżej 1 mail na błąd / 10 min i 20 / h, w demo wyłączony.
+- **RR-31:** w demo jedna operacja tworzy najwyżej 50 palet, a plik importu ma najwyżej 100 wierszy.
+- **US-006 / US-024 / US-026:** SECURITY.md — jedyny kanał zgłoszeń przez GitHub; wyjątki W-1…W-4 zaakceptowane;
+  CODEOWNERS obejmuje pliki wrażliwe (test w CI).
 - **US-025:** macierz śledzenia wymaganie → historyjka → test → PR aktualna po US-001…US-053; CI sprawdza, że każde
   wymaganie ma wiersz, nazwy testów istnieją, a zrobiona historyjka ma wpis z numerem PR.
 - **US-051:** indeks na dacie dziennika logowań (migracja `0012`) — codzienne czyszczenie i lista dziennika bez

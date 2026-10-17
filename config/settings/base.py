@@ -251,6 +251,7 @@ LOGGING = {
     },
     "filters": {
         "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+        "alert_throttle": {"()": "config.log.AlertThrottleFilter"},
     },
     "handlers": {
         "console": {
@@ -261,7 +262,7 @@ LOGGING = {
         "mail_admins": {
             "class": "django.utils.log.AdminEmailHandler",
             "level": "ERROR",
-            "filters": ["require_debug_false"],
+            "filters": ["require_debug_false", "alert_throttle"],
             "include_html": False,
         },
     },
@@ -286,12 +287,17 @@ LOGGING = {
 # Bez DJANGO_ADMINS alert jest wyłączony (Django nie wysyła), błąd zostaje w logu JSON.
 # DJANGO_ADMINS: adresy rozdzielone przecinkami. SMTP z DJANGO_EMAIL_*; w demo maile
 # idą do konsoli (wyżej).
-ADMINS = [
-    (addr.strip(), addr.strip())
-    for addr in os.environ.get("DJANGO_ADMINS", "").split(",")
-    if addr.strip()
-]
+ADMINS = (
+    []  # przegląd [SEC]: w demo raport trafiłby do konsoli z danymi odwiedzających
+    if DEMO_MODE
+    else [
+        (addr.strip(), addr.strip())
+        for addr in os.environ.get("DJANGO_ADMINS", "").split(",")
+        if addr.strip()
+    ]
+)
 DEFAULT_EXCEPTION_REPORTER_FILTER = "config.log.SafeReporterFilter"
+DEFAULT_EXCEPTION_REPORTER = "config.log.SafeExceptionReporter"
 SERVER_EMAIL = os.environ.get("DJANGO_SERVER_EMAIL", "mini-wms@localhost")
 EMAIL_SUBJECT_PREFIX = "[mini-WMS] "
 EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "localhost")
@@ -299,5 +305,6 @@ EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
-# Wysyłka idzie w wątku żądania — krótki timeout, żeby awaria SMTP nie wieszała workera.
-EMAIL_TIMEOUT = 10
+# Wysyłka idzie w wątku żądania — krótki timeout i `AlertThrottleFilter` (1 mail na błąd
+# i ścieżkę / 10 min, 20 / h), żeby awaria SMTP ani pętla błędów nie blokowały workerów.
+EMAIL_TIMEOUT = 5

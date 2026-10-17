@@ -2,15 +2,14 @@
 
 | | |
 |---|---|
-| Wersja | 0.1 |
-| Data | 2026-10-16 |
+| Wersja | 0.2 |
+| Data | 2026-10-17 |
 | Status | szkic — do akceptacji Product Ownera |
 | Właściciel | [SEC] |
 
 > **English summary.** mini-WMS is a Django warehouse-management app; only the `main` branch
 > is supported. To report a vulnerability, use GitHub's **Report a vulnerability** (private
-> vulnerability reporting) on this repository, or the e-mail address the maintainer adds
-> below (not published yet). Please do not open a public issue, and do not run
+> vulnerability reporting) on this repository — it is the only channel. Please do not open a public issue, and do not run
 > denial-of-service tests or bulk imports against the shared public demo
 > (`miniwms.twapp.pl`). Proposed targets: acknowledgement within 5 business days,
 > assessment within 14 days. Good-faith research that follows this policy will not lead to
@@ -18,13 +17,12 @@
 
 ## Jak zgłosić podatność
 
-1. **Preferowany kanał:** zakładka **Security → Report a vulnerability** w repozytorium
+1. **Jedyny kanał** (decyzja PO 2026-10-17): zakładka **Security → Report a vulnerability**
+   w repozytorium
    [TomaszWu14/miniWMS-public](https://github.com/TomaszWu14/miniWMS-public/security/advisories/new)
-   (GitHub Private Vulnerability Reporting). Czy funkcja jest włączona w ustawieniach
-   repozytorium — **do potwierdzenia przez PO**.
-2. **Alternatywa:** e-mail — **do uzupełnienia przez PO**. Do czasu uzupełnienia używaj
-   kanału z punktu 1.
-3. **Nie zakładaj publicznego issue ani PR z opisem luki** i nie publikuj szczegółów przed
+   (GitHub Private Vulnerability Reporting). Zgłoszenie widzi tylko właściciel repozytorium.
+   Publicznego adresu e-mail celowo nie podajemy.
+2. **Nie zakładaj publicznego issue ani PR z opisem luki** i nie publikuj szczegółów przed
    uzgodnieniem terminu ujawnienia.
 
 Co warto zawrzeć w zgłoszeniu:

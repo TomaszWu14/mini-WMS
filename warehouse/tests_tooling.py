@@ -238,3 +238,53 @@ class TraceabilityMatrixTests(SimpleTestCase):
         self.assertEqual(
             sorted(done - recorded), [], "zrobione historyjki bez wpisu w §5"
         )
+
+
+class CodeOwnersTests(SimpleTestCase):
+    """US-026 kryterium 3: pliki wrażliwe (auth, upload, ustawienia, CI) mają właściciela."""
+
+    SENSITIVE = [
+        "warehouse/roles.py",
+        "warehouse/signals.py",
+        "warehouse/audit.py",
+        "warehouse/two_factor.py",
+        "warehouse/login_limits.py",
+        "warehouse/demo.py",
+        "warehouse/csp.py",
+        "warehouse/forms.py",
+        "warehouse/imports.py",
+        "warehouse/receipt_import.py",
+        "warehouse/stock_import.py",
+        "warehouse/issue_import.py",
+        "warehouse/views/users.py",
+        "warehouse/scanner_views.py",
+        "config/settings/base.py",
+        "config/log.py",
+        "Dockerfile",
+        "entrypoint.sh",
+        "scripts/pg_backup.sh",
+        ".github/workflows/ci.yml",
+        "SECURITY.md",
+    ]
+
+    def test_sensitive_paths_have_explicit_owner(self):
+        rules = [
+            line.split()[0]
+            for line in (ROOT / ".github" / "CODEOWNERS")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+        explicit = [r for r in rules if r != "*"]
+        missing = []
+        for path in self.SENSITIVE:
+            self.assertTrue((ROOT / path).exists(), path)
+            if not any(
+                r.lstrip("/") == path
+                or (r.endswith("/") and path.startswith(r.lstrip("/")))
+                for r in explicit
+            ):
+                missing.append(path)
+        self.assertEqual(
+            missing, [], "wrażliwe pliki bez wpisu w CODEOWNERS (poza „*”)"
+        )

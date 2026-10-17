@@ -167,7 +167,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **PO** chcę, aby podatne zależności i słaba konfiguracja CI blokowały merge, a zgłaszający podatność miał kanał kontaktu, aby łańcuch dostaw nie był najsłabszym ogniwem. |
 | MoSCoW · rozmiar | Must · M |
-| Status | do zrobienia; **w toku: ADR-0001/CI** (Dependabot, pip-audit blokujący, `permissions`, przypięte narzędzia) i **[SEC]** (SECURITY.md) |
+| Status | zrobione w kodzie — do akceptacji PO (PR #23); ustawienia repozytorium po stronie PO |
 | Źródło | AUDYT §3.3 **R10** (N/Ś), §3.4 pkt 6; `security.yml:48`, `ci.yml`, Z-10, DEC-2 |
 | Wymagania | SEC-028, SEC-029, SEC-031 |
 | Zależności | ADR-0001; PYT-13 (trivy: Z-10 vs R10); US-020 (reszta łańcucha dostaw) |
@@ -182,6 +182,8 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 6. **Given** `SECURITY.md`; **Then** zawiera wspierane wersje, kanał zgłoszeń poza publicznym issue, oczekiwany czas odpowiedzi (ustala PO) i zakres (publiczne demo = wspólna instancja, bez testów obciążeniowych).
 
 **Test do napisania:** brak testu jednostkowego — weryfikacja przebiegiem CI na PR kontrolnym z podatną zależnością (zamykanym po teście) oraz przeglądem [SEC] / [BA] dla SECURITY.md.
+
+**Odbiór [BA] 2026-10-17:** kryterium 1 — `.github/dependabot.yml` (pip, docker, github-actions, co tydzień); 2 — job „5. SCA (pip-audit)” blokuje przy podatności w `requirements.txt` (bez `|| true`; deweloperskie doradczo); 3 — gitleaks (pełna historia) i bandit/semgrep blokujące (Z-10); 4 — `permissions: contents: read`, akcje przypięte SHA, narzędzia z locków z hashami (US-020); 5 — trivy blokujący (`exit-code: 1`, HIGH/CRITICAL z poprawką) zgodnie z ADR-0001 — Z-26/PYT-13 nadal „do potwierdzenia”; 6 — SECURITY.md v0.2: jedyny kanał GitHub Private Vulnerability Reporting (Z-44), zakres, czasy reakcji (propozycja do potwierdzenia przez PO). **Po stronie PO (poza repo):** włączyć Private Vulnerability Reporting, branch protection `main` z wymaganymi checkami CI i review Code Owners. PR kontrolny z podatną zależnością — nie wykonany (wymagałby celowo czerwonego PR); blokowanie potwierdza krok `exit $status` w `ci.yml` i test `tests_tooling.SupplyChainTests`.
 
 ---
 
@@ -467,7 +469,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **administrator infrastruktury (ST-05)** chcę dostać powiadomienie o błędzie 500, aby awaria nie czekała na zgłoszenie użytkownika. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia — kanał po decyzji PO (PYT-15) |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T15**; PROCESY L-04 |
 | Wymagania | NFR-021; także: NFR-014, SEC-032 |
 | Zależności | wybór kanału (Sentry / GlitchTip / `ADMINS` + `mail_admins` / alert Coolify) → ADR |
@@ -478,6 +480,8 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** żądanie POST z polem `password`; **When** błąd 500; **Then** treść powiadomienia i log nie zawierają wartości hasła ani tokenów (SEC-032).
 
 **Test do napisania:** `ServerErrorAlertTests` w `warehouse/tests_alerts.py` (nowy; przy `mail_admins` — `mail.outbox`).
+
+**Testy:** `warehouse/tests_alerts.py` — `ServerErrorAlertTests` (8: błąd 500 → jeden e-mail do ADMINS, tylko tekst; hasło, token 2FA, nagłówek `Authorization` i ciasteczko sesji zamaskowane, zwykłe pola widoczne; tokeny w GET, `QUERY_STRING` i URL żądania zamaskowane; bez ADMINS, przy sukcesie i w DEBUG — brak maila; ten sam błąd — jeden mail na 10 min; limit 20 / h; w demo brak alertu). Na domyślnym filtrze Django test maskowania jest czerwony (hasło w treści maila). Implementacja: handler `mail_admins` na `django.request`, `config.log.SafeReporterFilter`, `SafeExceptionReporter`, `AlertThrottleFilter`; zmienne `DJANGO_ADMINS`, `DJANGO_SERVER_EMAIL`, `DJANGO_EMAIL_*` (compose, `.env.docker.example`, COOLIFY §6). Decyzja PO: Z-43. Przegląd [SEC]: zalew maili i blokowanie workerów przy pętli błędów — limit 1 / błąd i ścieżkę / 10 min i 20 / h, `EMAIL_TIMEOUT` 5 s; w demo raport szedłby do konsoli z danymi odwiedzających — alert wyłączony; GET i `QUERY_STRING` niemaskowane — maskowane. Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 
 ### US-022 — Dziennik audytowy akcji administracyjnych i logi bez sekretów
 
@@ -505,7 +509,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **administrator danych (ST-07)** chcę dokumentu RODO z rejestrem czynności, podstawami i retencją oraz procedurą praw osób, aby móc odpowiedzieć organowi nadzorczemu i pracownikowi. |
 | MoSCoW · rozmiar | Should · M |
-| Status | **w toku: [SEC]** (`docs/bezpieczenstwo/RODO.md`) |
+| Status | dokument v0.1 gotowy — do akceptacji PO i prawnika (otwarte pytania RODO §10, PYT-10) |
 | Źródło | AUDYT **R7**, §3.2, §3.4 pkt 5; Z-09, Z-15; prompt PO sekcja 6 |
 | Wymagania | SEC-037, SEC-038 |
 | Zależności | `KLASYFIKACJA_DANYCH.md`; PYT-10 |
@@ -517,13 +521,15 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 
 **Test do napisania:** n/d (dokument) — odbiór [BA] / [SEC].
 
+**Odbiór [BA] 2026-10-17:** kryterium 1 — RODO §4, §6, §8 opisują cel, podstawę (Z-09), retencję, odbiorców i właściciela dla `auth_user`, `LoginEvent`, `AuditEvent`, `created_by`, eksportów, logów i (nowe) e-maili alertu US-021; kryterium 2 — §7 opisuje wydanie i anonimizację z zachowaniem ruchów. Akceptacja treści prawnej i odpowiedzi z §10 należą do PO; automatyzacja żądań to US-027 (Could).
+
 ### US-024 — Rejestr ryzyk i zaakceptowanych wyjątków
 
 | | |
 |---|---|
 | Historyjka | Jako **PO** chcę rejestr ryzyk z jawną listą wyjątków i datą przeglądu, aby wiedzieć, co świadomie akceptuję. |
 | MoSCoW · rozmiar | Should · S |
-| Status | **w toku: [SEC]** (`docs/bezpieczenstwo/RYZYKA.md`) |
+| Status | zrobione — wyjątki zaakceptowane przez PO 2026-10-17 (Z-45) |
 | Źródło | AUDYT §3.3 (R1–R10), §3.5 |
 | Wymagania | SEC-042 |
 | Zależności | PYT-19 |
@@ -534,6 +540,8 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** wyjątek z §3.5 (publiczny Operator w demo, logowanie GET `/demo/`, jawne hasło demo, brak 2FA do wdrożenia, backup lokalny); **Then** ma uzasadnienie, datę przeglądu i akceptację PO.
 
 **Test do napisania:** n/d (dokument).
+
+**Odbiór [BA] 2026-10-17:** kryterium 1 — R1–R10 mają właściciela i status zgodny z backlogiem (RYZYKA v0.2, stan po #23); kryterium 2 — W-1…W-4 mają uzasadnienie, warunki zaktualizowane po #23, datę przeglądu i akceptację PO (2026-10-17). RR-31 zmitygowane decyzją Z-46. Pozostałe pozycje „do akceptacji PO” (RR-20…RR-30) czekają na przegląd 2026-11-15 / 2027-01-15.
 
 ### US-025 — Macierz śledzenia wymaganie → historyjka → test → PR
 
@@ -559,7 +567,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **PO** chcę opisanego procesu (role, Definition of Ready / Done, szablony, właściciele plików), aby każda zmiana zostawiała ślad i przechodziła te same kontrole. |
 | MoSCoW · rozmiar | Should · S |
-| Status | **w toku** (CONTRIBUTING.md, szablony i CODEOWNERS powstają w tej gałęzi) |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §1.2 (brak CONTRIBUTING, szablonów, CODEOWNERS); Z-01, Z-02 |
 | Wymagania | — |
 | Zależności | — |
@@ -571,6 +579,8 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** `CODEOWNERS`; **Then** pliki wrażliwe (auth, ustawienia, CI) wymagają przeglądu wskazanego właściciela.
 
 **Test do napisania:** n/d (dokument / konfiguracja repozytorium).
+
+**Testy:** `tests_tooling.CodeOwnersTests` (1: pliki wrażliwe — auth, 2FA, audyt, importy, ustawienia, logi, skrypty, CI, SECURITY.md — mają jawny wpis w CODEOWNERS). **Odbiór [BA] 2026-10-17:** kryterium 1 — `.github/pull_request_template.md` ma pole historyjki, checklistę [DEV], [SEC] i odbioru [BA]; 2 — CONTRIBUTING §3–§5: Definition of Ready / Done, gałęzie, Conventional Commits; 3 — CODEOWNERS uzupełnione o pliki z #23. Egzekwowanie review Code Owners wymaga branch protection — ustawienie PO (US-006).
 
 ---
 

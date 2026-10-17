@@ -67,6 +67,7 @@ Propozycje do potwierdzenia przez PO i prawnika; **bez porady prawnej**.
 | Uwierzytelnianie i zarządzanie dostępem | login, e-mail, hash hasła, rola | art. 6 ust. 1 lit. f (interes: kontrola dostępu do systemu); lit. b, jeśli pracownik jest stroną umowy z administratorem | do potwierdzenia |
 | Bezpieczeństwo systemu i wykrywanie nadużyć | `LoginEvent` (IP, UA, login) | art. 6 ust. 1 lit. f | wymaga krótkiego testu równowagi (LIA); Z-09 |
 | Rozliczalność zmian kont i uprawnień | `AuditEvent` (login autora i konta, akcja, wynik) | art. 6 ust. 1 lit. f | bez treści haseł; retencja 365 dni (Z-42); dostęp: Administrator |
+| Alert o błędzie 500 (US-021) | e-mail do `ADMINS`: login zalogowanego, adres IP, ścieżka, nagłówki i pola formularza **bez** wartości haseł, tokenów i ciasteczek (`SafeReporterFilter`) | art. 6 ust. 1 lit. f (interes: ciągłość działania i bezpieczeństwo) | odbiorcy: administratorzy z `DJANGO_ADMINS` i dostawca SMTP; retencja w skrzynce — do ustalenia przez PO (propozycja: 90 dni jak dziennik logowań) |
 | Rozliczalność operacji magazynowych | `created_by`, ruchy, kolumna „Kto” | art. 6 ust. 1 lit. f; lit. c, jeśli przepisy wymagają ewidencji | okres ewidencji ustala administrator |
 | Ochrona publicznego demo przed nadużyciami | IP, UA odwiedzających | art. 6 ust. 1 lit. f | brak klauzuli informacyjnej — luka (§10) |
 | Ciągłość działania (backup) | cała baza | art. 6 ust. 1 lit. f; art. 32 | retencja 7 dni |
@@ -95,6 +96,7 @@ Okresy propozycją do potwierdzenia przez PO. Status: **wdrożone**, **brak mech
 |---|---|---|---|---|
 | `LoginEvent` (DA-10, DA-12) | 90 dni (Z-09, DEC-5) | bezpieczeństwo bez nadmiarowego przechowywania | `manage.py purge_login_events` + Scheduled Task (COOLIFY §10a) i przy starcie kontenera; w demo bez IP i UA (Z-38) | wdrożone (US-005, #23) |
 | `AuditEvent` — dziennik audytowy (DA-10) | 365 dni (Z-42) | rozliczalność zmian uprawnień; bez IP i UA | `manage.py purge_login_events` (ta sama komenda i Scheduled Task) | wdrożone (US-022) |
+| E-mail alertu o błędzie 500 (US-021) | propozycja 90 dni — do potwierdzenia przez PO | diagnoza awarii | ręcznie w skrzynce administratora (poza aplikacją) | brak mechanizmu (poza aplikacją) |
 | Sesje `django_session` (DA-13) | wygasają po 30 min bezczynności; fizyczne usunięcie codziennie | minimalizacja, rozdęcie tabeli w demo (R5) | wygaśnięcie logiczne: `base.py:185-186`; usuwanie: `manage.py clearsessions` w Scheduled Task | wdrożone (US-005, #23: `clearsessions` w Scheduled Task i przy starcie) |
 | Konta (DA-08) | do dezaktywacji + N miesięcy (N — do ustalenia przez PO) | koniec stosunku pracy, rozliczenia | dezaktywacja: ekran „Użytkownicy”; usunięcie: `/admin/` (superuser) | częściowo (ręcznie) |
 | `created_by` i ruchy (DA-07, DA-11) | okres ewidencji magazynowej (do ustalenia przez administratora; mogą dotyczyć przepisów księgowych) | rozliczalność | `on_delete=SET_NULL` anonimizuje znacznik po usunięciu konta; ruchów nie usuwamy automatycznie | wdrożone (anonimizacja); okres do ustalenia |

@@ -105,7 +105,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-018 | US-012 | `tests_backup_script.BackupScriptTests` (8); `shellcheck` w CI | #23 |
 | NFR-019 | US-012 | ćwiczenie odtworzenia w CI (job 3b); RUNBOOK §5.4 (miesięcznie, ręcznie) | #23 |
 | NFR-020 | US-022 | `tests_audit_log.LogRedactionTests` | historyczny (przed procesem); #23 (US-022 — maskowanie) |
-| NFR-021 | US-021 | brak — do napisania | #23 |
+| NFR-021 | US-021 | `tests_alerts.ServerErrorAlertTests` | #23 |
 | NFR-022 | US-019 | krok CI „Próg pokrycia”; `tests_tooling.MypyConfigTests.test_coverage_threshold` | #23 |
 | NFR-023 | US-019 | n/d — miara CI | #23 |
 | NFR-024 | US-019 | kroki CI (ruff, mypy, bandit); `tests_tooling.MypyConfigTests` (2) | #23 |
@@ -147,11 +147,11 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-025 | US-011 | `HstsSettingsTests.test_prod_hsts` | #23 |
 | SEC-026 | US-003 | `tests_deploy_settings.ProdSecretKeyTests` (7); `ComposeSecretsTests`; `EntrypointSuperuserPasswordTests`; krok CI walidujący compose bez sekretów | #23 |
 | SEC-027 | US-003 | `tests_deploy_settings.SeedDemoModeTests` (2); `SeedDemoTests.test_reset_refused_without_demo_mode` | #23 |
-| SEC-028 | US-006 | n/d — CI (gitleaks, bandit) | #23 |
-| SEC-029 | US-006, US-020 | n/d — CI (pip-audit, Dependabot) | #23 |
+| SEC-028 | US-006 | n/d — CI (gitleaks, bandit, semgrep) | #23 |
+| SEC-029 | US-006, US-020 | n/d — CI (pip-audit blokujący, Dependabot); `tests_tooling.SupplyChainTests` | #23 |
 | SEC-030 | US-037 | n/d — smoke test obrazu w CI | #23 |
 | SEC-031 | US-006, US-020 | n/d — CI | #23 |
-| SEC-032 | US-022, US-021 | `tests_audit_log.LogRedactionTests`, `TypedUsernameTests` | #23 |
+| SEC-032 | US-022, US-021 | `tests_audit_log.LogRedactionTests`, `TypedUsernameTests`; `tests_alerts.ServerErrorAlertTests.test_alert_body_hides_password_tokens_and_session`, `test_query_string_secrets_masked` | #23 |
 | SEC-033 | US-022 | `tests_audit_log.AuditLogTests` | #23 |
 | SEC-034 | — (PYT-11) | brak — do napisania (po decyzji PO) | #23 |
 | SEC-035 | US-005 | `tests_retention.LoginEventPrivacyTests`; `DemoEntryRateLimitTests.test_successful_entry_logs_no_ip` | #23 |
@@ -174,7 +174,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-003 | Must | SEC-026, SEC-027 | R2 | `tests_deploy_settings.py`, `tests_demo.py`, krok CI compose — zrobione, #23 |
 | US-004 | Must | FR-005, NFR-003, NFR-007, NFR-008, SEC-019, SEC-021 | T1, R4 | `tests_imports_hardening.py` (19 testów) — zrobione, #23 |
 | US-005 | Must | FR-024, NFR-012, SEC-005, SEC-035, SEC-036, SEC-040 | R7, R5 | `tests_retention.py` (8), `tests_demo_entry.DemoEntryRateLimitTests` (5) — zrobione, #23 |
-| US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) |
+| US-006 | Must | SEC-028, SEC-029, SEC-031 | R10 | n/d (CI) + `tests_tooling.SupplyChainTests` — zrobione, #23; ustawienia repo — PO |
 | US-007 | Should | FR-023, SEC-007, SEC-008 | sekcja 6 promptu, AUDYT Zał. A | `tests_access_matrix.py` (5 testów) — zrobione, #23 |
 | US-008 | Should | SEC-001 | R6 | `tests_passwords.py` (6 testów) — zrobione, #23 |
 | US-009 | Should | SEC-003, SEC-004, NFR-013 | R6, T8 | `tests_login_limits.py` (11 testów) — zrobione, #23 |
@@ -189,12 +189,12 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-018 | Should | NFR-026, FR-017 | T3 | `CompleteIfPickedTests` (6), `test_scanner_pick_and_execute_on_same_document` (PG) — zrobione, #23 |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | `tests_tooling.py` (3) + przebieg CI — zrobione, #23 |
 | US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | `tests_tooling.SupplyChainTests` (5) + CI — zrobione, #23 |
-| US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | nowy plik testów alertów (do napisania, po PYT-15) |
+| US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | `tests_alerts.ServerErrorAlertTests` (8) — zrobione, #23 |
 | US-022 | Should | FR-021, FR-024, NFR-020, SEC-032, SEC-033 | prompt PO sekcja 6, R1, R7 | `tests_audit_log.py` (18 testów) — zrobione, #23 |
-| US-023 | Should | SEC-037, SEC-038 | R7 | n/d (dokument) |
-| US-024 | Should | SEC-042 | AUDYT §3.5 | n/d (dokument) |
+| US-023 | Should | SEC-037, SEC-038 | R7 | n/d (dokument v0.1; akceptacja PO i prawnika) |
+| US-024 | Should | SEC-042 | AUDYT §3.5 | n/d (dokument) — zrobione, #23 |
 | US-025 | Should | — (proces) | AUDYT §1.2 | `tests_tooling.TraceabilityMatrixTests` (3) — zrobione, #23 |
-| US-026 | Should | — (proces) | AUDYT §1.2 | n/d (dokument) |
+| US-026 | Should | — (proces) | AUDYT §1.2 | `tests_tooling.CodeOwnersTests` (1) — zrobione, #23 |
 | US-027 | Could | SEC-038 | R7 | do ustalenia |
 | US-028 | Could | NFR-011, NFR-004, FR-022 | T9 | do ustalenia |
 | US-029 | Could | NFR-027 | T10 | n/d (refaktoryzacja) |
@@ -254,7 +254,7 @@ nazwy wyglądające na testy (`…Tests`, `tests_…`, `test_…`).
 | LT-02 | SEC-005 (cookie i bezczynność sesji), SEC-013 (escapowanie), SEC-014 (CSRF), SEC-016 (eksport XLSX), SEC-018 (limit 5 MB), SEC-023 (nagłówki) | wymagania `spełnione` bez testu regresji; zmiana ustawień mogłaby je zepsuć bez śladu | US-043 |
 | LT-03 | NFR-004, NFR-007, NFR-012, NFR-016, NFR-020 | wartości (500 wierszy, 5 MB, 30 min, PL / strefa, logi JSON) zapisane tylko w konfiguracji | US-043 (007, 012), reszta — do decyzji |
 | LT-04 | SEC-008 | brak systematycznej macierzy rola × trasa | **zamknięte** — US-007 (`tests_access_matrix.AccessMatrixTests`), #23 |
-| LT-05 | SEC/NFR o statusie `brak` lub `częściowo` (m.in. SEC-001, 004, 006, 009, 015, 017, 019, 024–027, 032–036, 038, 040; NFR-006, 009, 011, 021) | testy powstaną razem z historyjkami (kolumna US) | **zamknięte w #23** (US-001…US-022) poza NFR-011 (US-028), NFR-021 (US-021, PYT-15), SEC-034 (PYT-11), SEC-038 (US-027) |
+| LT-05 | SEC/NFR o statusie `brak` lub `częściowo` (m.in. SEC-001, 004, 006, 009, 015, 017, 019, 024–027, 032–036, 038, 040; NFR-006, 009, 011, 021) | testy powstaną razem z historyjkami (kolumna US) | **zamknięte w #23** (US-001…US-022) poza NFR-011 (US-028), SEC-034 (PYT-11), SEC-038 (US-027) |
 | LT-06 | NFR-001, NFR-002, NFR-014 | brak pomiarów i definicji (PYT-01, PYT-03) | US-040 |
 
 ### 7.2 Testy bez wymagania

@@ -14,7 +14,7 @@ import json
 import logging
 import re
 
-from django.views.debug import SafeExceptionReporterFilter
+from django.views.debug import ExceptionReporter, SafeExceptionReporterFilter
 
 REDACTED = "[REDACTED]"
 SENSITIVE = (
@@ -124,5 +124,68 @@ class SafeReporterFilter(SafeExceptionReporterFilter):
                 cleansed[key] = self.cleansed_substitute
         return cleansed
 
+    def get_safe_request_meta(self, request):
+        meta = super().get_safe_request_meta(request)
+        if meta.get("QUERY_STRING"):
+            meta["QUERY_STRING"] = redact_text(meta["QUERY_STRING"])
+        return meta
+
     def get_safe_cookies(self, request):
         return dict.fromkeys(getattr(request, "COOKIES", {}), self.cleansed_substitute)
+
+
+class SafeExceptionReporter(ExceptionReporter):
+    """US-021 (przegląd [SEC]): parametry GET w raporcie maskowane jak pola POST."""
+
+    def get_traceback_data(self):
+        data = super().get_traceback_data()
+        if self.request is not None and "request_GET_items" in data:
+            hidden = SafeReporterFilter.hidden_settings
+            data["request_GET_items"] = [
+                (k, SafeReporterFilter.cleansed_substitute if hidden.search(k) else v)
+                for k, v in self.request.GET.items()
+            ]
+        if data.get("request_insecure_uri"):
+            data["request_insecure_uri"] = redact_text(data["request_insecure_uri"])
+        return data
+
+
+ALERT_DEDUP_SECONDS = 600
+ALERT_MAX_PER_HOUR = 20
+
+
+class AlertThrottleFilter(logging.Filter):
+    """US-021 (przegląd [SEC]): alert e-mail bez zalewu skrzynki i blokowania workerów.
+
+    Ten sam błąd (typ wyjątku + ścieżka) najwyżej raz na 10 min, łącznie najwyżej 20
+    maili na godzinę. W demo alertów nie ma (raport poszedłby do konsoli z danymi
+    odwiedzających). Gdy cache nie działa (np. baza leży), wysyłamy — to jest awaria,
+    o której administrator ma wiedzieć; limit godzinowy chroni wtedy proces lokalnie.
+    """
+
+    _local_sent: list[float] = []
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        import time
+
+        from django.conf import settings
+        from django.core.cache import cache
+
+        if settings.DEMO_MODE:
+            return False
+        exc = record.exc_info[1] if record.exc_info else None
+        request = getattr(record, "request", None)
+        key = f"alert500:{type(exc).__name__}:{getattr(request, 'path', '')}"[:200]
+        hour = f"alert500-hour:{int(time.time() // 3600)}"
+        try:
+            if not cache.add(key, 1, ALERT_DEDUP_SECONDS):
+                return False
+            cache.add(hour, 0, 3600)
+            return cache.incr(hour) <= ALERT_MAX_PER_HOUR
+        except Exception:  # noqa: BLE001 — cache niedostępny: limit w procesie
+            now = time.time()
+            self._local_sent[:] = [t for t in self._local_sent if now - t < 3600]
+            if len(self._local_sent) >= ALERT_MAX_PER_HOUR:
+                return False
+            self._local_sent.append(now)
+            return True

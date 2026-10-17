@@ -56,7 +56,7 @@ administratora infrastruktury / PO”.
 | Bezczynność sesji | 1800 s (`DJANGO_SESSION_AGE`) | `base.py` |
 | Limit prób logowania | 10 prób POST / 300 s na IP (po przekroczeniu: 429) | `demo.py` |
 | Upload (importy) | 5 MB w formularzu; `DATA_UPLOAD_MAX_MEMORY_SIZE` 6 MB (`DJANGO_MAX_UPLOAD_BYTES`) | `forms.py`, `base.py` |
-| Limit wierszy importu w demo | 500 (`DEMO_IMPORT_MAX_ROWS`); poza demo brak limitu (R4) | `base.py`, `imports.py` |
+| Limit wierszy importu w demo | 100 (`DEMO_IMPORT_MAX_ROWS`, Z-46; najwyżej 50 palet na operację); poza demo brak limitu (R4) | `base.py`, `imports.py` |
 | Wydruk etykiet HU | 200 na partię (D-11) | `views/handling_units.py` (`HU_LABELS_LIMIT`) |
 | Lista ruchów | 500 najnowszych, bez filtra dat (T9) | `views/movements.py` |
 | Połączenia z bazą | `CONN_MAX_AGE` 60 s (`DJANGO_CONN_MAX_AGE`) | `base.py` |

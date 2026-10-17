@@ -67,6 +67,9 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Alert o błędzie 500 (US-021):** po ustawieniu `DJANGO_ADMINS` i SMTP (`DJANGO_EMAIL_*`) administrator dostaje
+  e-mail przy każdym nowym błędzie 500 (ten sam błąd najwyżej raz na 10 min). Bez tych zmiennych — bez zmian.
+- **Demo (RR-31):** jedno przyjęcie lub import tworzy najwyżej 50 palet, plik importu najwyżej 100 wierszy.
 - **Macierz śledzenia (US-025):** dokumentacja i test w CI — dla operatora nie dotyczy (bez migracji, zmiennych, UI).
 - **Indeks dziennika logowań (US-051):** migracja `0012` przy deployu (automatycznie w `entrypoint.sh`) — **wymaga
   zgody PO przed wdrożeniem na produkcję**. Bez zmiennych i zmian w interfejsie.
@@ -160,6 +163,7 @@
 | 30 | Administrator | `/uzytkownicy/` → edycja konta Operatora | zmienić rolę i hasło, zapisać; otworzyć „Dziennik audytowy” | dwa wpisy (zmiana roli, zmiana hasła) z Twoim loginem; hasła nigdzie nie widać |
 | 31 | admin infrastruktury | kontener `web` → Terminal | `python manage.py changepassword <login>` | w „Dzienniku audytowym” wpis „Zmiana hasła”, kto: `manage.py changepassword` |
 | 32 | Operator | WZ z dwiema pozycjami | skanerem pobrać część pierwszej pozycji; w panelu spróbować usunąć obie | pierwsza bez przycisku „Usuń”; drugą da się usunąć |
+| 33 | admin infrastruktury | prod z ustawionym `DJANGO_ADMINS` i SMTP | w kontenerze `web`: `python manage.py sendtestemail --admins` | e-mail testowy dochodzi na adres z `DJANGO_ADMINS` |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -169,7 +173,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011`, `0012` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (468 passed, 9 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (482 passed, 9 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
 
@@ -192,6 +196,8 @@ Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 | — (zależność) | nowe: `defusedxml==0.7.1`, `argon2-cffi==25.1.0`, `django-otp==1.7.4` w `requirements.txt` | instalowane w obrazie | ☐ nie dotyczy (rebuild obrazu) |
 | `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`, `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS`, `BACKUP_OFFSITE_PRUNE`, `RCLONE_CONFIG_OFFSITE_*` | nowe, opcjonalne (US-012) | wg RUNBOOK §5.0 (klucz publiczny, cel off-site w katalogu, URL Healthchecks; S3: klucz bez prawa usuwania + lifecycle 30 dni) | ☐ ustawić w zasobie prod i demo; klucz prywatny — tylko offline u PO |
 | `DJANGO_CSP_REPORT_ONLY` | nowa, opcjonalna (domyślnie `0` = CSP egzekwowana) | nie ustawiać | ☐ nie dotyczy (tylko awaryjnie `1`) |
+| `DJANGO_ADMINS` | nowa, opcjonalna (US-021; puste = alert wyłączony) | adres(y) administratora, po przecinku | ☐ prod: ustawić; demo: nie ustawiać (i tak wyłączone) |
+| `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS`, `DJANGO_SERVER_EMAIL` | nowe, opcjonalne (SMTP alertu) | dane serwera SMTP; hasło jako sekret Coolify | ☐ prod: ustawić razem z `DJANGO_ADMINS` |
 | `POSTGRES_PASSWORD` | zmieniona (wariant prywatny: wymagana, bez domyślnego `wms`) | bez zmian | ☐ nie dotyczy (Coolify już wymaga); LAN: wpisać do `.env` dotychczasowe hasło |
 
 Zaktualizowano też: `.env.example` — nie dotyczy, `.env.docker.example` — nie dotyczy (już ma

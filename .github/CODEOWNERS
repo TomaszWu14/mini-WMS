@@ -31,6 +31,17 @@
 /warehouse/demo.py                  @TomaszWu14
 /warehouse/forms.py                 @TomaszWu14
 /warehouse/imports.py               @TomaszWu14
+/warehouse/receipt_import.py        @TomaszWu14
+/warehouse/stock_import.py          @TomaszWu14
+/warehouse/issue_import.py          @TomaszWu14
+/warehouse/audit.py                 @TomaszWu14
+/warehouse/two_factor.py            @TomaszWu14
+/warehouse/login_limits.py          @TomaszWu14
+/warehouse/csp.py                   @TomaszWu14
+/warehouse/views/users.py           @TomaszWu14
+/warehouse/scanner_views.py         @TomaszWu14
+/config/log.py                      @TomaszWu14
+/scripts/                           @TomaszWu14
 /config/settings/                   @TomaszWu14
 /Dockerfile                         @TomaszWu14
 /entrypoint.sh                      @TomaszWu14

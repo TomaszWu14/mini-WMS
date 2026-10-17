@@ -2,6 +2,7 @@
 
 from django.contrib.auth.models import User
 from django.core import mail
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.test import TestCase, override_settings
 from django.urls import path
@@ -27,6 +28,7 @@ ADMINS = [("admin@example.com", "admin@example.com")]
 class ServerErrorAlertTests(TestCase):
     def setUp(self):
         self.client.raise_request_exception = False
+        cache.clear()  # licznik AlertThrottleFilter
 
     def test_500_sends_one_email_to_admins(self):
         """Kryterium 1: nieobsłużony wyjątek → e-mail do ADMINS."""
@@ -64,5 +66,35 @@ class ServerErrorAlertTests(TestCase):
 
     @override_settings(DEBUG=True)
     def test_no_email_in_debug(self):
+        self.client.get("/boom/")
+        self.assertEqual(mail.outbox, [])
+
+    def test_query_string_secrets_masked(self):
+        """Przegląd [SEC]: GET i QUERY_STRING maskowane jak pola POST."""
+        self.client.get("/boom/?token=sekret-z-linku&q=paleta")
+        body = mail.outbox[0].body
+        self.assertNotIn("sekret-z-linku", body)
+        self.assertIn("paleta", body)
+
+    def test_same_error_alerts_once_per_window(self):
+        """Przegląd [SEC]: pętla błędów 500 nie zalewa skrzynki ani nie blokuje workerów."""
+        for _ in range(5):
+            self.client.get("/boom/")
+        self.assertEqual(len(mail.outbox), 1)
+        self.client.post("/boom/")  # ta sama ścieżka i typ błędu — nadal jeden mail
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_hourly_cap(self):
+        from config import log
+
+        with self.settings(ROOT_URLCONF=__name__):
+            for _ in range(log.ALERT_MAX_PER_HOUR + 5):
+                cache.delete("alert500:RuntimeError:/boom/")
+                self.client.get("/boom/")
+        self.assertEqual(len(mail.outbox), log.ALERT_MAX_PER_HOUR)
+
+    @override_settings(DEMO_MODE=True)
+    def test_no_alert_in_demo(self):
+        """Przegląd [SEC]: w demo raport poszedłby do konsoli z danymi odwiedzających."""
         self.client.get("/boom/")
         self.assertEqual(mail.outbox, [])
