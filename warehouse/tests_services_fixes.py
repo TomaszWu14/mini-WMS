@@ -590,3 +590,19 @@ class PalletLockOrderTests(BaseSetup):
             services.pick_by_material(
                 material=self.material, quantity=5, user=self.user
             )
+
+    def test_fefo_prefix_covers_only_needed_pallets(self):
+        """Przegląd [DB] US-053: realizacja blokuje tylko palety, których użyje FEFO."""
+        pks = [
+            HandlingUnit.objects.create(
+                number=f"HU-P{i}",
+                material=self.material,
+                quantity=3,
+                status=HUStatus.ZMAGAZYNOWANY,
+                expiry_date=date(2026, 12, 10 - i),
+            ).pk
+            for i in range(4)
+        ]
+        # FEFO: najkrótsza data ważności pierwsza (odwrotnie niż pk).
+        self.assertEqual(services._fefo_prefix(self.material, 5), pks[::-1][:2])
+        self.assertEqual(services._fefo_prefix(self.material, 99), pks[::-1])

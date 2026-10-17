@@ -739,7 +739,7 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 |---|---|
 | Historyjka | Jako **[DEV]** chcę, aby wszystkie ścieżki blokowały palety (HU) w tej samej kolejności, aby równoległe „Realizuj”, przepakowanie i zamknięcie spisu nie kończyły się deadlockiem (500). |
 | MoSCoW · rozmiar | Could · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | przegląd `db-reviewer` US-018: `execute_issue_document` — kolejność pozycji × FEFO, `repack_hu` — pk, `close_stocktake` — `location_code, id`; `pick_by_material` liczy `take` z niezablokowanego odczytu |
 | Wymagania | NFR-026 |
 | Zależności | US-018 |
@@ -748,4 +748,6 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** dwa WZ z materiałami X, Y i Y, X; **When** „Realizuj” równolegle (PostgreSQL); **Then** bez `deadlock detected`, oba kończą się sukcesem albo komunikatem.
 2. **Given** `allow_partial=True` i równoległe pobranie z tej samej palety; **When** realizacja; **Then** brak błędu „HU jest pusty” — pobiera tyle, ile jest pod blokadą.
+
+**Testy:** `warehouse/tests_services_fixes.py` — `PalletLockOrderTests` (4: blokowane tylko palety, których użyje FEFO; dwie pozycje na tej samej palecie z brakami widzą stan po pierwszym pobraniu; `pick_by_material(allow_partial=True)` pobiera resztę; bez `allow_partial` brak stanu nadal odrzucany); `tests_concurrency_pg.py` (PostgreSQL, +2: WZ X, Y i Y, X równolegle — na starym kodzie `deadlock detected`; realizacja z brakami po równoległym pobraniu — na starym kodzie „Brak stanu na HU”). Implementacja: `services._lock_hus` (jedno `select_for_update` rosnąco po pk); `execute_issue_document` blokuje wszystkie palety-kandydatów przed pobieraniem; `pick_by_material` liczy dostępność z wierszy pod blokadą; `close_stocktake` blokuje palety arkusza po pk; `repack_hu` już blokował po pk. Przegląd [DB]: realizacja blokowała wszystkie palety materiału — teraz tylko początek kolejki FEFO pokrywający potrzebną ilość (`_fefo_prefix`, dobranie kolejnych, gdy ktoś pobrał w międzyczasie); `pick_by_material` z pozycją blokuje dokument i pozycję przed paletami; faktyczna kolejność dokument → HU → pozycja opisana w pułapkach. Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 

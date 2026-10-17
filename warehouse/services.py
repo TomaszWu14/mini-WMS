@@ -461,6 +461,20 @@ def _lock_hus(pks) -> dict[int, HandlingUnit]:
     }
 
 
+def _fefo_prefix(material: Material, quantity: int) -> list[int]:
+    """US-053 (przegląd [DB]): pk palet z początku kolejki FEFO, które pokrywają
+    `quantity` wg odczytu bez blokady — blokujemy tylko je, nie wszystkie palety
+    materiału. Brak stanu → wszystkie aktywne palety."""
+    pks: list[int] = []
+    total = 0
+    for pk, qty in _pickable_hus(material).values_list("pk", "quantity"):
+        if total >= quantity:
+            break
+        pks.append(pk)
+        total += qty
+    return pks
+
+
 def _pickable_hus(material: Material):
     """Aktywne HU danego materiału, uporządkowane wg reguły wydania.
 
@@ -574,16 +588,31 @@ def pick_by_material(
     """
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
-    order = list(_pickable_hus(material).values_list("pk", flat=True))
-    locked = _lock_hus(order)
-    hus = [
-        locked[pk]
-        for pk in order
-        if pk in locked
-        and locked[pk].quantity > 0
-        and locked[pk].status != HUStatus.PUSTY
-    ]
+    if line is not None:
+        # Przegląd [DB] US-053: dokument → pozycja → HU także przy wywołaniu spoza
+        # `execute_issue_document` (w nim to ponowna blokada już trzymanych wierszy).
+        IssueDocument.objects.select_for_update().filter(pk=line.document_id).first()
+        IssueLine.objects.select_for_update().filter(pk=line.pk).first()
+
+    def locked_hus(pks: list[int]) -> list[HandlingUnit]:
+        locked = _lock_hus(pks)
+        return [
+            locked[pk]
+            for pk in pks
+            if pk in locked
+            and locked[pk].quantity > 0
+            and locked[pk].status != HUStatus.PUSTY
+        ]
+
+    order = _fefo_prefix(material, quantity)
+    hus = locked_hus(order)
     available = sum(hu.quantity for hu in hus)
+    if available < quantity:
+        # Ktoś pobrał w międzyczasie — dobieramy kolejne palety (rzadkie; dokładamy
+        # blokady do już trzymanych, kolejność po pk tylko w obrębie tego zapytania).
+        order = list(_pickable_hus(material).values_list("pk", flat=True))
+        hus = locked_hus(order)
+        available = sum(hu.quantity for hu in hus)
     if allow_partial:
         quantity = min(quantity, available)
     elif quantity > available:
@@ -624,18 +653,22 @@ def execute_issue_document(
     if not lines:
         raise WMSError("Dokument nie ma pozycji do wydania.")
 
-    # US-053: wszystkie palety, z których realizacja może pobierać, blokujemy od razu,
+    # US-053: palety, z których realizacja będzie pobierać, blokujemy od razu,
     # rosnąco po pk — niezależnie od kolejności pozycji i FEFO. Dwa „Realizuj” na WZ
     # z materiałami X, Y i Y, X nie zakleszczą się (`deadlock detected` = 500).
     open_lines = [ln for ln in lines if ln.requested_qty - ln.picked_qty > 0]
-    materials = {ln.material_id for ln in open_lines if ln.specific_hu_id is None}
+    needed: dict[int, int] = {}
+    by_id: dict[int, Material] = {}
+    for ln in open_lines:
+        if ln.specific_hu_id is None:
+            needed[ln.material_id] = (
+                needed.get(ln.material_id, 0) + ln.requested_qty - ln.picked_qty
+            )
+            by_id[ln.material_id] = ln.material
     candidates = [ln.specific_hu_id for ln in open_lines if ln.specific_hu_id]
-    if materials:
-        candidates += list(
-            HandlingUnit.objects.filter(material_id__in=materials, quantity__gt=0)
-            .exclude(status=HUStatus.PUSTY)
-            .values_list("pk", flat=True)
-        )
+    # Przegląd [DB]: tylko palety, które FEFO faktycznie użyje, nie wszystkie palety materiału.
+    for material_id, qty in needed.items():
+        candidates += _fefo_prefix(by_id[material_id], qty)
     _lock_hus(candidates)
 
     for line in open_lines:
