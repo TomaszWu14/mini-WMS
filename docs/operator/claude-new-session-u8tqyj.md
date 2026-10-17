@@ -67,6 +67,9 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Zależności i obrazy (US-020):** obraz `web` instaluje pakiety wyłącznie z locka z hashami; obrazy `postgres`
+  i `caddy` w compose są przypięte digestem (te same wersje co dotąd: `16-alpine`, `2-alpine`). Coolify zbuduje
+  obraz jak zwykle. Aktualizacje obrazów i pakietów przychodzą wyłącznie przez PR Dependabota. Bez migracji i zmiennych.
 - **Kontrola typów w CI (US-019):** dotyczy tylko procesu wytwórczego — nic do zrobienia przy wdrożeniu.
 - **Wydania skanerem (US-018):** dokument WZ zamyka się po ostatnim pobraniu jak dotąd; równoczesne „Realizuj” w panelu
   i skaner na tym samym WZ nie kończą się już błędem serwera. Bez migracji i zmiennych.
@@ -151,7 +154,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (421 passed, 3 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (426 passed, 3 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
 

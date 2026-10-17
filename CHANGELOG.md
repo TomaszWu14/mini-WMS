@@ -78,6 +78,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-019:** mypy w CI sprawdza też ciała funkcji bez adnotacji (wszystkie widoki) — wcześniej błąd typu w widoku
   przechodził; poprawiono 37 zgłoszeń bez zmiany działania. Progi pokrycia (80 % / 90 % `services.py`) i pytest na
   SQLite + PostgreSQL bez zmian.
+- **US-020:** zależności z jednego źródła (`requirements*.in`) w lockach z hashami (`pip-compile`); obraz instaluje
+  tylko z locka (`--require-hashes --no-deps`); obrazy `python`, `postgres`, `caddy` przypięte digestem; CI instaluje
+  narzędzia z locka (ADR-0007).
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

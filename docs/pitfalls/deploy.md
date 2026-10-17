@@ -37,3 +37,7 @@
    Zmiana `scripts/pg_backup.sh` = rebuild obrazu. Off-site wymaga `BACKUP_AGE_RECIPIENT` (bez niego skrypt odmawia
    wysyłki); klucz prywatny age nigdy na serwer. Skrypt musi działać w `sh` (busybox i dash) — bez `pipefail`,
    sprawdza `shellcheck` w CI.
+12. **Zależności i obrazy są zablokowane (US-020, ADR-0007).** `requirements*.txt` to locki `pip-compile`
+    z hashami — nowa zależność trafia do `requirements*.in`, lock się przegenerowuje (nagłówek pliku); ręczna
+    edycja `.txt` kończy się błędem hashy w Dockerze. Obrazy w Dockerfile i compose mają `tag@sha256:…` —
+    zmiana tagu bez digestu łamie `tests_tooling`. Dockerfile instaluje `--require-hashes --no-deps`.

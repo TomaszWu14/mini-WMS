@@ -105,7 +105,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-022 | US-019 | krok CI „Próg pokrycia”; `tests_tooling.MypyConfigTests.test_coverage_threshold` | #23 |
 | NFR-023 | US-019 | n/d — miara CI | #23 |
 | NFR-024 | US-019 | kroki CI (ruff, mypy, bandit); `tests_tooling.MypyConfigTests` (2) | #23 |
-| NFR-025 | US-020 | n/d — build obrazu w CI | #23 |
+| NFR-025 | US-020 | `tests_tooling.SupplyChainTests`; build obrazu w CI (job 7) | #23 |
 | NFR-026 | US-018, US-030, US-038 | `ConcurrentIssueTests` (PostgreSQL, +1 US-018); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests`; `CompleteIfPickedTests` | historyczny (przed procesem; #13) |
 | NFR-027 | US-017, US-029 | `tests_urls.UrlSnapshotTests`; porównanie AST przy podziale (ADR-0006) | #23 |
 | NFR-028 | — | n/d — kroki CI (`check`, build obrazu) | historyczny (przed procesem) |
@@ -186,7 +186,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-052 | Should | NFR-026, FR-016 | przegląd [DB] US-018 | — |
 | US-053 | Could | NFR-026 | przegląd [DB] US-018 | — |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | `tests_tooling.py` (3) + przebieg CI — zrobione, #23 |
-| US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | n/d (CI) |
+| US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | `tests_tooling.SupplyChainTests` (5) + CI — zrobione, #23 |
 | US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | `tests_alerts.py` |
 | US-022 | Should | FR-021, FR-024, NFR-020, SEC-032, SEC-033 | prompt PO sekcja 6, R1, R7 | `tests_audit_log.py` |
 | US-023 | Should | SEC-037, SEC-038 | R7 | n/d (dokument) |

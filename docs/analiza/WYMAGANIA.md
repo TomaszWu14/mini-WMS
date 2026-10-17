@@ -125,7 +125,7 @@ Wartości pochodzą z kodu, konfiguracji i audytu; „źródło” wskazuje, sk�
 | NFR-022 | utrzymanie | Pokrycie testami. | ≥ 80 % ogółem i ≥ 90 % dla `services.py` (Z-08); CI pilnuje progu (`fail_under`, `--include=warehouse/services.py --fail-under=90`), raport jako artefakt. Stan: 91 % / 92 %. | spełnione — US-019 | Z-08, DEC-3, T5 |
 | NFR-023 | utrzymanie | Szybki feedback z testów. | `pytest` ≈ 25 s (421 testów, SQLite); CI uruchamia `pytest -q` (SQLite + PostgreSQL 16) — kilka minut na cały pipeline. | spełnione — US-019 | AUDYT §2.2, T6 |
 | NFR-024 | utrzymanie | Statyczna analiza w CI. | CI: ruff, ruff format, mypy całego kodu z `check_untyped_defs` (kod aplikacji), bandit, semgrep. | spełnione — US-019 | T4 |
-| NFR-025 | utrzymanie | Odtwarzalny build. | Brak lockfile (`Django>=5.2,<5.3`); zależności w dwóch miejscach. | brak (SHA akcji w toku: ADR-0001/CI; lockfile nie) | T7 |
+| NFR-025 | utrzymanie | Odtwarzalny build. | Locki `pip-compile` z hashami z jednego źródła (`requirements*.in`), obrazy przypięte digestem, akcje po SHA (ADR-0007). | spełnione — US-020 | T7 |
 | NFR-026 | zgodność (integralność) | Spójność danych przy współbieżności. | Transakcje + `select_for_update` (D-05), `CheckConstraint` ilość ≥ 0, cały zestaw testów na PostgreSQL 16 w CI. | spełnione | D-05, docs/07, `tests_concurrency_pg.py` |
 | NFR-027 | utrzymanie | Utrzymywalność kodu widoków. | pakiet `warehouse/views/`: 10 modułów po 76–257 linii (ADR-0006). | spełnione — US-017 | T2 |
 | NFR-028 | zgodność | Platforma. | Django 5.2 LTS; PostgreSQL 16 (prod), SQLite (lokalnie); obraz dwuetapowy, non-root, `HEALTHCHECK`. | spełnione | AUDYT §2.1 |

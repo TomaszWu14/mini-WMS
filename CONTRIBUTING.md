@@ -80,7 +80,10 @@ Funkcja jest skończona, gdy:
 
 ## 6. Narzędzia — jak uruchomić lokalnie
 
-Instalacja: `pip install -r requirements-dev.txt` (Python 3.11+). Uzasadnienie doboru narzędzi i reguły
+Instalacja: `pip install -r requirements-dev.txt` (lock z hashami dla Pythona 3.11, sprawdzony też na 3.13).
+**Zmiana zależności:** edytuj `requirements.in` / `requirements-dev.in`, potem przegeneruj lock poleceniem z
+nagłówka pliku `.txt` (`pip-compile --generate-hashes --allow-unsafe --strip-extras …`, pip-tools 7.4.1 z
+`click<8.2`, Python 3.11). Plików `requirements*.txt` nie edytuj ręcznie ([ADR-0007](docs/architektura/adr/0007-lock-zaleznosci-pip-compile.md)). Uzasadnienie doboru narzędzi i reguły
 blokowania w CI: [ADR-0001](docs/architektura/adr/0001-narzedzia-jakosci-i-bezpieczenstwa.md).
 
 | Narzędzie | Polecenie | Blokuje CI? |

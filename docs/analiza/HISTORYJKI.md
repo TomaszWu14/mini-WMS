@@ -448,7 +448,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[DEV]** chcę zablokowanych wersji zależności z hashami i przypiętych obrazów oraz akcji, aby build był powtarzalny i odporny na podmianę. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia; SHA akcji GitHub — **w toku: ADR-0001/CI**; lockfile i digest obrazu bazowego — do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §2.4 **T7**, §3.3 **R10** (reszta); `Dockerfile:4,18` |
 | Wymagania | NFR-025; SEC-029, SEC-031 |
 | Zależności | US-006; ADR (narzędzie: `pip-compile` lub `uv`) |
@@ -459,7 +459,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 2. **Given** Dockerfile; **Then** instaluje z locka, bazuje na obrazie przypiętym digestem, bez `pip install --upgrade pip` bez wersji.
 3. **Given** nowa wersja zależności; **Then** Dependabot aktualizuje lock w PR przechodzącym pełne CI.
 
-**Test do napisania:** n/d — weryfikacja przebiegiem CI i budowaniem obrazu.
+**Testy i weryfikacja:** `warehouse/tests_tooling.py` — `SupplyChainTests` (5: hashe przy każdej pozycji trzech locków, przypięcia `.in` = lock, `pyproject` czyta jedno źródło, obrazy z `@sha256`, Dockerfile tylko z `--require-hashes` bez `--upgrade pip`); przed zmianą czerwone. Instalacja z hashami sprawdzona w czystych venv: lock dev na Pythonie 3.11 i 3.13 (426 testów zielonych na obu), lock mutation na 3.11; build obrazu — job CI 7. Kryterium 3: Dependabot `pip` aktualizuje `.in` i przegenerowuje lock (format `pip-compile`), dodany ekosystem `docker-compose`; pierwszy PR Dependabota — do obserwacji. ADR-0007. Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione, 3 — konfiguracja gotowa, potwierdzi pierwszy PR Dependabota.
 
 ### US-021 — Alerty o błędach 500
 

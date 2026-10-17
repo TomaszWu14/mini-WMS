@@ -34,7 +34,7 @@ Przejęty serwer z kluczem z prawem usuwania mógłby skasować wszystkie kopie 
 dlatego retencja domyślnie po stronie bucketu, a usuwanie przez skrypt jest opcją. Usuwanie ograniczone do
 jednego katalogu; retencja < 1 dnia i cel bez ścieżki są odrzucane. Obraz `backup` skanuje trivy w CI, a
 ćwiczenie odtworzenia używa tego samego obrazu. Obraz bazowy jest przypięty tagiem `postgres:16-alpine`
-(Dependabot śledzi `docker/`); przypięcie digestem — otwarte (RYZYKA, do zrobienia przy następnej aktualizacji).
+(Dependabot śledzi `docker/`); przypięcie digestem — zrobione w US-020 (ADR-0007).
 
 ## Konsekwencje
 
