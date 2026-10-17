@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
+# Obraz bazowy przypięty digestem (US-020); aktualizuje go Dependabot (tag + digest).
 
 # --- Etap 1: builder — instalacja zależności do izolowanego venv ------------
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -14,12 +15,14 @@ COPY requirements.txt .
 # Po instalacji zależności usuwamy z venv narzędzia instalacyjne: w runtime nic ich nie
 # używa, a ich podatności (setuptools/wheel/vendorowane pakiety pip) blokowałyby skan
 # obrazu w CI (ADR-0001). Nowe pakiety trafiają do obrazu tylko przez rebuild.
-RUN pip install --upgrade pip && pip install -r requirements.txt \
+# US-020: tylko z locka — każdy plik sprawdzany hashem, bez dociągania niezablokowanych
+# zależności (--no-deps; lock jest pełny) i bez aktualizacji pip „na ślepo”.
+RUN pip install --require-hashes --no-deps -r requirements.txt \
     && pip uninstall -y pip setuptools wheel
 
 
 # --- Etap 2: runtime — chudy obraz produkcyjny, bez narzędzi budowania ------
-FROM python:3.11-slim AS runtime
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

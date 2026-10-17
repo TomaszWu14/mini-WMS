@@ -1,6 +1,6 @@
 # Kontener backupu (US-012): pg_dump z obrazu PostgreSQL + age (szyfrowanie),
 # rclone (wysyłka poza serwer), curl (heartbeat). Bez kompilatorów, bez sekretów.
-FROM postgres:16-alpine
+FROM postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
 # gosu (Go 1.24, kilkadziesiąt CVE wg trivy) służy tylko entrypointowi serwera PostgreSQL —
 # ten kontener go nie używa (własny ENTRYPOINT), więc usuwamy go z obrazu.
 RUN apk add --no-cache age rclone curl && rm -f /usr/local/bin/gosu

@@ -31,16 +31,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - name: Instalacja ruff
-        run: pip install ruff==0.15.20
+      - name: Instalacja narzędzi (lock z hashami, US-020)
+        run: pip install --require-hashes -r requirements-dev.txt
       - name: Ruff lint
         run: ruff check --output-format=github .
       - name: Ruff format (check)
         run: ruff format --check .
       - name: Shellcheck skryptów (US-012)
-        run: |
-          pip install shellcheck-py==0.10.0.1
-          shellcheck scripts/*.sh entrypoint.sh
+        run: shellcheck scripts/*.sh entrypoint.sh
 
   typecheck:
     name: 2. Typy (mypy — cały kod aplikacji)
@@ -53,7 +51,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Instalacja zależności
-        run: pip install -r requirements.txt mypy==1.13.0 "django-stubs[compatible-mypy]==5.2.9"
+        run: pip install --require-hashes -r requirements-dev.txt
       - name: mypy
         run: mypy warehouse config
 
@@ -68,7 +66,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Instalacja zależności
-        run: pip install -r requirements.txt pytest==9.1.1 pytest-django==4.14.0 coverage==7.6.9
+        run: pip install --require-hashes -r requirements-dev.txt
 
       - name: Django system check
         run: python manage.py check
@@ -132,7 +130,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Instalacja zależności
-        run: pip install -r requirements.txt pytest==9.1.1 pytest-django==4.14.0
+        run: pip install --require-hashes -r requirements-dev.txt
       - name: Testy (pytest, PostgreSQL)
         run: pytest -q -p no:cacheprovider
       - name: "Ćwiczenie odtworzenia kopii (US-012): backup → age → off-site → odtworzenie → porównanie"
@@ -178,7 +176,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Instalacja skanerów
-        run: pip install bandit==1.9.4 semgrep==1.146.0
+        run: |
+          pip install --require-hashes -r requirements-dev.txt
+          # semgrep poza lockiem (konflikt tomli z pip-audit) — osobny venv pipx, wersja przypięta.
+          pipx install semgrep==1.146.0
 
       - name: Bandit (blokuje przy waga ≥ średnia i pewność ≥ średnia)
         run: |
@@ -230,7 +231,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Instalacja pip-audit
-        run: pip install pip-audit==2.10.1
+        run: pip install --require-hashes -r requirements-dev.txt
 
       - name: pip-audit — zależności produkcyjne (blokuje przy znanej podatności)
         run: |

@@ -34,3 +34,86 @@ class MypyConfigTests(SimpleTestCase):
         self.assertGreaterEqual(
             self.config["tool"]["coverage"]["report"]["fail_under"], 80
         )
+
+
+class SupplyChainTests(SimpleTestCase):
+    """US-020: locki z hashami z jednego źródła, obrazy przypięte digestem."""
+
+    LOCKS = ("requirements.txt", "requirements-dev.txt", "requirements-mutation.txt")
+
+    @staticmethod
+    def _pins(path):
+        pins = {}
+        for line in (ROOT / path).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if "==" in line and not line.startswith("-"):
+                name, version = line.rstrip(" \\").split("==", 1)
+                pins[name.split("[")[0].strip().lower().replace("_", "-")] = (
+                    version.strip()
+                )
+        return pins
+
+    def test_every_locked_package_has_hashes(self):
+        for lock in self.LOCKS:
+            with self.subTest(lock=lock):
+                text = (ROOT / lock).read_text(encoding="utf-8")
+                self.assertIn(
+                    "pip-compile", text.splitlines()[1] + text.splitlines()[4]
+                )
+                entries = [
+                    ln
+                    for ln in text.splitlines()
+                    if "==" in ln and not ln.startswith("#")
+                ]
+                self.assertTrue(entries)
+                for entry in entries:
+                    self.assertTrue(
+                        entry.rstrip().endswith("\\"), entry
+                    )  # po nim linie --hash
+
+    def test_direct_pins_match_lock(self):
+        """Ręczna zmiana w .in bez przegenerowania locka → czerwony test."""
+        for source, lock in (
+            ("requirements.in", "requirements.txt"),
+            ("requirements-dev.in", "requirements-dev.txt"),
+            ("requirements-mutation.in", "requirements-mutation.txt"),
+        ):
+            locked = self._pins(lock)
+            for name, version in self._pins(source).items():
+                with self.subTest(source=source, package=name):
+                    self.assertEqual(locked.get(name), version)
+
+    def test_pyproject_reads_single_source(self):
+        config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        self.assertEqual(config["project"]["dynamic"], ["dependencies"])
+        self.assertNotIn("dependencies", config["project"])
+        self.assertEqual(
+            config["tool"]["setuptools"]["dynamic"]["dependencies"]["file"],
+            ["requirements.in"],
+        )
+
+    def test_images_pinned_by_digest(self):
+        files = [
+            "Dockerfile",
+            "docker/backup.Dockerfile",
+            *(p.name for p in ROOT.glob("docker-compose*.yml")),
+        ]
+        for name in files:
+            text = (ROOT / name).read_text(encoding="utf-8")
+            refs = [
+                ln.split()[1]
+                if ln.startswith("FROM")
+                else ln.split("image:", 1)[1].strip()
+                for ln in (raw.strip() for raw in text.splitlines())
+                if ln.startswith("FROM ") or ln.startswith("image:")
+            ]
+            for ref in refs:
+                if "${" in ref:  # obraz budowany lokalnie (np. miniwms-web:${TAG})
+                    continue
+                with self.subTest(file=name, image=ref):
+                    self.assertRegex(ref, r"@sha256:[0-9a-f]{64}$")
+
+    def test_dockerfile_installs_only_from_lock(self):
+        text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("--require-hashes", text)
+        self.assertNotIn("--upgrade pip", text)

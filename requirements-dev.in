@@ -1,0 +1,23 @@
+# Zależności deweloperskie i CI (US-020, ADR-0007). Lock z hashami:
+#   pip-compile --generate-hashes --allow-unsafe --output-file=requirements-dev.txt requirements-dev.in
+# Produkcyjne w tych samych wersjach co obraz (constraint na lock produkcyjny).
+# Lock dla Pythona 3.11 (CI, obraz); sprawdzony też na 3.13. mutmut — requirements-mutation.in.
+-r requirements.in
+-c requirements.txt
+
+ruff==0.15.20
+mypy==1.13.0
+django-stubs[compatible-mypy]==5.2.9
+coverage==7.6.9
+pytest==9.1.1
+pytest-django==4.14.0
+pip-audit==2.10.1
+bandit==1.9.4
+shellcheck-py==0.10.0.1
+# tools/record_video.py (film demo): `playwright install chromium`, ffmpeg w PATH.
+playwright==1.63.0
+# Zależności tylko dla Windows (pytest → colorama, Django → tzdata): pip-compile na Linuksie
+# by je pominął, a `--require-hashes` odrzuci wtedy instalację na Windows.
+colorama
+tzdata
+# semgrep==1.146.0 — osobno (`pipx install semgrep==1.146.0`): koliduje z pip-audit o tomli.

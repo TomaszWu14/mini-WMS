@@ -29,7 +29,7 @@ if [[ "$(uname -s)" != "Linux" && -z "${MUTATE_INNER:-}" ]]; then
       set -e
       mkdir /work && tar -C /src --exclude=.venv --exclude=.git --exclude=mutants \
         --exclude=reports --exclude='*.sqlite3' -cf - . | tar -C /work -xf -
-      cd /work && pip install -q --root-user-action=ignore -r requirements-dev.txt
+      cd /work && pip install -q --root-user-action=ignore --require-hashes -r requirements-mutation.txt
       bash scripts/mutate.sh '$MOD_PATH' '$FILTER'"
   exit $?
 fi
