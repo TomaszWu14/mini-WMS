@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Numeracja palet (US-050):** import przyjęć/stanów zapisuje się hurtem — inne przyjęcia nie czekają na koniec pliku.
+  Numery HU bez zmian w formacie, nadal kolejne. Bez migracji i zmiennych.
 - **Blokady palet (US-053):** zmiana wewnętrzna — równoległe realizacje WZ nie kończą się błędem 500; bez migracji,
   zmiennych i zmian w interfejsie.
 - **Pozycje WZ (US-052):** przy pozycji, z której już coś pobrano, nie ma przycisku „Usuń” (pobrany towar jest w
@@ -164,7 +166,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (458 passed, 7 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (464 passed, 8 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
 

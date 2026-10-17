@@ -690,7 +690,7 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 |---|---|
 | Historyjka | Jako **Operator** chcę, aby duży import nie wstrzymywał innych przyjęć na czas całego pliku, aby praca na hali nie stała przy imporcie. |
 | MoSCoW · rozmiar | Could · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | przegląd `db-reviewer` US-002: blokada `HUNumberingConfig` trwa do końca transakcji importu (do 2 000 palet, ~10 tys. zapytań) |
 | Wymagania | NFR-003; SEC-021 |
 
@@ -698,6 +698,8 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** import 2 000 palet; **When** trwa zapis; **Then** blokada licznika jest brana raz (rezerwacja `next_number += N`), HU i ruchy zapisywane `bulk_create`, liczba zapytań stała względem N (`assertNumQueries`).
 2. **Given** dwa równoległe przyjęcia; **When** jedno to import; **Then** numery HU nadal unikalne i ciągłe (test PostgreSQL jak `tests_concurrency_pg.py`).
+
+**Testy:** `warehouse/tests_input_limits.py` — `HUNumberReservationTests` (6: liczba zapytań przyjęcia i importu przyjęć nie rośnie z liczbą palet; numery kolejne, licznik przesunięty raz; numer zajęty ręcznie pomijany bez względu na wielkość liter; wycofane przyjęcie oddaje numery; import stanów rezerwuje numery z licznika raz — na starym kodzie +143 zapytania przy 18 dodatkowych wierszach); `tests_concurrency_pg.py` (PostgreSQL, +1: import 120 palet i dwa przyjęcia równolegle — 125 numerów bez kolizji i dziur). Implementacja: `services.reserve_hu_numbers(n)`, `ReceiptPlan` / `validate_receipt` / `create_received_hus` (`bulk_create` palet i ruchów); import przyjęć waliduje cały plik, potem jeden zapis; import stanów nadaje numery z licznika po pętli jedną rezerwacją. **Znalezione przy kryterium 2 błędy (istniały wcześniej):** (a) import blokował materiały `FOR UPDATE`, a równoległe przyjęcie przy wstawianiu palety bierze `FOR KEY SHARE` na materiale po blokadzie licznika → `deadlock detected` (3/3 przebiegi na starym kodzie); teraz `select_for_update(no_key=True)` — zmiana i usunięcie materiału nadal zablokowane; (b) brak wiersza `HUNumberingConfig` (usunięty w adminie) → dwa równoległe przyjęcia zakładały dwa liczniki i ten sam numer; teraz stały pk=1 w savepoincie. Przegląd [DB]: import stanów blokował licznik na cały plik — poprawione; reset `seed_demo` (LOCK TABLE) przy równoległym imporcie może zakończyć jedną z transakcji deadlockiem — odrzucone: żadna kolejność listy tabel nie jest bezpieczna dla wszystkich ścieżek (przyjęcie: licznik → materiał, import: materiał → licznik), reset idzie o 03:00, PostgreSQL wycofuje jedną transakcję bez utraty danych; ręczne `create(pk=1)` nie przesuwa sekwencji — bez poprawki (po `migrate` wiersz z 0002 już ją przesunął). [SEC]: brak zgłoszeń. Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 
 ### US-051 — Indeks na `LoginEvent.created_at` (z przeglądu [DB] US-005)
 

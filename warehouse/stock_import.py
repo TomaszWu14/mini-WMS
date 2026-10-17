@@ -108,6 +108,22 @@ def _over_capacity_codes(location_pks: set[int]) -> list[str]:
     )
 
 
+def _import_movement(hu: HandlingUnit, user) -> dict:
+    return {
+        "type": MovementType.PRZYJECIE,
+        "handling_unit": hu,
+        "material": hu.material,
+        "quantity_delta": hu.quantity,
+        "location_to": hu.location,
+        "note": (
+            "Import stanu początkowego"
+            if hu.quantity
+            else "Import stanu początkowego (ilość do uzupełnienia)"
+        ),
+        "created_by": user,
+    }
+
+
 @transaction.atomic
 def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS"):
     """Importuje stan początkowy. Zwraca słownik z podsumowaniem i błędami."""
@@ -135,6 +151,8 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
     materials_created: set[str] = set()
     locations_created: set[str] = set()
     errors: list[str] = []
+
+    pending: list[HandlingUnit] = []
 
     for i, row in enumerate(rows, start=2):  # wiersz 1 = nagłówek
         ref = _norm(_get(row, "ref", "indeks", "index", "material"))
@@ -216,10 +234,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             status = HUStatus.ZMAGAZYNOWANY
             touched_locations.add(location.pk)
 
-        if not hu_number:
-            hu_number = services.generate_hu_number()
-
-        hu = HandlingUnit.objects.create(
+        hu = HandlingUnit(
             number=hu_number,
             material=material,
             quantity=qty,
@@ -230,22 +245,27 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             delivery_ref="IMPORT",
             created_by=user,
         )
-        StockMovement.objects.create(
-            type=MovementType.PRZYJECIE,
-            handling_unit=hu,
-            material=material,
-            quantity_delta=qty,
-            location_to=location,
-            note=(
-                "Import stanu początkowego"
-                if qty
-                else "Import stanu początkowego (ilość do uzupełnienia)"
-            ),
-            created_by=user,
-        )
+        if hu_number:
+            # Numer z pliku zapisujemy od razu — kolejne wiersze sprawdzają duplikat w bazie.
+            hu.save()
+            StockMovement.objects.create(**_import_movement(hu, user))
+        else:
+            # US-050 (przegląd [DB]): numer z licznika nadajemy po pętli jedną
+            # rezerwacją — licznik nie jest blokowany przez cały import.
+            pending.append(hu)
         created += 1
         if not qty:
             zero_qty += 1
+
+    if pending:
+        for hu, number in zip(
+            pending, services.reserve_hu_numbers(len(pending)), strict=True
+        ):
+            hu.number = number
+        HandlingUnit.objects.bulk_create(pending)
+        StockMovement.objects.bulk_create(
+            StockMovement(**_import_movement(hu, user)) for hu in pending
+        )
 
     return {
         "created": created,

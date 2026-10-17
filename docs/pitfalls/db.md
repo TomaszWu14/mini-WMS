@@ -22,7 +22,12 @@
 4. **Numeracja WZ/SP może kolidować.** `_next_daily_number` liczy max+1 bez blokady —
    zapis zawsze przez `save_with_unique_number` (savepoint + ponowienie po
    `IntegrityError`). Numer HU idzie inną drogą: licznik `HUNumberingConfig` z
-   `select_for_update`.
+   `select_for_update` — przez `reserve_hu_numbers(n)` raz na przyjęcie/plik, a palety i ruchy
+   po rezerwacji `bulk_create` (US-050): blokada licznika trwa do końca transakcji, więc po niej
+   nic długiego. Wiersz rodzica, do którego wstawiamy dzieci z FK (materiał przy imporcie),
+   blokuj `select_for_update(no_key=True)` — zwykłe `FOR UPDATE` koliduje z `FOR KEY SHARE`
+   wstawiania i daje deadlock z równoległym przyjęciem. `seed_demo` (LOCK TABLE) przy
+   równoległym imporcie może dostać deadlock — świadomie, reset idzie o 03:00.
 5. **Ograniczenia w bazie, nie tylko w formularzu.** `CheckConstraint` (ilość ≥ 0) i
    pola `unique=True` (numer HU/WZ, kod lokalizacji, indeks materiału). Nowa reguła ilościowa
    → constraint + migracja, nie sam `clean()`.

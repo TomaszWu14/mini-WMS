@@ -229,3 +229,29 @@ class HUNumberReservationTests(_Base):
             raise RuntimeError
         after = services.reserve_hu_numbers(1)
         self.assertEqual(int(after[0][2:]), int(before[0][2:]) + 1)
+
+    def test_stock_import_reserves_counter_numbers_once(self):
+        """Przegląd [DB] US-050: import stanów — licznik raz, numer z pliku pomijany."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        HUNumberingConfig.objects.all().delete()
+        HUNumberingConfig.objects.create(prefix="HU", next_number=1, padding=3)
+
+        def run(rows):
+            data = ("REF;ilosc;hu\n" + "".join(f"MAT-L;1;{r}\n" for r in rows)).encode()
+            with CaptureQueriesContext(connection) as ctx:
+                result = import_stock("s.csv", data, self.user)
+            self.assertEqual(result["errors"], [])
+            return len(ctx.captured_queries)
+
+        run(["HU002", ""])  # numer z pliku zajmuje HU002 — licznik go pomija
+        self.assertEqual(
+            sorted(HandlingUnit.objects.values_list("number", flat=True)),
+            ["HU001", "HU002"],
+        )
+        few, many = run([""] * 2), run([""] * 20)
+        # Na wiersz zostają tylko odczyty materiału/lokalizacji, nie numeracja ani zapisy.
+        self.assertLess(many - few, 18 * 3)
+        numbers = HandlingUnit.objects.values_list("number", flat=True)
+        self.assertEqual(len(set(numbers)), 24)
