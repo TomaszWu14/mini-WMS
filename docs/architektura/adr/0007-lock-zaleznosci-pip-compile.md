@@ -36,10 +36,14 @@ Dockerfile robił `pip install --upgrade pip` bez wersji, a obrazy bazowe szły 
   domknięciem zależności, a `--no-deps` gwarantuje, że nic spoza niego nie trafi do obrazu.
 - Obrazy `python`, `postgres` i `caddy` są przypięte digestem indeksu wieloarchitekturowego (`tag@sha256:…`).
   Dependabot (`docker` i `docker-compose`) podbija tag razem z digestem.
-- CI instaluje wszystkie narzędzia z locka dev. Wyjątek to `semgrep==1.146.0` przez `pipx`, w osobnym
-  środowisku, bez hashy: konflikt `tomli` z pip-audit, opisany już w ADR-0001.
-- `warehouse/tests_tooling.py` pilnuje, że każda pozycja locków ma hashe, przypięcia w `.in` zgadzają się
-  z lockiem, `pyproject` czyta jedno źródło, a obrazy mają digest.
+- CI instaluje wszystkie narzędzia z locka dev. `semgrep` ma własny lock `requirements-semgrep.txt`, z hashami,
+  instalowany w osobnym venv: konflikt `tomli` z pip-audit, opisany już w ADR-0001. Obrazy w CI (usługa
+  PostgreSQL, `psql` w ćwiczeniu odtworzenia) i w `scripts/mutate.sh` mają ten sam digest co compose i Dockerfile.
+- `warehouse/tests_tooling.py` pilnuje, że każda pozycja czterech locków ma hashe, przypięcia w `.in` zgadzają
+  się z lockiem, `pyproject` czyta jedno źródło, a obrazy mają digest. Obejmuje też workflowy CI i skrypty:
+  digest i `--require-hashes` przy każdym `pip install -r`.
+- `tzdata` jest w `requirements.in`, a `colorama` w `requirements-dev.in`, bo instalacja z README na Windows
+  ich wymaga.
 
 ## Konsekwencje
 

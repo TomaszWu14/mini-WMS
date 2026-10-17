@@ -6,7 +6,7 @@
 #
 # Wynik: reports/mutation-<moduł>-<data>.md. Wolne (minuty–godziny) — NIE podpinać pod hooki.
 # mutmut nie działa natywnie na Windowsie → poza Linuksem uruchamia się w kontenerze
-# python:3.11-slim (wymaga Dockera). Zawsze na kopii repo — drzewo robocze zostaje nietknięte.
+# z obrazem Pythona 3.11 (wymaga Dockera). Zawsze na kopii repo — drzewo robocze zostaje nietknięte.
 set -euo pipefail
 
 MOD_PATH="${1:?Użycie: scripts/mutate.sh <ścieżka/modułu.py> [wzorzec-funkcji]}"
@@ -21,11 +21,14 @@ REPORT_NAME="mutation-${MOD_NAME}-${STAMP}.md"
 [[ -f "$ROOT/$MOD_PATH" ]] || { echo "Brak pliku: $MOD_PATH" >&2; exit 1; }
 mkdir -p "$ROOT/reports"
 
+# Obraz przypięty digestem (US-020) — ten sam co Dockerfile.
+IMAGE="python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce"
+
 if [[ "$(uname -s)" != "Linux" && -z "${MUTATE_INNER:-}" ]]; then
   command -v docker >/dev/null || { echo "mutmut wymaga Linuksa/WSL albo Dockera." >&2; exit 1; }
-  echo "[mutate] $(uname -s) → uruchamiam w kontenerze python:3.11-slim"
+  echo "[mutate] $(uname -s) → uruchamiam w kontenerze $IMAGE"
   MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT":/src:ro -v "$ROOT/reports":/out \
-    -e MUTATE_INNER=1 -e REPORT_DIR=/out -e MUTATE_STAMP="$STAMP" python:3.11-slim bash -c "
+    -e MUTATE_INNER=1 -e REPORT_DIR=/out -e MUTATE_STAMP="$STAMP" "$IMAGE" bash -c "
       set -e
       mkdir /work && tar -C /src --exclude=.venv --exclude=.git --exclude=mutants \
         --exclude=reports --exclude='*.sqlite3' -cf - . | tar -C /work -xf -

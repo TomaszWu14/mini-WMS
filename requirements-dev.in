@@ -19,5 +19,5 @@ playwright==1.63.0
 # Zależności tylko dla Windows (pytest → colorama, Django → tzdata): pip-compile na Linuksie
 # by je pominął, a `--require-hashes` odrzuci wtedy instalację na Windows.
 colorama
-tzdata
+
 # semgrep==1.146.0 — osobno (`pipx install semgrep==1.146.0`): koliduje z pip-audit o tomli.

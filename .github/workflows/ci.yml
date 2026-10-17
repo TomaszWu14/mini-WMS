@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         env:
           POSTGRES_USER: wms
           POSTGRES_PASSWORD: wms
@@ -155,7 +155,7 @@ jobs:
           ENC="$(ls out/offsite/wms-*.sql.gz.age)"
           if gunzip -t "$ENC" 2>/dev/null; then echo "kopia off-site NIE jest zaszyfrowana"; exit 1; fi
           age -d -i key.txt "$ENC" | gunzip > restore.sql
-          PSQL="docker run --rm -i --network host -e PGPASSWORD=wms postgres:16-alpine psql -h localhost -U wms"
+          PSQL="docker run --rm -i --network host -e PGPASSWORD=wms postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea psql -h localhost -U wms"
           $PSQL -d wms -c "CREATE DATABASE restore_test OWNER wms;"
           $PSQL -d restore_test -v ON_ERROR_STOP=1 --single-transaction -q < restore.sql
           export DATABASE_URL="${DATABASE_URL%/wms}/restore_test"
@@ -178,8 +178,10 @@ jobs:
       - name: Instalacja skanerów
         run: |
           pip install --require-hashes -r requirements-dev.txt
-          # semgrep poza lockiem (konflikt tomli z pip-audit) — osobny venv pipx, wersja przypięta.
-          pipx install semgrep==1.146.0
+          # semgrep: osobny lock z hashami i osobny venv (konflikt tomli z pip-audit; US-020).
+          python -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --require-hashes -r requirements-semgrep.txt
+          echo "$RUNNER_TEMP/semgrep/bin" >> "$GITHUB_PATH"
 
       - name: Bandit (blokuje przy waga ≥ średnia i pewność ≥ średnia)
         run: |

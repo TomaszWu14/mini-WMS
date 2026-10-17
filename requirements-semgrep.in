@@ -1,0 +1,3 @@
+# semgrep (SAST w CI) — osobny lock i osobny venv: wymaga tomli~=2.0, a pip-audit tomli>=2.2 (ADR-0001).
+#   pip-compile --generate-hashes --allow-unsafe --output-file=requirements-semgrep.txt requirements-semgrep.in
+semgrep==1.146.0

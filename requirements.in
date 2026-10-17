@@ -2,6 +2,9 @@
 #   pip-compile --generate-hashes --allow-unsafe --output-file=requirements.txt requirements.in
 # pyproject.toml czyta tę listę (`[tool.setuptools.dynamic]`). Bez opcji pip w tym pliku.
 Django>=5.2,<5.3
+# Windows (lokalne uruchomienie z README): Django i psycopg wymagają tzdata — bez niej lock z hashami
+# odrzuci instalację; na Linuksie (obraz) to tylko dane stref czasowych.
+tzdata
 reportlab==5.0.0
 qrcode[pil]==8.2
 openpyxl==3.1.5

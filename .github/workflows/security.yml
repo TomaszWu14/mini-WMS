@@ -70,7 +70,11 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: pip install semgrep==1.146.0
+      - name: Instalacja semgrep (lock z hashami, osobny venv — US-020)
+        run: |
+          python -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --require-hashes -r requirements-semgrep.txt
+          echo "$RUNNER_TEMP/semgrep/bin" >> "$GITHUB_PATH"
       - name: Semgrep (python, django, owasp, security-audit, secrets — wszystkie poziomy)
         env:
           SEMGREP_SEND_METRICS: "off"
@@ -103,7 +107,7 @@ jobs:
       - name: pip-audit requirements*.txt
         run: |
           mkdir -p reports
-          for f in requirements.txt requirements-dev.txt; do
+          for f in requirements.txt requirements-dev.txt requirements-mutation.txt requirements-semgrep.txt; do
             echo "── $f ──"
             pip-audit -r "$f" --progress-spinner off --desc on -f json -o "reports/pip-audit-$(basename "$f" .txt).json" || true
             pip-audit -r "$f" --progress-spinner off || true

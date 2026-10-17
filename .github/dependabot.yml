@@ -58,6 +58,9 @@ updates:
       # Obraz bazowy: tylko łatki 3.11.x (zgodność z pyproject / CI).
       - dependency-name: "python"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # backup.Dockerfile: pg_dump musi mieć tę samą główną wersję co serwer w compose (pg_upgrade — decyzja PO).
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
 
   # US-020: obrazy w docker-compose*.yml są przypięte digestem — Dependabot podbija tag i digest.
   - package-ecosystem: "docker-compose"

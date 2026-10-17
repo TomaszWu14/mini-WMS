@@ -39,7 +39,12 @@ class MypyConfigTests(SimpleTestCase):
 class SupplyChainTests(SimpleTestCase):
     """US-020: locki z hashami z jednego źródła, obrazy przypięte digestem."""
 
-    LOCKS = ("requirements.txt", "requirements-dev.txt", "requirements-mutation.txt")
+    LOCKS = (
+        "requirements.txt",
+        "requirements-dev.txt",
+        "requirements-mutation.txt",
+        "requirements-semgrep.txt",
+    )
 
     @staticmethod
     def _pins(path):
@@ -77,6 +82,7 @@ class SupplyChainTests(SimpleTestCase):
             ("requirements.in", "requirements.txt"),
             ("requirements-dev.in", "requirements-dev.txt"),
             ("requirements-mutation.in", "requirements-mutation.txt"),
+            ("requirements-semgrep.in", "requirements-semgrep.txt"),
         ):
             locked = self._pins(lock)
             for name, version in self._pins(source).items():
@@ -112,6 +118,24 @@ class SupplyChainTests(SimpleTestCase):
                     continue
                 with self.subTest(file=name, image=ref):
                     self.assertRegex(ref, r"@sha256:[0-9a-f]{64}$")
+
+    def test_ci_and_scripts_use_digests_and_locks(self):
+        """Przegląd [SEC] US-020: obrazy i instalacje w CI oraz skryptach też przypięte."""
+        import re
+
+        paths = [*ROOT.glob(".github/workflows/*.yml"), *ROOT.glob("scripts/*.sh")]
+        image = re.compile(
+            r"\b(?:python|postgres|caddy):[\w.-]+(?:@sha256:[0-9a-f]{64})?"
+        )
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            for ref in image.findall(text):
+                with self.subTest(file=path.name, image=ref):
+                    self.assertIn("@sha256:", ref)
+            for line in text.splitlines():
+                if re.search(r"\bpip\"? install\b", line) and "-r requirements" in line:
+                    with self.subTest(file=path.name, line=line.strip()):
+                        self.assertIn("--require-" + "hashes", line)
 
     def test_dockerfile_installs_only_from_lock(self):
         text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
