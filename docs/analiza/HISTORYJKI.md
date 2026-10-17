@@ -707,7 +707,7 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 |---|---|
 | Historyjka | Jako **administrator infrastruktury (ST-05)** chcę, aby codzienne usuwanie starego dziennika logowań i lista dziennika nie skanowały całej tabeli, aby nie spowalniały startu kontenera przy dużym dzienniku. |
 | MoSCoW · rozmiar | Could · S |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji); wdrożenie migracji `0012` po zgodzie PO |
 | Źródło | przegląd `db-reviewer` US-005: `purge_login_events` (`created_at__lt`) i `login_log` (`-created_at`) bez indeksu; dziś tabela mała (tysiące wierszy) |
 | Wymagania | SEC-036; NFR-003 |
 | Zależności | nowa migracja — wdrożenie wymaga zgody PO (§8: migracje na danych produkcyjnych) |
@@ -716,6 +716,8 @@ przeglądu [SEC] i odbioru [BA]. Przed startem każdej historyjki: Definition of
 
 1. **Given** `LoginEvent.Meta.indexes` z `created_at`; **When** `makemigrations --check`; **Then** migracja `AddIndex` w repo, odwracalna.
 2. **Given** PostgreSQL; **When** `EXPLAIN` zapytania `purge_login_events`; **Then** plan używa indeksu.
+
+**Testy:** `warehouse/tests_db_indexes.py` — `LoginEventIndexMigrationTests` (1: indeks istnieje po migracji, znika po `migrate warehouse 0011`, wraca po ponownym `migrate`), `LoginEventIndexPlanTests` (PostgreSQL, 1: `EXPLAIN` zapytania retencji `created_at < cutoff` i listy dziennika wskazuje `loginevent_created_idx`; seq scan wyłączony lokalnie, bo w teście tabela jest mała). Implementacja: `LoginEvent.Meta.indexes` — `Index(-created_at, -id)` zgodny z `ordering`, migracja `0012_loginevent_created_idx` (`CREATE INDEX`; cofnięcie usuwa sam indeks, bez zmian w danych). Zwykłe `CREATE INDEX` na PostgreSQL wstrzymuje na czas budowy zapisy do dziennika (logowania czekają) — przy tysiącach wierszy to milisekundy, więc bez `CONCURRENTLY` (przerwane `migrate` zostawiłoby indeks INVALID). Przegląd [DB]: test migracji (`TransactionTestCase`) czyścił dane z `0002` — `serialized_rollback = True`; poza tym brak zgłoszeń. [SEC]: nie dotyczy (bez widoków i uprawnień). Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 
 ### US-052 — Dodawanie i usuwanie pozycji WZ pod blokadą dokumentu (z przeglądu [DB] US-018)
 

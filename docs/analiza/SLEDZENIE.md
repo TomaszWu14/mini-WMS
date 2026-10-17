@@ -184,6 +184,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` (migawka tras) + macierz US-007 — zrobione, #23 |
 | US-018 | Should | NFR-026, FR-017 | T3 | `CompleteIfPickedTests` (6), `test_scanner_pick_and_execute_on_same_document` (PG) — zrobione, #23 |
 | US-050 | Could | NFR-003, SEC-021 | przegląd [DB] US-002 | `HUNumberReservationTests` (6) + PG (1) — zrobione, #23 |
+| US-051 | Could | SEC-036, NFR-003 | przegląd [DB] US-005 | `tests_db_indexes.py` (1) + PG (1) — zrobione, #23 |
 | US-052 | Should | NFR-026, FR-016 | przegląd [DB] US-018 | `IssueLineLockTests` (9) + PG (2) — zrobione, #23 |
 | US-053 | Could | NFR-026 | przegląd [DB] US-018 | `PalletLockOrderTests` (4) + PG (2) — zrobione, #23 |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | `tests_tooling.py` (3) + przebieg CI — zrobione, #23 |

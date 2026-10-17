@@ -67,6 +67,8 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Indeks dziennika logowań (US-051):** migracja `0012` przy deployu (automatycznie w `entrypoint.sh`) — **wymaga
+  zgody PO przed wdrożeniem na produkcję**. Bez zmiennych i zmian w interfejsie.
 - **Numeracja palet (US-050):** import przyjęć/stanów zapisuje się hurtem — inne przyjęcia nie czekają na koniec pliku.
   Numery HU bez zmian w formacie, nadal kolejne. Bez migracji i zmiennych.
 - **Blokady palet (US-053):** zmiana wewnętrzna — równoległe realizacje WZ nie kończą się błędem 500; bez migracji,
@@ -165,16 +167,19 @@
 ### Migracje — na KAŻDEJ bazie
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
-| dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (464 passed, 8 skipped lokalnie; CI na PR) |
-| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
-| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
+| dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011`, `0012` |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (465 passed, 9 skipped lokalnie; CI na PR) |
+| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
+| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
 
 Nowe migracje w tym branchu: biblioteki `otp_totp` 0001–0003 (US-010, nowa tabela urządzeń 2FA) oraz
 `warehouse/migrations/0009_loginevent_blocked_kind.py` i `0010_loginfailurecounter.py` (US-009; `0010` dodaje tabelę liczników) — tylko lista wyborów
 `LoginEvent.kind`, bez zmian w danych. Odwracalna: tak (`python manage.py migrate warehouse 0008`).
 `warehouse/migrations/0011_auditevent.py` (US-022) — nowa tabela dziennika audytowego, bez zmian w istniejących danych;
 odwracalna (`python manage.py migrate warehouse 0010` — **usuwa wpisy audytu**, przed cofnięciem backup).
+`warehouse/migrations/0012_loginevent_created_idx.py` (US-051) — tylko indeks na `warehouse_loginevent`, bez zmian
+w danych; na czas budowy (przy tysiącach wierszy — ułamek sekundy) logowania czekają na zapis do dziennika.
+Odwracalna: `python manage.py migrate warehouse 0011` (usuwa sam indeks).
 Poza migracjami: tabela cache `miniwms_cache` (`createcachetable`, idempotentne, w `entrypoint.sh`).
 Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 
@@ -201,7 +206,7 @@ wszystkie trzy zmienne), `COOLIFY.md` — nie dotyczy (wariant Coolify już wyma
 1. Kod: Coolify → zasób → **Deployments** → poprzedni deployment → **Redeploy**
    (albo revert PR na `main`). Poprzedni obraz zawiera pip — bez wpływu na działanie.
 2. Migracje: przed redeployem poprzedniej wersji `python manage.py migrate otp_totp zero` (usuwa urządzenia 2FA)
-   i `python manage.py migrate warehouse 0008` (cofa `0011`, `0010` i `0009`; `0011` usuwa dziennik audytowy —
+   i `python manage.py migrate warehouse 0008` (cofa `0012`, `0011`, `0010` i `0009`; `0011` usuwa dziennik audytowy —
    wcześniej backup) w kontenerze `web`
    (wpisy „Zablokowana próba” zostaną w tabeli z kodem `BLOCKED` — stara wersja pokaże sam kod). Tabelę
    `miniwms_cache` można zostawić.
