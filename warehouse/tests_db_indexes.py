@@ -22,9 +22,6 @@ def _index_names():
 
 
 class LoginEventIndexMigrationTests(TransactionTestCase):
-    # Przegląd [DB]: flush po teście kasowałby dane z 0002 (PCS, licznik HU) — przywracamy je.
-    serialized_rollback = True
-
     def test_migration_adds_and_removes_index(self):
         """Kryterium 1: `AddIndex` w repo i odwracalny (0012 ↔ 0011)."""
         self.assertIn(INDEX, _index_names())
