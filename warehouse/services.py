@@ -497,8 +497,15 @@ def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=N
         # US-018: najpierw dokument, potem pozycja — osobnymi zapytaniami.
         # `select_for_update().select_related("document")` blokował oba wiersze
         # jednym zapytaniem w nieustalonej kolejności → deadlock z „Realizuj”.
-        locked_doc = IssueDocument.objects.select_for_update().get(pk=line.document_id)
-        locked_line = IssueLine.objects.select_for_update().get(pk=line.pk)
+        locked_doc = (
+            IssueDocument.objects.select_for_update()
+            .filter(pk=line.document_id)
+            .first()
+        )
+        locked_line = IssueLine.objects.select_for_update().filter(pk=line.pk).first()
+        # US-052: pozycję mógł usunąć ktoś inny, gdy czekaliśmy na blokadę — komunikat, nie 500.
+        if locked_doc is None or locked_line is None:
+            raise WMSError("Pozycja została w międzyczasie usunięta z dokumentu.")
         if locked_doc.status != IssueStatus.OTWARTY:
             raise WMSError(f"Dokument {locked_doc.number} nie jest otwarty.")
         remaining = locked_line.requested_qty - locked_line.picked_qty
@@ -617,6 +624,58 @@ def execute_issue_document(
     document.completed_at = timezone.now()
     document.save(update_fields=["status", "completed_at"])
     return document
+
+
+LINES_ONLY_IN_OPEN = "Pozycje można zmieniać tylko w otwartym dokumencie."
+
+
+@transaction.atomic
+def add_issue_line(
+    *, document: IssueDocument, material: Material, requested_qty: int, specific_hu=None
+) -> IssueLine:
+    """US-052: dodaje pozycję WZ pod blokadą dokumentu (kolejność: dokument → pozycja → HU).
+
+    Status i rezerwacja palety sprawdzane na świeżych danych pod blokadą — „Realizuj”
+    albo skaner domykający dokument równolegle nie zostawi zrealizowanego WZ
+    z niepobraną pozycją.
+    """
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        raise WMSError(LINES_ONLY_IN_OPEN)
+    if specific_hu is not None:
+        already = (
+            document.lines.filter(specific_hu=specific_hu).aggregate(
+                s=Sum("requested_qty")
+            )["s"]
+            or 0
+        )
+        if already + requested_qty > specific_hu.quantity:
+            raise WMSError(
+                f"HU {specific_hu.number} ma tylko {specific_hu.quantity} szt., a pozycje "
+                f"dokumentu wskazują już {already}."
+            )
+    return IssueLine.objects.create(
+        document=document,
+        material=material,
+        requested_qty=requested_qty,
+        specific_hu=specific_hu,
+    )
+
+
+@transaction.atomic
+def delete_issue_line(*, document: IssueDocument, line_id) -> None:
+    """US-052: usuwa pozycję otwartego WZ — dokument, potem pozycja pod blokadą."""
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        raise WMSError(LINES_ONLY_IN_OPEN)
+    line = (
+        IssueLine.objects.select_for_update()
+        .filter(pk=line_id, document=document)
+        .first()
+    )
+    if line is None:
+        raise WMSError("Pozycja nie istnieje albo została już usunięta.")
+    line.delete()
 
 
 @transaction.atomic

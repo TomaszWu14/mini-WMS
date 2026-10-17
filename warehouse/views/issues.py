@@ -2,7 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Sum
+from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
@@ -86,38 +86,28 @@ def issue_detail(request, pk):
 def issue_add_line(request, pk):
     doc = get_object_or_404(IssueDocument, pk=pk)
     if doc.status != IssueStatus.OTWARTY:
-        messages.error(request, "Pozycje można zmieniać tylko w otwartym dokumencie.")
+        messages.error(request, services.LINES_ONLY_IN_OPEN)
         return redirect("issue_detail", pk=pk)
     if request.method == "POST":
         form = IssueLineForm(request.POST)
         if form.is_valid():
-            qty = form.cleaned_data["requested_qty"]
             hu = (
                 form.cleaned_data["specific_hu"]
                 if form.cleaned_data["mode"] == IssueLineForm.MODE_HU
                 else None
             )
-            if hu is not None:
-                already = (
-                    doc.lines.filter(specific_hu=hu).aggregate(s=Sum("requested_qty"))[
-                        "s"
-                    ]
-                    or 0
+            # US-052: status i rezerwacja HU sprawdzane w serwisie pod blokadą dokumentu.
+            try:
+                services.add_issue_line(
+                    document=doc,
+                    material=form.cleaned_data["material"],
+                    requested_qty=form.cleaned_data["requested_qty"],
+                    specific_hu=hu,
                 )
-                if already + qty > hu.quantity:
-                    messages.error(
-                        request,
-                        f"HU {hu.number} ma tylko {hu.quantity} szt., a pozycje "
-                        f"dokumentu wskazują już {already}.",
-                    )
-                    return redirect("issue_detail", pk=pk)
-            IssueLine.objects.create(
-                document=doc,
-                material=form.cleaned_data["material"],
-                requested_qty=qty,
-                specific_hu=hu,
-            )
-            messages.success(request, "Dodano pozycję.")
+            except WMSError as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, "Dodano pozycję.")
         else:
             for errs in form.errors.values():
                 for err in errs:
@@ -129,11 +119,16 @@ def issue_add_line(request, pk):
 def issue_line_delete(request, pk, line_id):
     doc = get_object_or_404(IssueDocument, pk=pk)
     if doc.status != IssueStatus.OTWARTY:
-        messages.error(request, "Pozycje można zmieniać tylko w otwartym dokumencie.")
+        messages.error(request, services.LINES_ONLY_IN_OPEN)
         return redirect("issue_detail", pk=pk)
     if request.method == "POST":
-        get_object_or_404(IssueLine, pk=line_id, document=doc).delete()
-        messages.success(request, "Usunięto pozycję.")
+        get_object_or_404(IssueLine, pk=line_id, document=doc)  # 404 dla cudzej pozycji
+        try:
+            services.delete_issue_line(document=doc, line_id=line_id)
+        except WMSError as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, "Usunięto pozycję.")
     return redirect("issue_detail", pk=pk)
 
 

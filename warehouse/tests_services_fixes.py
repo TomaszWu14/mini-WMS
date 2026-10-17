@@ -380,3 +380,103 @@ class CompleteIfPickedTests(BaseSetup):
         self.assertEqual(
             IssueDocument.objects.get(pk=doc.pk).status, IssueStatus.ZREALIZOWANY
         )
+
+
+class IssueLineLockTests(BaseSetup):
+    """US-052: dodanie i usunięcie pozycji WZ pod blokadą dokumentu."""
+
+    def _doc(self):
+        doc = IssueDocument.objects.create(number="WZ-L1", created_by=self.user)
+        line = IssueLine.objects.create(
+            document=doc, material=self.material, requested_qty=2
+        )
+        return doc, line
+
+    def test_add_line_rejected_when_closed_meanwhile(self):
+        doc, _ = self._doc()
+        stale = IssueDocument.objects.get(pk=doc.pk)  # widok wczytał „Otwarty”
+        IssueDocument.objects.filter(pk=doc.pk).update(status=IssueStatus.ZREALIZOWANY)
+        with self.assertRaisesMessage(WMSError, "tylko w otwartym"):
+            services.add_issue_line(
+                document=stale, material=self.material, requested_qty=1
+            )
+        self.assertEqual(doc.lines.count(), 1)
+
+    def test_delete_line_rejected_when_closed_meanwhile(self):
+        doc, line = self._doc()
+        stale = IssueDocument.objects.get(pk=doc.pk)
+        IssueDocument.objects.filter(pk=doc.pk).update(status=IssueStatus.ZREALIZOWANY)
+        with self.assertRaisesMessage(WMSError, "tylko w otwartym"):
+            services.delete_issue_line(document=stale, line_id=line.pk)
+        self.assertTrue(IssueLine.objects.filter(pk=line.pk).exists())
+
+    def test_add_and_delete_on_open_document(self):
+        doc, line = self._doc()
+        added = services.add_issue_line(
+            document=doc, material=self.material, requested_qty=3
+        )
+        services.delete_issue_line(document=doc, line_id=line.pk)
+        self.assertEqual(list(doc.lines.values_list("pk", flat=True)), [added.pk])
+        with self.assertRaisesMessage(WMSError, "nie istnieje"):
+            services.delete_issue_line(document=doc, line_id=line.pk)
+
+    def test_specific_hu_reservation_checked_in_service(self):
+        doc, _ = self._doc()
+        hu = HandlingUnit.objects.create(
+            number="HU-L1",
+            material=self.material,
+            quantity=5,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        services.add_issue_line(
+            document=doc, material=self.material, requested_qty=4, specific_hu=hu
+        )
+        with self.assertRaisesMessage(WMSError, "ma tylko 5"):
+            services.add_issue_line(
+                document=doc, material=self.material, requested_qty=2, specific_hu=hu
+            )
+
+    def test_pick_on_deleted_line_is_message_not_500(self):
+        """Kryterium 2: pobranie na pozycji usuniętej w międzyczasie → WMSError / 400."""
+        from .models import Profile, Role
+
+        doc, line = self._doc()
+        hu = HandlingUnit.objects.create(
+            number="HU-L2",
+            material=self.material,
+            quantity=5,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        stale_line = IssueLine.objects.get(pk=line.pk)
+        line.delete()
+        with self.assertRaisesMessage(WMSError, "usunięta"):
+            services.pick_from_hu(
+                hu=hu, quantity=1, user=self.user, document=doc, line=stale_line
+            )
+        Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
+        self.client.force_login(self.user)
+        resp = self.client.post(
+            "/skaner/api/pick/",
+            {"hu": hu.number, "quantity": "1", "document": str(doc.pk)},
+        )
+        self.assertEqual(resp.status_code, 400)
+        hu.refresh_from_db()
+        self.assertEqual(hu.quantity, 5)
+
+    def test_views_use_service_messages(self):
+        from .models import Profile, Role
+
+        Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
+        self.client.force_login(self.user)
+        doc, line = self._doc()
+        resp = self.client.post(
+            f"/wydania/{doc.pk}/pozycja/",
+            {"mode": "material", "material": self.material.pk, "requested_qty": 1},
+            follow=True,
+        )
+        self.assertContains(resp, "Dodano pozycję")
+        resp = self.client.post(
+            f"/wydania/{doc.pk}/pozycja/{line.pk}/usun/", follow=True
+        )
+        self.assertContains(resp, "Usunięto pozycję")
+        self.assertEqual(doc.lines.count(), 1)

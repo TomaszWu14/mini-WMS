@@ -173,3 +173,79 @@ class ConcurrentIssueTests(TransactionTestCase):
             ),
             -4,
         )
+
+    def _race(self, holder_body, waiter_body):
+        """Wątek A trzyma blokadę dokumentu i wykonuje `holder_body`; B czeka na nią."""
+        locked, release = threading.Event(), threading.Event()
+        results: list[str] = []
+
+        def holder():
+            try:
+                with transaction.atomic():
+                    holder_body()
+                    locked.set()
+                    release.wait(10)
+            finally:
+                connections.close_all()
+
+        def waiter():
+            try:
+                waiter_body()
+                results.append("ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            except Exception as exc:  # noqa: BLE001 — test ma pokazać 500 jako porażkę
+                results.append(f"500:{type(exc).__name__}")
+            finally:
+                connections.close_all()
+
+        h = threading.Thread(target=holder)
+        h.start()
+        locked.wait(10)
+        w = threading.Thread(target=waiter)
+        w.start()
+        time.sleep(1)  # nosemgrep — B czeka na blokadę dokumentu
+        release.set()
+        for t in (h, w):
+            t.join(15)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+        return results
+
+    def test_add_line_while_document_is_being_closed(self):
+        """US-052 kryterium 1: dodanie pozycji w trakcie „Realizuj” → odmowa, bez nowej pozycji."""
+        doc = self._doc("WZ-AL", 2)
+        stale = IssueDocument.objects.get(pk=doc.pk)
+
+        def close():
+            services.execute_issue_document(document=doc, user=self.user)
+
+        def add():
+            services.add_issue_line(
+                document=stale, material=self.material, requested_qty=1
+            )
+
+        results = self._race(close, add)
+        self.assertEqual(len(results), 1)
+        self.assertIn("tylko w otwartym", results[0])
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertEqual(doc.lines.count(), 1)
+
+    def test_pick_while_line_is_being_deleted(self):
+        """US-052 kryterium 2: skaner czeka na usuwaną pozycję → komunikat, nie 500."""
+        doc = self._doc("WZ-DL", 2)
+        line = doc.lines.get()
+
+        def delete():
+            services.delete_issue_line(document=doc, line_id=line.pk)
+
+        def pick():
+            services.pick_from_hu(
+                hu=self.hu, quantity=1, user=self.user, document=doc, line=line
+            )
+
+        results = self._race(delete, pick)
+        self.assertEqual(len(results), 1)
+        self.assertIn("usunięta", results[0])
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 10)
