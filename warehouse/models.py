@@ -534,6 +534,11 @@ class LoginEvent(models.Model):
         verbose_name = "zdarzenie logowania"
         verbose_name_plural = "dziennik logowań"
         ordering = ["-created_at", "-id"]
+        indexes = [
+            # US-051: retencja (`created_at < cutoff`) i lista dziennika (sortowanie
+            # jak `ordering`) bez skanu całej tabeli.
+            models.Index(fields=["-created_at", "-id"], name="loginevent_created_idx"),
+        ]
 
     def __str__(self):
         return f"{self.get_kind_display()} {self.username} ({self.created_at:%Y-%m-%d %H:%M})"

@@ -67,6 +67,7 @@ module = [
     "warehouse.tests_audit_log",
     "warehouse.tests_backup_script",
     "warehouse.tests_concurrency_pg",
+    "warehouse.tests_db_indexes",
     "warehouse.tests_demo",
     "warehouse.tests_demo_entry",
     "warehouse.tests_demo_limits",
