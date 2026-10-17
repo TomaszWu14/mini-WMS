@@ -446,6 +446,21 @@ def repack_hu(*, source: HandlingUnit, target: HandlingUnit, quantity: int, user
 # --- Picking / wydania -------------------------------------------------------
 
 
+def _lock_hus(pks) -> dict[int, HandlingUnit]:
+    """US-053: blokuje palety jednym zapytaniem, rosnąco po pk — ta sama kolejność we
+    wszystkich ścieżkach (realizacja WZ, przepakowanie, zamknięcie spisu), więc dwie
+    transakcje nie czekają na siebie nawzajem. Zwraca świeże obiekty po blokadzie."""
+    ids = sorted({pk for pk in pks if pk})
+    if not ids:
+        return {}
+    return {
+        hu.pk: hu
+        for hu in HandlingUnit.objects.select_for_update()
+        .filter(pk__in=ids)
+        .order_by("pk")
+    }
+
+
 def _pickable_hus(material: Material):
     """Aktywne HU danego materiału, uporządkowane wg reguły wydania.
 
@@ -543,13 +558,35 @@ def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=N
 
 @transaction.atomic
 def pick_by_material(
-    *, material: Material, quantity: int, user, document=None, line=None
+    *,
+    material: Material,
+    quantity: int,
+    user,
+    document=None,
+    line=None,
+    allow_partial: bool = False,
 ):
-    """Zdejmuje `quantity` materiału, dobierając HU wg reguły FEFO→FIFO."""
+    """Zdejmuje `quantity` materiału, dobierając HU wg reguły FEFO→FIFO.
+
+    US-053: palety blokowane rosnąco po pk, a ilości liczone z wierszy już pod
+    blokadą — równoległe pobranie nie wywróci realizacji („HU jest pusty”).
+    `allow_partial=True` — pobiera tyle, ile jest (może zero).
+    """
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
-    available = available_quantity(material)
-    if quantity > available:
+    order = list(_pickable_hus(material).values_list("pk", flat=True))
+    locked = _lock_hus(order)
+    hus = [
+        locked[pk]
+        for pk in order
+        if pk in locked
+        and locked[pk].quantity > 0
+        and locked[pk].status != HUStatus.PUSTY
+    ]
+    available = sum(hu.quantity for hu in hus)
+    if allow_partial:
+        quantity = min(quantity, available)
+    elif quantity > available:
         raise WMSError(
             f"Brak wystarczającego stanu materiału {material.index}: "
             f"dostępne {available}, żądane {quantity}."
@@ -557,7 +594,7 @@ def pick_by_material(
 
     remaining = quantity
     used: list[tuple[HandlingUnit, int]] = []
-    for hu in list(_pickable_hus(material)):
+    for hu in hus:
         if remaining <= 0:
             break
         take = min(hu.quantity, remaining)
@@ -587,18 +624,35 @@ def execute_issue_document(
     if not lines:
         raise WMSError("Dokument nie ma pozycji do wydania.")
 
-    for line in lines:
+    # US-053: wszystkie palety, z których realizacja może pobierać, blokujemy od razu,
+    # rosnąco po pk — niezależnie od kolejności pozycji i FEFO. Dwa „Realizuj” na WZ
+    # z materiałami X, Y i Y, X nie zakleszczą się (`deadlock detected` = 500).
+    open_lines = [ln for ln in lines if ln.requested_qty - ln.picked_qty > 0]
+    materials = {ln.material_id for ln in open_lines if ln.specific_hu_id is None}
+    candidates = [ln.specific_hu_id for ln in open_lines if ln.specific_hu_id]
+    if materials:
+        candidates += list(
+            HandlingUnit.objects.filter(material_id__in=materials, quantity__gt=0)
+            .exclude(status=HUStatus.PUSTY)
+            .values_list("pk", flat=True)
+        )
+    _lock_hus(candidates)
+
+    for line in open_lines:
         outstanding = line.requested_qty - line.picked_qty
-        if outstanding <= 0:
-            continue
-        specific = line.specific_hu
-        if specific is not None:
+        if line.specific_hu_id is not None:
+            # Paleta już zablokowana — świeży odczyt per pozycja (dwie pozycje na tym
+            # samym HU widzą stan po pobraniu pierwszej).
+            specific = HandlingUnit.objects.filter(pk=line.specific_hu_id).first()
+            if specific is None:
+                raise WMSError("Wskazany HU został w międzyczasie usunięty.")
             if specific.material_id != line.material_id:
                 raise WMSError(
                     f"Wskazany HU {specific.number} ma inny materiał "
                     f"niż pozycja ({line.material.index})."
                 )
-            available = specific.quantity
+            # Stan palety z wiersza pod blokadą, nie z obiektu wczytanego wcześniej.
+            available = specific.quantity if specific.status != HUStatus.PUSTY else 0
             take = min(outstanding, available) if allow_partial else outstanding
             if take > 0:
                 pick_from_hu(
@@ -609,16 +663,14 @@ def execute_issue_document(
                     line=line,
                 )
         else:
-            available = available_quantity(line.material)
-            take = min(outstanding, available) if allow_partial else outstanding
-            if take > 0:
-                pick_by_material(
-                    material=line.material,
-                    quantity=take,
-                    user=user,
-                    document=document,
-                    line=line,
-                )
+            pick_by_material(
+                material=line.material,
+                quantity=outstanding,
+                user=user,
+                document=document,
+                line=line,
+                allow_partial=allow_partial,
+            )
 
     document.status = IssueStatus.ZREALIZOWANY
     document.completed_at = timezone.now()
@@ -851,16 +903,19 @@ def close_stocktake(*, sheet: StocktakeSheet, user) -> dict:
 
     adjusted = 0
     counted = 0
-    for line in sheet.lines.select_for_update(of=("self",)).select_related(
-        "handling_unit"
-    ):
+    lines = list(sheet.lines.select_for_update(of=("self",)))
+    # US-053: palety arkusza blokowane rosnąco po pk (nie w kolejności lokalizacji) —
+    # ta sama kolejność co realizacja WZ i przepakowanie.
+    locked = _lock_hus(
+        ln.handling_unit_id for ln in lines if ln.counted_qty is not None
+    )
+    for line in lines:
         if line.counted_qty is None:
             continue
         counted += 1
-        hu = line.handling_unit
+        hu = locked.get(line.handling_unit_id) if line.handling_unit_id else None
         if hu is None:
             continue
-        hu = HandlingUnit.objects.select_for_update().get(pk=hu.pk)
         if line.counted_qty != hu.quantity:
             correct_hu_quantity(
                 hu=hu,

@@ -543,3 +543,50 @@ class IssueLineLockTests(BaseSetup):
                 requested_qty=1,
                 specific_hu=stale_hu,
             )
+
+
+class PalletLockOrderTests(BaseSetup):
+    """US-053: realizacja liczy stan palet z wierszy pod blokadą."""
+
+    def test_two_lines_on_same_pallet_partial_sees_first_pick(self):
+        hu = HandlingUnit.objects.create(
+            number="HU-O1",
+            material=self.material,
+            quantity=5,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        doc = IssueDocument.objects.create(number="WZ-O1", created_by=self.user)
+        for _ in range(2):
+            IssueLine.objects.create(
+                document=doc, material=self.material, requested_qty=3, specific_hu=hu
+            )
+        services.execute_issue_document(
+            document=doc, user=self.user, allow_partial=True
+        )
+        hu.refresh_from_db()
+        self.assertEqual(hu.quantity, 0)
+        self.assertEqual(sorted(doc.lines.values_list("picked_qty", flat=True)), [2, 3])
+
+    def test_pick_by_material_partial_takes_what_is_left(self):
+        HandlingUnit.objects.create(
+            number="HU-O2",
+            material=self.material,
+            quantity=4,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        used = services.pick_by_material(
+            material=self.material, quantity=10, user=self.user, allow_partial=True
+        )
+        self.assertEqual(sum(take for _, take in used), 4)
+
+    def test_pick_by_material_without_partial_still_refuses_shortage(self):
+        HandlingUnit.objects.create(
+            number="HU-O3",
+            material=self.material,
+            quantity=4,
+            status=HUStatus.ZMAGAZYNOWANY,
+        )
+        with self.assertRaisesMessage(WMSError, "Brak wystarczającego stanu"):
+            services.pick_by_material(
+                material=self.material, quantity=5, user=self.user
+            )

@@ -7,6 +7,7 @@ W CI uruchamia go job `test-postgres`.
 import threading
 import time
 import unittest
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.db import connection, connections, transaction
@@ -260,3 +261,73 @@ class ConcurrentIssueTests(TransactionTestCase):
         self.assertIn("usunięta", results[0])
         self.hu.refresh_from_db()
         self.assertEqual(self.hu.quantity, 10)
+
+    def test_crossed_materials_do_not_deadlock(self):
+        """US-053 kryterium 1: „Realizuj” na WZ z X, Y i Y, X równolegle — bez deadlocku."""
+        unit = self.material.unit
+        y = Material.objects.create(index="MAT-Y", name="Y", unit=unit)
+        hu_y = HandlingUnit.objects.create(
+            number="HU-Y1", material=y, quantity=10, status=HUStatus.ZMAGAZYNOWANY
+        )
+        a = IssueDocument.objects.create(number="WZ-XY", created_by=self.user)
+        b = IssueDocument.objects.create(number="WZ-YX", created_by=self.user)
+        for doc, mats in ((a, (self.material, y)), (b, (y, self.material))):
+            for mat in mats:
+                IssueLine.objects.create(document=doc, material=mat, requested_qty=2)
+
+        real_pick = services.pick_from_hu
+
+        def slow_pick(**kwargs):
+            # Po pobraniu z pierwszej palety drugi wątek zdąży zablokować swoją
+            # (stary kod: A trzyma X, B trzyma Y → deadlock detected).
+            result = real_pick(**kwargs)
+            time.sleep(0.7)  # nosemgrep — wymusza przeplot transakcji
+            return result
+
+        results: list[str] = []
+        start = threading.Barrier(2)
+
+        def run(doc):
+            try:
+                start.wait(5)
+                services.execute_issue_document(document=doc, user=self.user)
+                results.append("ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            except Exception as exc:  # noqa: BLE001 — deadlock = 500
+                results.append(f"500:{type(exc).__name__}:{exc}")
+            finally:
+                connections.close_all()
+
+        with mock.patch.object(services, "pick_from_hu", slow_pick):
+            threads = [threading.Thread(target=run, args=(d,)) for d in (a, b)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(20)
+                self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        self.assertEqual(results, ["ok", "ok"])
+        self.hu.refresh_from_db()
+        hu_y.refresh_from_db()
+        self.assertEqual((self.hu.quantity, hu_y.quantity), (6, 6))
+
+    def test_partial_execute_takes_what_is_left_after_concurrent_pick(self):
+        """US-053 kryterium 2: realizacja z brakami po równoległym pobraniu — bez „HU jest pusty”."""
+        doc = self._doc("WZ-PP", 8)
+
+        def pick():
+            services.pick_from_hu(hu=self.hu, quantity=5, user=self.user)
+
+        def execute():
+            services.execute_issue_document(
+                document=doc, user=self.user, allow_partial=True
+            )
+
+        results = self._race(pick, execute)
+        self.assertEqual(results, ["ok"])
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertEqual(doc.lines.get().picked_qty, 5)
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 0)
