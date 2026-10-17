@@ -30,8 +30,7 @@
               <input type="number" min="0" name="counted_{{ line.id }}"
                      value="{{ line.counted_qty|default_if_none:'' }}"
                      data-expected="{{ line.expected_qty }}"
-                     class="cnt" style="width:90px; text-align:right"
-                     oninput="diff(this)">
+                     class="cnt" style="width:90px; text-align:right">
             {% else %}
               {{ line.counted_qty|default_if_none:"—" }}
             {% endif %}
@@ -59,14 +58,14 @@
   <p class="muted">Zamknięcie nanosi różnice jako korekty stanu (powód: spis z natury).
   Najpierw zapisz policzone ilości.</p>
   <form method="post" action="{% url 'stocktake_close' sheet.pk %}"
-        onsubmit="return confirm('Zamknąć spis i nanieść różnice na stany?')">
+        data-confirm="Zamknąć spis i nanieść różnice na stany?">
     {% csrf_token %}
     <button class="btn btn-danger" type="submit">✅ Zamknij i zatwierdź różnice</button>
   </form>
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function diff(input) {
   var exp = parseInt(input.getAttribute("data-expected"), 10);
   var cell = document.getElementById("diff_" + input.name.split("_")[1]);
@@ -75,5 +74,8 @@ function diff(input) {
   cell.textContent = (d > 0 ? "+" + d : d);
   cell.style.color = d === 0 ? "" : (d > 0 ? "#15803d" : "#b91c1c");
 }
+document.querySelectorAll("input.cnt[data-expected]").forEach(function (el) {
+  el.addEventListener("input", function () { diff(el); });
+});
 </script>
 {% endblock %}

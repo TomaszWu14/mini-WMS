@@ -48,7 +48,16 @@ if DEMO_MODE:
 # by hasło i konto „Wejdź jako demo” dało się zmienić bez zmiany kodu.
 DEMO_USER = os.environ.get("DEMO_USER", "demo_operator")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
-DEMO_IMPORT_MAX_ROWS = 500
+DEMO_IMPORT_MAX_ROWS = 100  # RR-31: mniejsze operacje w demo
+# US-005 / SEC-036: dziennik logowań starszy niż tyle dni usuwa `purge_login_events`
+# (decyzja PO 2026-10-16, Z-09).
+LOGIN_EVENT_RETENTION_DAYS = 90
+# US-022: dziennik audytowy (zmiany kont, odmowy) — decyzja PO 2026-10-17 (Z-42).
+AUDIT_EVENT_RETENTION_DAYS = 365
+# US-004 / R4: limity każdego importu CSV/XLSX poza demo (Z-23: L_WIERSZE, L_ROZP).
+IMPORT_MAX_ROWS = 10_000
+# Suma rozmiarów plików w archiwum XLSX po rozpakowaniu (zip bomb).
+IMPORT_MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 
 # Liczba zaufanych proxy przed aplikacją (Traefik/Caddy = 1). 0 = nagłówek
 # X-Forwarded-For jest ignorowany, IP klienta to REMOTE_ADDR. Od tego zależy
@@ -65,6 +74,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
     "warehouse",
 ]
 
@@ -77,8 +88,17 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # US-022: kto zmienia konto — dla sygnałów dziennika audytowego.
+    "warehouse.audit.AuditActorMiddleware",
+    # US-010: sesja zna stan 2FA; konto z TOTP po samym haśle → ekran kodu.
+    "django_otp.middleware.OTPMiddleware",
+    "warehouse.two_factor.TwoFactorRequiredMiddleware",
+    # US-016: limit POST zalogowanych w DEMO_MODE (poza demo — przepuszcza).
+    "warehouse.demo.DemoWriteRateLimitMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # US-011: CSP z nonce i Permissions-Policy (ADR-0004).
+    "warehouse.csp.SecurityHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -96,6 +116,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "warehouse.context_processors.role_flags",
                 "warehouse.demo.demo_context",
+                "warehouse.csp.csp_context",
             ],
         },
     },
@@ -141,6 +162,35 @@ else:
 # do Postgresa, co przy wielu workerach gunicorna obciąża bazę.
 DATABASES["default"]["CONN_MAX_AGE"] = int(os.environ.get("DJANGO_CONN_MAX_AGE", "60"))
 
+
+# US-009 / ADR-0002: cache wspólny dla wszystkich workerów gunicorna (limity logowań,
+# wejść demo, blokada resetu demo). Tabelę zakłada `createcachetable` w entrypoint.sh.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "miniwms_cache",
+        # Domyślne 300 wpisów pozwalało zalać tabelę i wyrzucić liczniki limitów (culling).
+        "OPTIONS": {"MAX_ENTRIES": 100_000},
+    }
+}
+# Limit nieudanych logowań na konto (niezależnie od IP) — decyzja PO 2026-10-16.
+LOGIN_ACCOUNT_LIMIT = 10
+LOGIN_ACCOUNT_WINDOW = 15 * 60  # sekund
+
+# US-011: CSP egzekwowana; awaryjnie tryb raportowania (DJANGO_CSP_REPORT_ONLY=1).
+CSP_REPORT_ONLY = env_bool("DJANGO_CSP_REPORT_ONLY", False)
+
+# US-010: nazwa wydawcy w aplikacji uwierzytelniającej.
+OTP_TOTP_ISSUER = "mini-WMS"
+
+# US-008 / R6: nowe hasła w argon2; stare hashe PBKDF2 Django podnosi przy
+# kolejnym udanym logowaniu (pierwszy hasher = docelowy, reszta = odczyt).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -199,18 +249,62 @@ LOGGING = {
         "json": {"()": "config.log.JsonFormatter"},
         "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
     },
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+        "alert_throttle": {"()": "config.log.AlertThrottleFilter"},
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "plain" if DEBUG else "json",
-        }
+        },
+        # US-021: e-mail do ADMINS przy błędzie 500 (bez HTML, filtr `SafeReporterFilter`).
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false", "alert_throttle"],
+            "include_html": False,
+        },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django.request": {
-            "handlers": ["console"],
+            "handlers": ["console", "mail_admins"],
             "level": "ERROR",
+            "propagate": False,
+        },
+        # US-022: dziennik audytowy także w logu (poziom INFO, JSON na produkcji).
+        "warehouse.audit": {
+            "handlers": ["console"],
+            "level": "INFO",
             "propagate": False,
         },
     },
 }
+
+
+# --- Alerty o błędach 500 (US-021, decyzja PO PYT-15: e-mail `mail_admins`) ---------
+# Bez DJANGO_ADMINS alert jest wyłączony (Django nie wysyła), błąd zostaje w logu JSON.
+# DJANGO_ADMINS: adresy rozdzielone przecinkami. SMTP z DJANGO_EMAIL_*; w demo maile
+# idą do konsoli (wyżej).
+ADMINS = (
+    []  # przegląd [SEC]: w demo raport trafiłby do konsoli z danymi odwiedzających
+    if DEMO_MODE
+    else [
+        (addr.strip(), addr.strip())
+        for addr in os.environ.get("DJANGO_ADMINS", "").split(",")
+        if addr.strip()
+    ]
+)
+DEFAULT_EXCEPTION_REPORTER_FILTER = "config.log.SafeReporterFilter"
+DEFAULT_EXCEPTION_REPORTER = "config.log.SafeExceptionReporter"
+SERVER_EMAIL = os.environ.get("DJANGO_SERVER_EMAIL", "mini-wms@localhost")
+EMAIL_SUBJECT_PREFIX = "[mini-WMS] "
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
+# Wysyłka idzie w wątku żądania — krótki timeout i `AlertThrottleFilter` (1 mail na błąd
+# i ścieżkę / 10 min, 20 / h), żeby awaria SMTP ani pętla błędów nie blokowały workerów.
+EMAIL_TIMEOUT = 5

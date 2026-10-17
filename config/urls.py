@@ -9,8 +9,8 @@ from django.urls import include, path
 
 from warehouse.demo import (
     LoginView,
+    admin_login,
     demo_login,
-    demo_reset,
     demo_start,
     welcome_dismiss,
 )
@@ -39,7 +39,6 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("login/demo/", demo_login, name="demo_login"),
     path("demo/", demo_start, name="demo_start"),
-    path("demo/przywroc/", demo_reset, name="demo_reset"),
     path("powitanie/ukryj/", welcome_dismiss, name="welcome_dismiss"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("warehouse.urls")),
@@ -47,4 +46,8 @@ urlpatterns = [
 
 # Publiczne demo: bez panelu admina (konto z DJANGO_SUPERUSER_* zostaje do zadań serwisowych).
 if not settings.DEMO_MODE:
-    urlpatterns.insert(1, path("admin/", admin.site.urls))
+    urlpatterns[1:1] = [
+        # US-009: limit per IP i blokada konta także na logowaniu do panelu.
+        path("admin/login/", admin_login, name="admin_login_guard"),
+        path("admin/", admin.site.urls),
+    ]

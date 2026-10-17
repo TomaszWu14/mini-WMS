@@ -8,10 +8,20 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 
-# --- SECRET_KEY: fail-fast, nie pozwól wystartować z kluczem deweloperskim ---
-if not SECRET_KEY or SECRET_KEY.startswith("django-insecure-"):  # noqa: F405
+# --- SECRET_KEY: fail-fast, nie pozwól wystartować ze słabym kluczem (US-003 / R2) ---
+# Te same progi co ostrzeżenie Django security.W009, ale jako błąd startu — oraz
+# znane zaślepki z repozytorium (domyślna wartość compose, .env.docker.example).
+_KNOWN_PLACEHOLDERS = {"zmien-mnie-w-produkcji", "YOUR_DJANGO_SECRET_KEY_HERE"}
+if (
+    not SECRET_KEY  # noqa: F405
+    or SECRET_KEY.startswith("django-insecure-")  # noqa: F405
+    or SECRET_KEY in _KNOWN_PLACEHOLDERS  # noqa: F405
+    or len(SECRET_KEY) < 50  # noqa: F405
+    or len(set(SECRET_KEY)) < 5  # noqa: F405
+):
     raise ImproperlyConfigured(
-        "Ustaw DJANGO_SECRET_KEY (silny, losowy) w środowisku produkcyjnym."
+        "Ustaw DJANGO_SECRET_KEY: losowy, co najmniej 50 znaków, np. "
+        'python -c "import secrets; print(secrets.token_urlsafe(64))".'
     )
 
 # --- ALLOWED_HOSTS: bez wildcarda w produkcji; sensowny host domyślny ---
@@ -37,6 +47,10 @@ SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", True)  # noqa: F405
 SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "2592000"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# US-011 / SEC-025: bez `preload` — wpis na listę preload przeglądarek wymaga roku i jest
+# praktycznie nieodwracalny; 30 dni wystarczy, dopóki domena i HTTPS się nie ustabilizują.
+SECURE_HSTS_PRELOAD = False
+# Świadomie bez preload (ADR-0004) — ostrzeżenie Django o preload wyciszone.
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"

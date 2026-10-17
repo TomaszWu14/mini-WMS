@@ -1,0 +1,3 @@
+# Wyjątki dla trivy (skan obrazu w ci.yml). Każdy wpis: CVE, powód, data przeglądu — ADR-0001 §Decyzja pkt 6.
+# Przykład:
+# CVE-2024-00000  # brak poprawki w Debianie, komponent nieużywany w runtime; przegląd 2026-12-01

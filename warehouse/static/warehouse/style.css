@@ -498,16 +498,6 @@ ul.radio label { display: inline; font-weight: 600; }
 .plan-pack .plan-tag, .plan-ship .plan-tag { color: var(--ink-2); }
 .plan-alert, .plan-count { background: var(--warn-bg); }
 .plan-alert .plan-tag, .plan-count .plan-tag { color: var(--warn); }
-.demo-banner form.inline { display: inline; margin-left: 10px; }
-.demo-reset {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  color: #5c2408;
-  background: transparent;
-  border: 1px solid currentColor;
-  border-radius: 6px;
-  padding: 1px 8px;
-  cursor: pointer;
-}
-.demo-reset:hover { background: rgba(92, 36, 8, 0.08); }
+/* US-010: kod QR rejestracji 2FA */
+.qr-2fa { max-width: 220px; margin: 12px 0; background: #fff; padding: 8px; }
+.qr-2fa svg { width: 100%; height: auto; display: block; }

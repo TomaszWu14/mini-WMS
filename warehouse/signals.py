@@ -1,5 +1,7 @@
 """Sygnały — profil użytkownika oraz dziennik logowań."""
 
+import ipaddress
+
 from django.conf import settings
 from django.contrib.auth.signals import (
     user_logged_in,
@@ -43,9 +45,20 @@ def _client_ip(request):
             for h in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
             if h.strip()
         ]
-        if len(hops) >= count:
+        if len(hops) >= count and _valid_ip(hops[-count]):
             return hops[-count]
-    return request.META.get("REMOTE_ADDR")
+    # US-014: śmieci w nagłówku (błędna konfiguracja proxy) nie mogą trafić do
+    # GenericIPAddressField (DataError → 500 przy logowaniu) ani do klucza limitera.
+    remote = request.META.get("REMOTE_ADDR")
+    return remote if _valid_ip(remote) else None
+
+
+def _valid_ip(value) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _user_agent(request):
@@ -54,25 +67,41 @@ def _user_agent(request):
     return request.META.get("HTTP_USER_AGENT", "")[:300]
 
 
+def log_client(request):
+    """(ip, user_agent) do dziennika logowań.
+
+    US-005 / SEC-035: publiczne demo odwiedzają anonimowe osoby — nie zapisujemy
+    ich IP ani przeglądarki (Z-38). Limit prób działa na IP z żądania, nie z bazy.
+    """
+    if settings.DEMO_MODE:
+        return None, ""
+    return _client_ip(request), _user_agent(request)
+
+
 @receiver(user_logged_in)
 def on_logged_in(sender, request, user, **kwargs):
+    from .login_limits import account_reset
+
+    account_reset(user.get_username())  # udane logowanie przed blokadą zeruje licznik
+    ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         user=user,
         username=user.get_username(),
         kind=LoginEvent.Kind.LOGIN,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )
 
 
 @receiver(user_logged_out)
 def on_logged_out(sender, request, user, **kwargs):
+    ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         user=user if user is not None else None,
         username=user.get_username() if user is not None else "",
         kind=LoginEvent.Kind.LOGOUT,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )
 
 
@@ -81,9 +110,13 @@ def on_login_failed(sender, credentials, request=None, **kwargs):
     # .get(key, "") nie chroni, gdy klucz istnieje z wartością None — wtedy
     # zwraca None i None[:150] rzuca TypeError, wywracając ścieżkę logowania.
     raw_username = (credentials or {}).get("username") or ""
+    from .login_limits import account_failed
+
+    account_failed(raw_username)  # US-009: licznik konta (atomowy, w bazie)
+    ip, user_agent = log_client(request)
     LoginEvent.objects.create(
         username=str(raw_username)[:150],
         kind=LoginEvent.Kind.FAILED,
-        ip=_client_ip(request),
-        user_agent=_user_agent(request),
+        ip=ip,
+        user_agent=user_agent,
     )

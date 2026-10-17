@@ -1,3 +1,8 @@
-# Fałszywe alarmy gitleaks: hasła testowe w testach walidacji kont (nie są sekretami)
+# Fałszywe alarmy gitleaks: hasła testowe w testach walidacji kont (nie są sekretami).
+# Format: <plik>:<reguła>:<linia> (tryb `dir`/pre-commit) albo <commit>:<plik>:<reguła>:<linia> (historia).
+# Wpisy z liniami 925/939 odpowiadają commitowi, który je wprowadził (skan historii w CI);
+# 1011/1025 to bieżące położenie w pliku (skan drzewa roboczego, pre-commit).
 warehouse/tests.py:generic-api-key:925
 warehouse/tests.py:generic-api-key:939
+warehouse/tests.py:generic-api-key:1011
+warehouse/tests.py:generic-api-key:1025

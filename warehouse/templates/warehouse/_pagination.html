@@ -1,0 +1,16 @@
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="toolbar" style="margin-top:12px">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-sm btn-secondary" href="?{% if page_query %}{{ page_query }}&amp;{% endif %}page=1">« Pierwsza</a>
+    <a class="btn btn-sm btn-secondary" href="?{% if page_query %}{{ page_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">← {{ prev_label|default:"Poprzednia" }}</a>
+  {% endif %}
+  <div class="spacer"></div>
+  <span class="muted">Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+    ({{ page_obj.paginator.count }} {{ count_label|default:"pozycji" }})</span>
+  <div class="spacer"></div>
+  {% if page_obj.has_next %}
+    <a class="btn btn-sm btn-secondary" href="?{% if page_query %}{{ page_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">{{ next_label|default:"Następna" }} →</a>
+    <a class="btn btn-sm btn-secondary" href="?{% if page_query %}{{ page_query }}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}">Ostatnia »</a>
+  {% endif %}
+</div>
+{% endif %}

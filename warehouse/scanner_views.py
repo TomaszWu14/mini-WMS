@@ -4,9 +4,10 @@ Lekki interfejs webowy: pełnoekranowe ekrany prowadzące krok po kroku,
 obsługa skanera jako klawiatury (kod + Enter), JSON API dla akcji.
 """
 
+import re
+
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from . import services
@@ -20,6 +21,24 @@ from .models import (
 )
 from .roles import operator_required
 from .services import WMSError
+
+BAD_QTY = f"Niepoprawna ilość (liczba całkowita do {services.MAX_QUANTITY})."
+
+
+def _is_id(value: str) -> bool:
+    """Klucz główny z parametru: tylko cyfry ASCII (`"²".isdigit()` jest True → 500)."""
+    return bool(re.fullmatch(r"[0-9]{1,18}", value))
+
+
+def _parse_quantity(raw, allow_negative=False):
+    """US-013: ilość z API skanera — liczba całkowita, |ilość| ≤ MAX_QUANTITY, inaczej None."""
+    text = (raw or "").strip()
+    if not re.fullmatch(r"-?[0-9]{1,9}", text):
+        return None
+    value = int(text)
+    if abs(value) > services.MAX_QUANTITY or (value < 0 and not allow_negative):
+        return None
+    return value
 
 
 def _hu_payload(hu: HandlingUnit) -> dict:
@@ -219,7 +238,7 @@ def api_document(request):
     doc_id = (request.GET.get("id") or "").strip()
     number = (request.GET.get("number") or "").strip()
     doc = None
-    if doc_id.isdigit():
+    if _is_id(doc_id):
         doc = IssueDocument.objects.filter(pk=doc_id).first()
     elif number:
         doc = IssueDocument.objects.filter(number=number).first()
@@ -275,14 +294,13 @@ def api_pick(request):
     hu = HandlingUnit.objects.filter(number__iexact=hu_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
-    try:
-        quantity = int(qty_raw)
-    except ValueError:
-        return JsonResponse({"ok": False, "error": "Niepoprawna ilość."}, status=400)
+    quantity = _parse_quantity(qty_raw)
+    if quantity is None:
+        return JsonResponse({"ok": False, "error": BAD_QTY}, status=400)
 
     doc = (
         IssueDocument.objects.filter(pk=doc_id, status=IssueStatus.OTWARTY).first()
-        if doc_id.isdigit()
+        if _is_id(doc_id)
         else None
     )
     if doc is None:
@@ -303,19 +321,25 @@ def api_pick(request):
         line = next((ln for ln in candidates if ln.specific_hu_id is None), None)
     if line is None:
         if candidates:
+            # Zostały tylko pozycje wiązane do innej palety (ogólna byłaby wybrana wyżej).
             other = candidates[0].specific_hu
+            other_number = other.number if other is not None else "?"
             return JsonResponse(
                 {
                     "ok": False,
-                    "error": f"Pozycja wskazuje paletę {other.number} — zeskanuj ją.",
+                    "error": f"Pozycja wskazuje paletę {other_number} — zeskanuj ją.",
                 },
                 status=400,
             )
+        # Przegląd [DB] US-018: pobranie i domknięcie to dwie transakcje — gdyby
+        # domknięcie się nie wykonało, skaner domyka WZ przy kolejnej próbie.
+        services.complete_if_picked(doc)
         return JsonResponse(
             {
                 "ok": False,
                 "error": f"Materiał {hu.material.index} nie jest na tym "
                 f"zleceniu albo już skompletowany.",
+                "document": _doc_payload(doc),
             },
             status=400,
         )
@@ -354,14 +378,9 @@ def api_pick(request):
     }
     if warning:
         response["warning"] = warning
-    doc.refresh_from_db()
-    payload = _doc_payload(doc)
-    if payload["remaining_total"] == 0 and doc.status == IssueStatus.OTWARTY:
-        doc.status = IssueStatus.ZREALIZOWANY
-        doc.completed_at = timezone.now()
-        doc.save(update_fields=["status", "completed_at"])
-        payload = _doc_payload(doc)
-    response["document"] = payload
+    # US-018 / D-05: stan WZ zmienia tylko serwis (pod blokadą dokumentu).
+    services.complete_if_picked(doc)
+    response["document"] = _doc_payload(doc)
     return JsonResponse(response)
 
 
@@ -379,10 +398,9 @@ def api_repack(request):
         return JsonResponse({"ok": False, "error": "Nieznany HU źródłowy."}, status=404)
     if target is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU docelowy."}, status=404)
-    try:
-        quantity = int(qty_raw)
-    except ValueError:
-        return JsonResponse({"ok": False, "error": "Niepoprawna ilość."}, status=400)
+    quantity = _parse_quantity(qty_raw)
+    if quantity is None:
+        return JsonResponse({"ok": False, "error": BAD_QTY}, status=400)
     try:
         services.repack_hu(
             source=source, target=target, quantity=quantity, user=request.user
@@ -417,10 +435,9 @@ def api_inventory(request):
     hu = HandlingUnit.objects.filter(number__iexact=hu_code).first()
     if hu is None:
         return JsonResponse({"ok": False, "error": "Nieznany HU."}, status=404)
-    try:
-        delta = int(delta_raw)
-    except ValueError:
-        return JsonResponse({"ok": False, "error": "Niepoprawna ilość."}, status=400)
+    delta = _parse_quantity(delta_raw, allow_negative=True)
+    if delta is None:
+        return JsonResponse({"ok": False, "error": BAD_QTY}, status=400)
     if delta == 0:
         return JsonResponse({"ok": False, "error": "Podaj ilość."}, status=400)
     if reason not in AdjustReason.values:

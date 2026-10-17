@@ -1,6 +1,6 @@
 # Pułapki: widoki, formularze, skaner
 
-1. **Operacje zmieniające stan tylko na POST.** Konwencja w `views.py`: widok sprawdza
+1. **Operacje zmieniające stan tylko na POST.** Konwencja w `warehouse/views/`: widok sprawdza
    `if request.method == "POST":`, a GET kończy się `redirect` bez zmian (np.
    `issue_line_delete`, `issue_execute`). Nie wykonuj zmian na GET — link w mailu/prefetch
    przeglądarki by je odpalił.
@@ -14,14 +14,33 @@
    `vendor/jsQR.js` (10k linii) czytaj grepem, nie w całości.
 5. **Upload: limit 5 MB w `_MaxSizeFileMixin`** (`forms.py`) + `DATA_UPLOAD_MAX_MEMORY_SIZE`
    6 MB. Każdy nowy formularz z plikiem musi dziedziczyć mixin.
-6. **XLSX to zip** — 5 MB może rozpakować się do setek MB w `openpyxl.load_workbook`
+6. **XLSX to zip** — 5 MB może rozpakować się do setek MB w `openpyxl.load_workbook`. Każdy import
+   idzie przez `parse_locations_file` (`imports.py`): sygnatura ZIP, limit po rozpakowaniu
+   (`IMPORT_MAX_UNCOMPRESSED_BYTES`), limit wierszy (`IMPORT_MAX_ROWS`) — nowy import też ma przez nią iść
    (`imports.py`). Nie zdejmuj `read_only=True`; przy nowych importach ograniczaj liczbę
    wierszy.
 7. **CSV: separator zgadywany** (`;` vs `,` po próbce) i nagłówki zamieniane na lowercase —
    nowe kolumny w importach porównuj po `strip().lower()`.
-8. **`views.py` ma 1177 linii.** Nowe ekrany dokładaj do osobnego modułu (jak
-   `scanner_views.py`), nie do `views.py`.
+8. **Widoki to pakiet `warehouse/views/` (US-017, ADR-0006)** — moduł na obszar (`dashboard`, `masterdata`,
+   `receiving`, `handling_units`, `issues`, `stock`, `stocktake`, `movements`, `users`, `reports`); skaner w
+   `scanner_views.py`. Nowy widok: moduł obszaru + re-eksport w `views/__init__.py` (`urls.py` używa
+   `views.<nazwa>`) + wiersz w `tests_urls.EXPECTED` i w macierzy dostępu. `patch()` w testach — na module
+   (`warehouse.views.masterdata.X`), nie na pakiecie.
 9. **Eksporty (`stock_export`, `movement_export`) budują wiersze w pamięci.** Przy dużej
    historii ruchów filtruj zakres dat zanim dodasz nowe kolumny.
+9a. **Liczby i teksty od użytkownika (US-013):** ilość → `max_value=services.MAX_QUANTITY` w formularzu, w API skanera
+    `_parse_quantity`, w imporcie `parse_int_cell` (odrzuca `1e999`, `inf`, > 2^31−1) i `too_long(model, pole, …)` **przed**
+    zapisem — SQLite tego nie złapie, PostgreSQL rzuci `DataError` i wycofa cały import. Nazwa pliku w odpowiedzi:
+    `content_disposition_header()`, nigdy f-string.
+10a. **CSP (US-011, ADR-0004): bez `on*=`, `javascript:` i skryptów inline bez nonce.** Skrypt w szablonie:
+    `<script nonce="{{ csp_nonce }}">`; potwierdzenia, auto-wysyłka, menu — `data-confirm`, `data-autosubmit`,
+    `data-nav-toggle`, `data-history-back` (`static/warehouse/ui.js`). Zewnętrzne CDN są zablokowane.
+9b. **Listy stronicuj przez `paginate()` (`warehouse/pagination.py`, US-015)** — 100 wierszy, linki stron niosą filtry
+    (`page_query`), szablon `{% include "warehouse/_pagination.html" %}`. Queryset z `annotate(Count…)` gubi
+    `Meta.ordering` (GROUP BY) — dodaj `order_by` po unikalnym polu. Wydruk zbiorczy PDF: `count()` i limit
+    (`HU_LABELS_LIMIT`, `LOCATION_LABELS_LIMIT`) przed generowaniem; eksporty CSV/XLSX nie są stronicowane.
+9c. **mypy sprawdza ciała widoków (US-019).** `check_untyped_defs = true`: `.first()` / `.get()` zwraca Optional —
+    zawężaj (`if obj is not None`), `messages.error(request, str(err))`, `content_disposition_header(...) or "inline"`.
+    Nowy plik `tests_*.py` dopisz do override w `pyproject.toml` (pilnuje `tests_tooling`).
 10. **Teksty UI po polsku**, komunikaty z numerem dokumentu/HU (`f"Dokument {doc.number} …"`)
     — trzymaj ten styl.

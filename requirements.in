@@ -1,0 +1,16 @@
+# Zależności produkcyjne — JEDYNE źródło (US-020, ADR-0007). Lock z hashami:
+#   pip-compile --generate-hashes --allow-unsafe --output-file=requirements.txt requirements.in
+# pyproject.toml czyta tę listę (`[tool.setuptools.dynamic]`). Bez opcji pip w tym pliku.
+Django>=5.2,<5.3
+# Windows (lokalne uruchomienie z README): Django i psycopg wymagają tzdata — bez niej lock z hashami
+# odrzuci instalację; na Linuksie (obraz) to tylko dane stref czasowych.
+tzdata
+reportlab==5.0.0
+qrcode[pil]==8.2
+openpyxl==3.1.5
+django-otp==1.7.4
+argon2-cffi==25.1.0
+defusedxml==0.7.1
+gunicorn==23.0.0
+whitenoise==6.8.2
+psycopg[binary]>=3.2,<4

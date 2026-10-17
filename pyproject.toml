@@ -3,30 +3,9 @@ name = "mini-wms"
 version = "0.1.0"
 description = "miniWMS — lekki system magazynowy (Django)."
 requires-python = ">=3.11"
-# Zależności produkcyjne (źródło prawdy). requirements.txt jest ich odbiciem
-# na potrzeby budowy obrazu Docker (pip install -r requirements.txt).
-dependencies = [
-    "Django>=5.2,<5.3",
-    "reportlab==5.0.0",
-    "qrcode[pil]==8.2",
-    "openpyxl==3.1.5",
-    "gunicorn==23.0.0",
-    "whitenoise==6.8.2",
-    "psycopg[binary]>=3.2,<4",
-]
-
-[project.optional-dependencies]
-dev = [
-    "ruff==0.15.20",
-    "mypy==1.13.0",
-    "django-stubs==5.2.9",
-    "coverage==7.6.9",
-    "pytest==9.1.1",
-    "pytest-django==4.14.0",
-    "mutmut==3.8.0",
-    "pip-audit==2.10.1",
-    "bandit==1.9.4",
-]
+# US-020 / ADR-0007: jedyne źródło zależności to requirements.in (prod) i
+# requirements-dev.in (dev/CI); requirements*.txt to locki z hashami (pip-compile).
+dynamic = ["dependencies"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -34,6 +13,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["warehouse", "config"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.in"] }
 
 # --- Ruff: lint + format (zastępuje flake8/black/isort) ---------------------
 [tool.ruff]
@@ -61,6 +43,9 @@ python_version = "3.11"
 plugins = ["mypy_django_plugin.main"]
 ignore_missing_imports = true
 warn_unused_ignores = true
+# US-019 / kryterium 1: widoki nie mają adnotacji — bez tego mypy pomija ich ciała
+# i błąd typu w widoku przechodzi CI.
+check_untyped_defs = true
 # Migracje generowane maszynowo; settings korzystają z gwiazdkowego importu
 # (base→dev/prod), którego mypy nie śledzi — sprawdzamy logikę, nie konfigurację.
 exclude = ["warehouse/migrations/", "config/settings/"]
@@ -70,6 +55,45 @@ exclude = ["warehouse/migrations/", "config/settings/"]
 [[tool.mypy.overrides]]
 module = "config.settings.*"
 ignore_errors = true
+
+# Testy: Optional z `.first()` / `.get()` bez zawężania to norma w asercjach —
+# pełne sprawdzanie ciał dotyczy kodu aplikacji, nie testów.
+[[tool.mypy.overrides]]
+# mypy nie obsługuje wzorca `tests_*` — nowy plik testów dopisz do listy.
+module = [
+    "warehouse.tests",
+    "warehouse.tests_2fa",
+    "warehouse.tests_access_matrix",
+    "warehouse.tests_alerts",
+    "warehouse.tests_audit_log",
+    "warehouse.tests_backup_script",
+    "warehouse.tests_concurrency_pg",
+    "warehouse.tests_db_indexes",
+    "warehouse.tests_demo",
+    "warehouse.tests_demo_entry",
+    "warehouse.tests_demo_limits",
+    "warehouse.tests_demo_tour",
+    "warehouse.tests_deploy_settings",
+    "warehouse.tests_imports_fixes",
+    "warehouse.tests_imports_hardening",
+    "warehouse.tests_input_limits",
+    "warehouse.tests_input_validation",
+    "warehouse.tests_login_limits",
+    "warehouse.tests_open_decisions",
+    "warehouse.tests_pagination",
+    "warehouse.tests_passwords",
+    "warehouse.tests_record_video",
+    "warehouse.tests_recruiter",
+    "warehouse.tests_retention",
+    "warehouse.tests_scanner_fixes",
+    "warehouse.tests_security",
+    "warehouse.tests_security_headers",
+    "warehouse.tests_services_fixes",
+    "warehouse.tests_tooling",
+    "warehouse.tests_urls",
+    "warehouse.tests_views_fixes",
+]
+check_untyped_defs = false
 
 [tool.django-stubs]
 django_settings_module = "config.settings"
@@ -97,4 +121,12 @@ skips = ["B101"]  # assert w testach
 # --- Coverage ---------------------------------------------------------------
 [tool.coverage.run]
 source = ["warehouse", "config"]
-omit = ["*/migrations/*", "*/tests.py"]
+# tests*.py poza pomiarem — inaczej pliki testów (zawsze ~100 %) zawyżają wynik.
+omit = ["*/migrations/*", "*/tests.py", "*/tests_*.py"]
+
+[tool.coverage.report]
+# Próg z ADR-0001 (założenie Z-08): 80 % ogółem; 90 % dla warehouse/services.py
+# sprawdza osobno CI (`coverage report --include=warehouse/services.py --fail-under=90`).
+fail_under = 80
+show_missing = true
+skip_covered = false

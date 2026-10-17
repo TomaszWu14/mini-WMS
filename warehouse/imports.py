@@ -8,16 +8,25 @@ Oczekiwane kolumny (nagłówki, wielkość liter bez znaczenia):
 
 import csv
 import io
+import math
+import zipfile
+import zlib
 from itertools import islice
+from xml.etree.ElementTree import ParseError
 
 from django.conf import settings
 from django.db import transaction
 
 from .models import Location, LocationType
+from .services import DemoBudget, WMSError
 
 
 class ImportError_(Exception):
     """Błąd importu pliku lokalizacji."""
+
+
+MAX_DB_INT = 2_147_483_647
+BAD_NUMBER = "nieprawidłowa liczba"
 
 
 def parse_int_cell(value):
@@ -29,7 +38,23 @@ def parse_int_cell(value):
     text = str(value).strip().replace("\xa0", "").replace(" ", "")
     if text in ("", "-", "–", "—"):
         return None
-    return int(float(text.replace(",", ".")))
+    try:
+        number = float(text.replace(",", "."))
+    except ValueError:
+        raise ValueError(BAD_NUMBER) from None
+    # US-013: '1e999' → inf, '1e20' poza zakresem bazy — komunikat przy wierszu, nie 500.
+    if not math.isfinite(number) or abs(number) > MAX_DB_INT:
+        raise ValueError(BAD_NUMBER)
+    return int(number)
+
+
+def too_long(model, field: str, value, label: str):
+    """Komunikat, gdy tekst z pliku przekracza `max_length` pola modelu (US-013):
+    PostgreSQL odrzuciłby zapis błędem i wycofał cały import."""
+    limit = model._meta.get_field(field).max_length
+    if value and len(str(value)) > limit:
+        return f"{label} dłuższy niż {limit} znaków"
+    return None
 
 
 def get_or_create_ci(model, field: str, value: str, defaults=None):
@@ -53,14 +78,20 @@ def _normalize_type(value: str) -> str:
 def _parse_capacity(value) -> int:
     """0 = bez limitu (jak w LocationForm/modelu) — zostaje, nie jest
     podnoszone do 1. Ujemne wartości to błąd wiersza importu."""
+    from .services import MAX_LOCATION_CAPACITY
+
     if value in (None, ""):
         return 1
     try:
-        capacity = int(float(str(value).strip()))
-    except (TypeError, ValueError) as exc:
-        raise ImportError_(f"Niepoprawna pojemność: '{value}'.") from exc
-    if capacity < 0:
-        raise ImportError_(f"Niepoprawna pojemność: '{value}'.")
+        capacity = parse_int_cell(value)
+    except ValueError as exc:
+        raise ImportError_(f"Niepoprawna pojemność: '{value}' ({BAD_NUMBER}).") from exc
+    if capacity is None:
+        return 1
+    if capacity < 0 or capacity > MAX_LOCATION_CAPACITY:
+        raise ImportError_(
+            f"Niepoprawna pojemność: '{value}' (0…{MAX_LOCATION_CAPACITY})."
+        )
     return capacity
 
 
@@ -86,25 +117,80 @@ def _rows_from_csv(data: bytes):
         yield {(k or "").strip().lower(): v for k, v in row.items()}
 
 
-def _rows_from_xlsx(data: bytes):
-    from openpyxl import load_workbook
+# Wyjątki, którymi openpyxl/zipfile/XML sygnalizują uszkodzony lub wrogi plik
+# (defusedxml rzuca podklasy ValueError). Inne błędy to bugi — nie maskujemy ich.
+_XLSX_ERRORS = (
+    zipfile.BadZipFile,
+    KeyError,
+    ValueError,
+    EOFError,
+    zlib.error,
+    ParseError,
+    RuntimeError,  # zipfile: zaszyfrowany członek archiwum
+    NotImplementedError,  # zipfile: nieobsługiwana metoda kompresji
+)
+# Importy używają kilku kolumn; dalsze są ignorowane, żeby szeroki arkusz
+# (16 384 kolumny × tysiące wierszy) nie zajął gigabajtów pamięci.
+XLSX_MAX_COLUMNS = 50
+_ZIP_METHODS = {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
+_XLSX_BROKEN = (
+    "Plik nie jest poprawnym XLSX — zapisz go ponownie w Excelu albo użyj CSV."
+)
 
-    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
-    ws = wb.active
-    rows = ws.iter_rows(values_only=True)
+
+def _check_xlsx_archive(data: bytes) -> None:
+    """Odrzuca plik przed `load_workbook`: brak sygnatury ZIP, uszkodzone archiwum
+    albo za duża suma rozmiarów po rozpakowaniu. `zipfile` nie rozpakuje członka
+    ponad zadeklarowany `file_size`, więc suma deklaracji ogranicza pamięć."""
+    if not data.startswith(b"PK\x03\x04"):
+        raise ImportError_(_XLSX_BROKEN)
     try:
-        header = next(rows)
-    except StopIteration:
-        return
-    headers = [str(h).strip().lower() if h is not None else "" for h in header]
-    for row in rows:
-        if row is None or all(c is None for c in row):
-            continue
-        # Wiersze krótsze od nagłówka (puste komórki z prawej) nie mogą rzucać
-        # IndexError i wywracać całego importu — brakujące kolumny → None.
-        yield {
-            headers[i]: (row[i] if i < len(row) else None) for i in range(len(headers))
-        }
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            members = zf.infolist()
+    except (zipfile.BadZipFile, zlib.error, EOFError, ValueError) as exc:
+        raise ImportError_(_XLSX_BROKEN) from exc
+    # Excel zapisuje XLSX bez szyfrowania ZIP i tylko metodą STORED/DEFLATED.
+    if any(m.flag_bits & 0x1 or m.compress_type not in _ZIP_METHODS for m in members):
+        raise ImportError_(_XLSX_BROKEN)
+    total = sum(m.file_size for m in members)
+    limit = settings.IMPORT_MAX_UNCOMPRESSED_BYTES
+    if total > limit:
+        raise ImportError_(
+            f"Plik XLSX po rozpakowaniu przekracza {limit // (1024 * 1024)} MB — "
+            "podziel go na mniejsze albo użyj CSV."
+        )
+
+
+def _rows_from_xlsx(data: bytes):
+    """Generator wierszy; pusty wiersz daje `None`, żeby liczył się do limitu
+    odczytu w `parse_locations_file` — inaczej arkusz z „dziurą” do wiersza
+    1 048 576 przechodziłby milion pustych wierszy, zanim limit zadziała."""
+    from openpyxl import load_workbook
+    from openpyxl.utils.exceptions import InvalidFileException
+
+    _check_xlsx_archive(data)
+    try:
+        wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        ws = wb.active
+        if ws is None:
+            raise ImportError_(_XLSX_BROKEN)
+        rows = ws.iter_rows(max_col=XLSX_MAX_COLUMNS, values_only=True)
+        try:
+            header = next(rows)
+        except StopIteration:
+            return
+        columns = [
+            (i, str(h).strip().lower()) for i, h in enumerate(header) if h is not None
+        ]
+        for row in rows:
+            if row is None or all(c is None for c in row):
+                yield None
+                continue
+            # Wiersze krótsze od nagłówka (puste komórki z prawej) nie mogą rzucać
+            # IndexError i wywracać całego importu — brakujące kolumny → None.
+            yield {name: (row[i] if i < len(row) else None) for i, name in columns}
+    except (InvalidFileException, *_XLSX_ERRORS) as exc:
+        raise ImportError_(_XLSX_BROKEN) from exc
 
 
 def parse_locations_file(filename: str, data: bytes):
@@ -116,15 +202,18 @@ def parse_locations_file(filename: str, data: bytes):
         gen = _rows_from_xlsx(data)
     else:
         raise ImportError_("Obsługiwane formaty to .csv oraz .xlsx.")
-    if not settings.DEMO_MODE:
-        return list(gen)
-    # Demo: czytamy najwyżej limit+1 wierszy — mały XLSX potrafi rozpakować się
-    # do milionów wierszy, a publiczne konto demo nie może zabić procesu.
-    limit = settings.DEMO_IMPORT_MAX_ROWS
+    # Czytamy najwyżej limit+1 wierszy — mały XLSX potrafi rozpakować się do
+    # milionów wierszy, a jeden plik nie może zająć całej pamięci procesu.
+    if settings.DEMO_MODE:
+        limit = settings.DEMO_IMPORT_MAX_ROWS
+        message = f"W wersji demo import obejmuje najwyżej {limit} wierszy."
+    else:
+        limit = settings.IMPORT_MAX_ROWS
+        message = f"Import obejmuje najwyżej {limit} wierszy — podziel plik; nic nie zapisano."
     rows = list(islice(gen, limit + 1))
     if len(rows) > limit:
-        raise ImportError_(f"W wersji demo import obejmuje najwyżej {limit} wierszy.")
-    return rows
+        raise ImportError_(message)
+    return [row for row in rows if row is not None]
 
 
 @transaction.atomic
@@ -133,11 +222,15 @@ def import_locations(filename: str, data: bytes):
     rows = parse_locations_file(filename, data)
     created = updated = 0
     errors: list[str] = []
+    budget = DemoBudget()
 
     for i, row in enumerate(rows, start=2):  # wiersz 1 to nagłówek
         code = str(row.get("kod") or row.get("code") or "").strip()
         if not code:
             errors.append(f"Wiersz {i}: brak kodu lokalizacji — pominięto.")
+            continue
+        if problem := too_long(Location, "code", code, "kod lokalizacji"):
+            errors.append(f"Wiersz {i}: {problem} — pominięto.")
             continue
         try:
             loc_type = _normalize_type(str(row.get("typ") or row.get("type") or ""))
@@ -148,6 +241,12 @@ def import_locations(filename: str, data: bytes):
             errors.append(f"Wiersz {i} ({code}): {exc}")
             continue
 
+        if budget.limited and not Location.objects.filter(code=code).exists():
+            try:
+                budget.take(locations=1)
+            except WMSError as exc:
+                errors.append(f"Wiersz {i} ({code}): {exc}")
+                continue
         obj, was_created = Location.objects.update_or_create(
             code=code,
             defaults={"type": loc_type, "capacity": capacity},

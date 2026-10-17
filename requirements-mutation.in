@@ -1,0 +1,7 @@
+# Testy mutacyjne (scripts/mutate.sh — Linux/WSL albo kontener python:3.11-slim). Osobny lock:
+# libcst (zależność mutmut) wymaga na Pythonie ≥ 3.13 pakietu pyyaml-ft, którego lock 3.11 nie zawiera.
+#   pip-compile --generate-hashes --allow-unsafe --output-file=requirements-mutation.txt requirements-mutation.in
+-r requirements-dev.in
+-c requirements-dev.txt
+
+mutmut==3.8.0

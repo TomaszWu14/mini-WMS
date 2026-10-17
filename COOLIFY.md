@@ -92,6 +92,9 @@ Zakładka **Environment Variables** zasobu → dodaj (Twoje własne wartości!):
 | `POSTGRES_USER` | `wms` |
 | `POSTGRES_PASSWORD` | mocne hasło bazy |
 | `DJANGO_TRUSTED_PROXY_COUNT` | `1` (domyślnie w compose; liczba proxy przed aplikacją) |
+| `DJANGO_ADMINS` | `ops@example.com` — adresy (po przecinku) dostające e-mail o błędzie 500 (US-021); puste = alert wyłączony |
+| `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS` | serwer SMTP do alertów (np. port `587`, TLS `1`) |
+| `DJANGO_SERVER_EMAIL` | nadawca alertów, np. `mini-wms@example.com` |
 
 > Wygenerowanie klucza (lokalnie): `python -c "import secrets;print(secrets.token_urlsafe(64))"`.
 
@@ -156,6 +159,10 @@ robi zrzut bazy (`pg_dump` → `gzip`) i trzyma kopie w wolumenie `db_backups`.
 - Częstotliwość i retencja w `.env`:
   - `BACKUP_INTERVAL` — co ile sekund (domyślnie `86400` = 24h),
   - `BACKUP_KEEP_DAYS` — ile dni trzymać kopie (domyślnie `7`).
+- **Kopia poza serwerem (zalecane, US-012):** zaszyfrowana kluczem publicznym `age` i wysyłana przez `rclone`
+  do S3/SFTP innego dostawcy, z alertem o braku kopii — zmienne `BACKUP_AGE_RECIPIENT`, `BACKUP_RCLONE_REMOTE`,
+  `BACKUP_HEARTBEAT_URL`, `BACKUP_OFFSITE_KEEP_DAYS` (30) i `RCLONE_CONFIG_OFFSITE_*`. Krok po kroku:
+  `docs/operacje/RUNBOOK.md` §5.0. Klucz prywatny **nigdy** nie trafia do Coolify.
 - Podgląd logów backupu: w Coolify wybierz kontener **backup → Logs** (wpisy
   `[backup] ... OK -> /backups/wms-...sql.gz`).
 
@@ -178,6 +185,22 @@ docker exec "$B" sh -c 'gunzip -c /backups/wms-XXXX.sql.gz' \
 
 ---
 
+## 10a. Sprzątanie dziennika logowań i sesji (codziennie)
+
+Dziennik logowań przechowujemy 90 dni (decyzja PO, `docs/bezpieczenstwo/RODO.md`), a wygasłe
+sesje usuwamy z bazy. Zakładka zasobu **Scheduled Tasks → + Add** — dwa zadania, oba w
+kontenerze `web`, na produkcji **i** na demo:
+
+| Name | Command | Frequency |
+|---|---|---|
+| `purge-login-events` | `python manage.py purge_login_events` | `15 3 * * *` (codziennie 03:15) |
+| `clearsessions` | `python manage.py clearsessions` | `20 3 * * *` (codziennie 03:20) |
+
+`purge_login_events` wypisuje liczbę usuniętych wpisów dziennika logowań (90 dni) i dziennika audytowego (365 dni)
+(podgląd w **Scheduled Tasks → Logs**);
+`--days N` zmienia retencję jednorazowo. Obie komendy uruchamiają się też przy każdym starcie
+kontenera (`entrypoint.sh`), więc instalacja bez harmonogramu sprząta przynajmniej przy deployu.
+
 ## 11. Instancja demo (opcjonalnie)
 
 Publiczne demo to osobny zasób z tym samym `docker-compose.coolify.yml` —
@@ -187,25 +210,28 @@ z własną bazą, nigdy na danych produkcyjnych.
    plus **`DEMO_MODE=1`**. Tryb demo włącza baner „Wersja demonstracyjna — dane
    fikcyjne…”, przycisk **„Wejdź jako demo”** i loginy kont demo na stronie logowania,
    panel „Od czego zacząć” na pulpicie, blokuje edycję kont demo, ogranicza importy do
-   500 wierszy i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP)
+   500 wierszy, magazyn do 2000 palet i 500 lokalizacji, zapisy (POST) do 60 na 5 min z jednego
+   IP i wysyła maile tylko do konsoli. Limit logowań (10 prób / 5 min / IP)
    działa zawsze, także bez trybu demo. Opcjonalnie: `DEMO_USER` (konto przycisku,
    domyślnie `demo_operator`) i `DEMO_PASSWORD` (domyślnie `demo1234`).
 2. Po pierwszym deployu zasiej dane (terminal kontenera `web` w Coolify):
    `python manage.py seed_demo`
 3. **Reset co 24 h** — zakładka zasobu **Scheduled Tasks → + Add**:
    - Name: `reset-demo`
-   - Command: `python manage.py seed_demo --reset`
+   - Command: `python manage.py seed_demo --reset --keep-users`
    - Frequency: `0 3 * * *` (codziennie 03:00)
    - Container: `web`
 
-   `--reset` czyści wszystkie dane magazynowe i konta demo, po czym zasiewa
-   je od nowa (deterministycznie). Bez `DEMO_MODE=1` komenda odmawia resetu.
+   `--reset` czyści wszystkie dane magazynowe, po czym zasiewa je od nowa
+   (deterministycznie); `--keep-users` zostawia konta demo, więc zalogowani nie tracą sesji.
+   To jedyny reset danych demo — przycisk „Przywróć dane demo” usunięto (US-016, DEC-6).
+   Bez `DEMO_MODE=1` komenda odmawia resetu.
    Cron nie jest częścią obrazu — harmonogram trzyma Coolify.
 
 Konta demo: `demo_operator` (Operator) i `demo_podglad` (Podgląd), hasło
 `demo1234`. Konto administratora z `DJANGO_SUPERUSER_*` zostaje prywatne.
 Przy `DEMO_MODE=1` panel `/admin/` jest wyłączony (404); dane demo odnawia Scheduled Task
-`python manage.py seed_demo --reset`, a zadania serwisowe robi się przez `manage.py` w kontenerze.
+`python manage.py seed_demo --reset --keep-users`, a zadania serwisowe robi się przez `manage.py` w kontenerze.
 
 ---
 

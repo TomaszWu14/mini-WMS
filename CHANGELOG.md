@@ -1,0 +1,126 @@
+# Changelog
+
+Wszystkie istotne zmiany w projekcie są opisane w tym pliku. Format: [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/),
+wersjonowanie: [SemVer](https://semver.org/lang/pl/). Numer wersji: `pyproject.toml`.
+Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i datę oraz tag w git.
+
+## [Unreleased]
+
+### Added
+- **US-012:** kopia bazy poza serwerem — szyfrowana `age` (na serwerze tylko klucz publiczny), wysyłana `rclone` do S3/SFTP,
+  retencja 30 dni, heartbeat po sukcesie (alert przy braku kopii); `manage.py backup_fingerprint` do porównania kopii z produkcją;
+  ćwiczenie odtworzenia w CI (ADR-0005, RUNBOOK §5.0, §5.4).
+- **US-010:** weryfikacja dwuetapowa (TOTP) dla Administratora — włączana na `/2fa/` (Użytkownicy → Moja weryfikacja
+  dwuetapowa), wymagana po haśle przy każdym logowaniu, także dla `/admin/`; reset `manage.py reset_2fa <login>` (ADR-0003).
+- Audyt stanu repozytorium z trzech perspektyw ([BA] / [DEV] / [SEC]) z top 10 ryzyk i mapą tras — `docs/AUDYT.md` (#23).
+- Rejestr założeń „do potwierdzenia” — `docs/analiza/ZALOZENIA.md` (#23).
+- Dokumentacja procesu zespołowego: `CONTRIBUTING.md` (Definition of Ready/Done, konwencje), `SECURITY.md`,
+  szablony issue (historyjka, błąd, zagadnienie bezpieczeństwa) i PR, `CODEOWNERS`.
+- Dokumentacja analityczna: `docs/analiza/` (WIZJA, INTERESARIUSZE, PROCESY, WYMAGANIA 0.1, HISTORYJKI, SLOWNIK, SLEDZENIE).
+- Dokumentacja architektury: `docs/architektura/` (ARCHITEKTURA C4, MODEL_DANYCH, API skanera, ADR).
+- Dokumentacja bezpieczeństwa: `docs/bezpieczenstwo/` (KLASYFIKACJA_DANYCH, THREAT_MODEL 0.1, RYZYKA, RODO 0.1, CHECKLISTA_ASVS).
+- Strategia testów (`docs/testy/`) i runbook operacyjny (`docs/operacje/`).
+- CI: pipeline lint → typy → testy z progiem pokrycia → SAST (bandit, semgrep) → SCA (pip-audit) → skan sekretów (gitleaks)
+  → build obrazu → skan obrazu (trivy); wyniki jako artefakty; Dependabot; konfiguracja pre-commit
+  (ADR-0001).
+
+### Changed
+- **US-007:** macierz dostępu rola × trasa w testach (`warehouse/tests_access_matrix.py`) — każda trasa ma test
+  odmowy dla ról poniżej minimum i test dostępu; nowa trasa bez wpisu w macierzy zatrzymuje CI.
+- CI uruchamia testy przez `pytest` z pomiarem pokrycia (próg 80 % ogółem, 90 % `warehouse/services.py`)
+  i sprawdza typy w całym kodzie aplikacji (`mypy warehouse config`), nie tylko w trzech plikach.
+- Cotygodniowe skany bezpieczeństwa (`security.yml`) zamiast miesięcznych; akcje GitHub przypięte do SHA.
+
+### Security
+- **US-001 / R1:** rola Administrator nie może już zmienić hasła, roli ani statusu konta superusera ani konta `is_staff` (403); lista
+  użytkowników nie pokazuje dla takich kont przycisku „Edytuj”. Testy: `warehouse/tests_security.py`.
+- **US-002 / R3:** przyjęcie i import przyjęć mają limity — najwyżej 500 palet i 1 000 000 sztuk na przyjęcie,
+  2 000 palet na plik importu; plik ponad limit jest odrzucany przed jakimkolwiek zapisem, a liczby spoza zakresu
+  dają komunikat zamiast błędu 500. Testy: `warehouse/tests_input_limits.py`.
+- **US-003 / R2:** wdrożenie produkcyjne nie startuje z kluczem `DJANGO_SECRET_KEY` krótszym niż 50 znaków, z niską różnorodnością
+  znaków ani ze znaną zaślepką; prywatny `docker-compose.yml` wymaga `DJANGO_SECRET_KEY`, `DJANGO_SUPERUSER_PASSWORD` i `POSTGRES_PASSWORD`
+  (bez wartości domyślnych); `entrypoint.sh` nie zakłada superusera z hasłem `admin`, zaślepką ani hasłem
+  odrzucanym przez walidatory Django, nie startuje, gdy istniejący superuser ma hasło `admin` albo hasło bazy jest zaślepką; `seed_demo` odmawia bez `DEMO_MODE=1`. Testy: `warehouse/tests_deploy_settings.py`, krok CI dla compose.
+- **US-004 / R4:** import XLSX sprawdza sygnaturę ZIP i sumę rozmiarów po rozpakowaniu (najwyżej 50 MB) przed
+  otwarciem pliku; uszkodzony plik daje komunikat zamiast błędu 500; limit 10 000 wierszy obowiązuje także poza demo (puste wiersze XLSX się wliczają, czytane jest najwyżej 50 kolumn,
+  zaszyfrowane archiwa są odrzucane);
+  `defusedxml` w zależnościach produkcyjnych. Testy: `warehouse/tests_imports_hardening.py`.
+- **US-005 / R7, R5:** `manage.py purge_login_events` usuwa dziennik logowań starszy niż 90 dni (`--days N`); obie komendy
+  sprzątające (`purge_login_events`, `clearsessions`) uruchamia start kontenera i Scheduled Task (COOLIFY.md §10a);
+  `/demo/` i `/login/demo/` mają limit 10 wejść na 5 min z jednego IP (429); w trybie demo dziennik logowań nie zapisuje
+  IP ani user-agenta. Testy: `warehouse/tests_retention.py`, `DemoEntryRateLimitTests`.
+- **US-008 / R6:** hasła zapisywane algorytmem argon2 (`argon2-cffi`); istniejące hashe PBKDF2 są podnoszone do argon2
+  przy następnym udanym logowaniu. Testy: `warehouse/tests_passwords.py`.
+- **US-009 / R6:** po 10 nieudanych logowaniach w 15 minut na dane konto (z dowolnych adresów IP) kolejne próby,
+  także z poprawnym hasłem, dostają 429; zdarzenie „Zablokowana próba” w dzienniku. Blokada obejmuje też `/admin/login/` i warianty unicode loginu;
+  konta demo w `DEMO_MODE` nie są blokowane. Liczniki są wspólne dla wszystkich workerów (licznik konta w tabeli, limity per IP
+  w DatabaseCache, ADR-0002). Migracje `0009` (lista wyborów `LoginEvent.kind`) i `0010` (tabela liczników). Testy: `tests_login_limits.py`.
+- **US-011 / R8:** nagłówek `Content-Security-Policy` z nonce (bez `unsafe-inline` dla skryptów) i `Permissions-Policy`
+  (kamera tylko dla własnej domeny, bez geolokalizacji) na wszystkich stronach; atrybuty `on*=` zastąpione `data-*` + `ui.js`;
+  HSTS bez `preload`. Awaryjnie `DJANGO_CSP_REPORT_ONLY=1`. Testy: `warehouse/tests_security_headers.py` (ADR-0004).
+- **US-012:** skrypt backupu nie raportuje już „OK” przy nieudanym `pg_dump` (zrzut bez potoku, kontrola rozmiaru i `gzip -t`).
+- **US-013:** liczby z formularzy, importów i API skanera mają górną granicę (1 000 000 sztuk, pojemność lokalizacji 10 000) —
+  wartości typu `1e999` lub ponad zakres bazy dają komunikat przy polu/wierszu zamiast błędu 500; importy pomijają wiersze ze zbyt
+  długim kodem lokalizacji, numerem HU, partią lub referencją, zanim cokolwiek zapiszą; nazwy plików PDF/CSV/XLSX z dowolnymi
+  znakami (`content_disposition_header`). Testy: `warehouse/tests_input_validation.py`.
+- **US-014:** niepoprawny adres w `X-Forwarded-For` (błędna konfiguracja proxy) jest ignorowany — logowanie nie kończy
+  się błędem 500, dziennik zapisuje `REMOTE_ADDR`, limitery liczą po poprawnym IP.
+- **US-015:** listy HU, lokalizacji, stanów wg lokalizacji i raport zajętości lokalizacji są stronicowane (100 wierszy,
+  filtry zachowane przy zmianie strony); lista lokalizacji ma filtr typu i kodu; zbiorczy wydruk etykiet lokalizacji
+  najwyżej 200 — powyżej komunikat „Zawęź filtr”. Eksporty CSV/XLSX bez zmian (pełne). Testy: `warehouse/tests_pagination.py`.
+- **US-016:** demo ma limity: najwyżej 2000 palet i 500 lokalizacji (przyjęcia i importy powyżej — „Limit demo”),
+  60 zapisów (POST) na 5 min z jednego IP (powyżej 429). Przycisk „Przywróć dane demo” i `POST /demo/przywroc/`
+  usunięte — dane wraca wyłącznie Scheduled Task `seed_demo --reset --keep-users` (DEC-6, Z-41).
+- **US-017:** `warehouse/views.py` podzielony na pakiet `warehouse/views/` (10 modułów wg obszaru, ADR-0006) — bez zmian
+  w działaniu, adresach i uprawnieniach; migawka tras w `warehouse/tests_urls.py`.
+- **US-018:** zamknięcie WZ po ostatnim pobraniu ze skanera robi serwis pod blokadą dokumentu (`complete_if_picked`,
+  idempotentnie). Naprawiony deadlock (błąd 500) przy równoczesnym skanerze i „Realizuj” na tym samym WZ.
+- **US-019:** mypy w CI sprawdza też ciała funkcji bez adnotacji (wszystkie widoki) — wcześniej błąd typu w widoku
+  przechodził; poprawiono 37 zgłoszeń bez zmiany działania. Progi pokrycia (80 % / 90 % `services.py`) i pytest na
+  SQLite + PostgreSQL bez zmian.
+- **US-020:** zależności z jednego źródła (`requirements*.in`) w lockach z hashami (`pip-compile`); obraz instaluje
+  tylko z locka (`--require-hashes --no-deps`); obrazy `python`, `postgres`, `caddy` przypięte digestem; CI instaluje
+  narzędzia z locka (ADR-0007).
+- **US-022:** dziennik audytowy zmian kont i odmów dostępu (`/uzytkownicy/audyt/`, tabela `AuditEvent`, migracja `0011`,
+  retencja 365 dni) — ślad zostawia panel, `/admin/` i komendy `manage.py`; logi JSON maskują hasła, tokeny i ciasteczka
+  (ADR-0008, Z-42).
+- **US-021:** e-mail do administratorów (`DJANGO_ADMINS`) przy błędzie 500 — bez haseł, tokenów i ciasteczek,
+  najwyżej 1 mail na błąd / 10 min i 20 / h, w demo wyłączony.
+- **RR-31:** w demo jedna operacja tworzy najwyżej 50 palet, a plik importu ma najwyżej 100 wierszy.
+- **US-006 / US-024 / US-026:** SECURITY.md — jedyny kanał zgłoszeń przez GitHub; wyjątki W-1…W-4 zaakceptowane;
+  CODEOWNERS obejmuje pliki wrażliwe (test w CI).
+- **US-025:** macierz śledzenia wymaganie → historyjka → test → PR aktualna po US-001…US-053; CI sprawdza, że każde
+  wymaganie ma wiersz, nazwy testów istnieją, a zrobiona historyjka ma wpis z numerem PR.
+- **US-051:** indeks na dacie dziennika logowań (migracja `0012`) — codzienne czyszczenie i lista dziennika bez
+  przeszukiwania całej tabeli.
+- **US-050:** duży import przyjęć lub stanów nie wstrzymuje innych przyjęć — numery palet rezerwowane jednym zapisem,
+  palety i ruchy zapisywane hurtem; naprawiony deadlock importu z równoległym przyjęciem i podwójny licznik po
+  usunięciu konfiguracji numeracji.
+- **US-053:** palety blokowane zawsze rosnąco po pk — równoległe „Realizuj” na WZ z materiałami w odwrotnej
+  kolejności nie kończy się błędem 500 (deadlock); realizacja z brakami pobiera to, co zostało po równoległym
+  pobraniu, zamiast zgłaszać brak stanu.
+- **US-052:** dodanie i usunięcie pozycji WZ sprawdza status pod blokadą dokumentu — równoległe „Realizuj” nie zostawi
+  zrealizowanego WZ z niepobraną pozycją; pozycji z pobraną ilością nie da się usunąć (przycisk ukryty); skaner przy
+  usuniętej w międzyczasie pozycji dostaje komunikat zamiast błędu 500.
+- Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
+- Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
+  w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).
+
+## [0.1.0] — 2026-10-13
+
+Stan aplikacji przed wprowadzeniem procesu zespołowego (BA / DEV / SEC). Historia zmian z tego okresu:
+`docs/operator/*.md` (jeden dokument na gałąź) i opisy PR #8–#22.
+
+### Added
+- Przyjęcia z podziałem na palety (HU) i etykietami QR (PDF), rozmieszczanie w panelu i skanerem w telefonie.
+- Wydania WZ z doborem palet PICKING → ZAPAS, FEFO → FIFO; realizacja pełna lub z brakami; pakowanie; wysyłka; WZ w PDF.
+- Korekty ilości z powodem, przepakowanie (łączenie palet), spis z natury (migawka → liczenie → zatwierdzenie).
+- Stany, rejestr ruchów, raporty, eksport CSV/XLSX; importy CSV/XLSX (lokalizacje, stany, przyjęcia, zlecenia).
+- Trzy role (Administrator, Operator, Podgląd), dziennik logowań, limit prób logowania.
+- Tryb demo (`DEMO_MODE`): publiczne konta demo, wejście bez logowania `/demo/`, prezentacja z napisami, przywracanie danych.
+- Wdrożenie: Dockerfile (non-root, healthcheck), Docker Compose z Caddy (auto-HTTPS) lub Coolify, kontener backupu.
+- CI: ruff, `check --deploy`, kontrola migracji, testy na SQLite i PostgreSQL 16 (z testem wyścigu), build i smoke obrazu.
+- Dokumentacja analityczna `docs/01–07` i harness asystenta AI (`.claude/`, `docs/pitfalls/`, `docs/operator/`).
+
+[Unreleased]: https://github.com/TomaszWu14/miniWMS-public/compare/f5be158...HEAD
+[0.1.0]: https://github.com/TomaszWu14/miniWMS-public/tree/f5be158

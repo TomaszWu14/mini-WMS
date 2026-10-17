@@ -19,9 +19,11 @@ from django.db.models import Count, F, Q
 
 from . import services
 from .imports import (
+    BAD_NUMBER,
     get_or_create_ci,
     parse_int_cell,
     parse_locations_file,
+    too_long,
 )
 from .models import (
     HandlingUnit,
@@ -106,11 +108,43 @@ def _over_capacity_codes(location_pks: set[int]) -> list[str]:
     )
 
 
+def _import_movement(hu: HandlingUnit, user) -> dict:
+    return {
+        "type": MovementType.PRZYJECIE,
+        "handling_unit": hu,
+        "material": hu.material,
+        "quantity_delta": hu.quantity,
+        "location_to": hu.location,
+        "note": (
+            "Import stanu początkowego"
+            if hu.quantity
+            else "Import stanu początkowego (ilość do uzupełnienia)"
+        ),
+        "created_by": user,
+    }
+
+
 @transaction.atomic
 def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS"):
     """Importuje stan początkowy. Zwraca słownik z podsumowaniem i błędami."""
     rows = parse_locations_file(filename, data)
+    # US-002 / R3: każdy wiersz tworzy jedną paletę — plik ponad limit odrzucamy
+    # w całości, zanim powstanie pierwszy HU (blokada licznika numeracji).
+    limit = services.hu_per_import_limit()
+    if len(rows) > limit:
+        return {
+            "created": 0,
+            "materials_created": 0,
+            "locations_created": 0,
+            "zero_qty": 0,
+            "over_capacity": [],
+            "errors": [
+                f"Plik ma {len(rows)} wierszy — limit jednego importu stanów to "
+                f"{limit} palet. Podziel plik; nic nie zapisano."
+            ],
+        }
     unit, _ = Unit.objects.get_or_create(code=default_unit_code)
+    budget = services.DemoBudget()
 
     created = 0
     zero_qty = 0
@@ -119,6 +153,8 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
     locations_created: set[str] = set()
     errors: list[str] = []
 
+    pending: list[HandlingUnit] = []
+
     for i, row in enumerate(rows, start=2):  # wiersz 1 = nagłówek
         ref = _norm(_get(row, "ref", "indeks", "index", "material"))
         if not ref:
@@ -126,11 +162,6 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             continue
 
         name = _norm(_get(row, "nazwa", "name")) or ref
-        material, m_created = get_or_create_ci(
-            Material, "index", ref, {"name": name, "unit": unit}
-        )
-        if m_created:
-            materials_created.add(ref)
 
         # Ilość zwykle nieznana przy imporcie — domyślnie 0, uzupełniana
         # później ręcznie w aplikacji (Korekta ilości). Kolumna opcjonalna.
@@ -138,15 +169,64 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
         try:
             qty = parse_int_cell(qty_raw) or 0
         except ValueError:
-            errors.append(f"Wiersz {i} ({ref}): zła ilość '{qty_raw}'.")
+            errors.append(
+                f"Wiersz {i} ({ref}): {BAD_NUMBER} w kolumnie ilość '{qty_raw}'."
+            )
             continue
         if qty < 0:
             qty = 0
+        if qty > services.MAX_RECEIPT_QUANTITY:
+            errors.append(
+                f"Wiersz {i} ({ref}): ilość ponad {services.MAX_RECEIPT_QUANTITY} — "
+                "pominięto."
+            )
+            continue
 
         loc_raw = _norm(_get(row, "lokalizacja", "location", "lok"))
+        lot = _clean_dash(_get(row, "partia", "lot"))
+        hu_number = _norm(_get(row, "hu", "numer hu"))
+        # US-013: długości sprawdzamy, zanim cokolwiek powstanie (materiał, lokalizacja).
+        problem = (
+            too_long(Material, "index", ref, "indeks")
+            or too_long(Material, "name", name, "nazwa")
+            or too_long(Location, "code", loc_raw, "kod lokalizacji")
+            or too_long(HandlingUnit, "lot", lot, "partia")
+            or too_long(HandlingUnit, "number", hu_number, "numer HU")
+        )
+        if problem:
+            errors.append(f"Wiersz {i} ({ref[:40]}): {problem} — pominięto.")
+            continue
+        try:
+            expiry = _parse_date(_find_expiry(row))
+        except ValueError as exc:
+            errors.append(f"Wiersz {i} ({ref}): {exc}.")
+            continue
+        if hu_number:
+            if HandlingUnit.objects.filter(number__iexact=hu_number).exists():
+                errors.append(f"Wiersz {i}: HU '{hu_number}' już istnieje — pominięto.")
+                continue
+
+        receiving = loc_raw.lower() in RECEIVING_TOKENS
+        new_location = (
+            budget.limited
+            and not receiving
+            and not Location.objects.filter(code__iexact=loc_raw).exists()
+        )
+        try:
+            budget.take(hus=1, locations=int(new_location))
+        except services.WMSError as exc:
+            errors.append(f"Wiersz {i}: {exc}")
+            continue
+
+        material, m_created = get_or_create_ci(
+            Material, "index", ref, {"name": name, "unit": unit}
+        )
+        if m_created:
+            materials_created.add(ref)
+
         location = None
         status = HUStatus.DO_ULOZENIA
-        if loc_raw.lower() not in RECEIVING_TOKENS:
+        if not receiving:
             location, l_created = get_or_create_ci(
                 Location, "code", loc_raw, {"type": LocationType.ZAPAS}
             )
@@ -155,22 +235,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             status = HUStatus.ZMAGAZYNOWANY
             touched_locations.add(location.pk)
 
-        lot = _clean_dash(_get(row, "partia", "lot"))
-        try:
-            expiry = _parse_date(_find_expiry(row))
-        except ValueError as exc:
-            errors.append(f"Wiersz {i} ({ref}): {exc}.")
-            continue
-
-        hu_number = _norm(_get(row, "hu", "numer hu"))
-        if hu_number:
-            if HandlingUnit.objects.filter(number__iexact=hu_number).exists():
-                errors.append(f"Wiersz {i}: HU '{hu_number}' już istnieje — pominięto.")
-                continue
-        else:
-            hu_number = services.generate_hu_number()
-
-        hu = HandlingUnit.objects.create(
+        hu = HandlingUnit(
             number=hu_number,
             material=material,
             quantity=qty,
@@ -181,22 +246,27 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             delivery_ref="IMPORT",
             created_by=user,
         )
-        StockMovement.objects.create(
-            type=MovementType.PRZYJECIE,
-            handling_unit=hu,
-            material=material,
-            quantity_delta=qty,
-            location_to=location,
-            note=(
-                "Import stanu początkowego"
-                if qty
-                else "Import stanu początkowego (ilość do uzupełnienia)"
-            ),
-            created_by=user,
-        )
+        if hu_number:
+            # Numer z pliku zapisujemy od razu — kolejne wiersze sprawdzają duplikat w bazie.
+            hu.save()
+            StockMovement.objects.create(**_import_movement(hu, user))
+        else:
+            # US-050 (przegląd [DB]): numer z licznika nadajemy po pętli jedną
+            # rezerwacją — licznik nie jest blokowany przez cały import.
+            pending.append(hu)
         created += 1
         if not qty:
             zero_qty += 1
+
+    if pending:
+        for hu, number in zip(
+            pending, services.reserve_hu_numbers(len(pending)), strict=True
+        ):
+            hu.number = number
+        HandlingUnit.objects.bulk_create(pending)
+        StockMovement.objects.bulk_create(
+            StockMovement(**_import_movement(hu, user)) for hu in pending
+        )
 
     return {
         "created": created,

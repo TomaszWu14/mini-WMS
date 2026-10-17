@@ -1,0 +1,30 @@
+{% extends "warehouse/base.html" %}
+{% block title %}Dziennik audytowy — mini-WMS{% endblock %}
+{% block content %}
+<h1>Dziennik audytowy</h1>
+<div class="toolbar">
+  <a class="btn btn-secondary" href="{% url 'user_list' %}">← Użytkownicy</a>
+  <div class="spacer"></div>
+  <span class="muted">Zmiany kont i odmowy dostępu; wpisy starsze niż rok są usuwane.</span>
+</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Kiedy</th><th>Kto</th><th>Akcja</th><th>Komu</th><th>Wynik</th><th>Szczegóły</th></tr></thead>
+  <tbody>
+    {% for e in events %}
+      <tr>
+        <td class="nowrap">{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+        <td>{{ e.actor_username|default:"—" }}</td>
+        <td>{{ e.get_action_display }}</td>
+        <td>{{ e.target_username|default:"—" }}</td>
+        <td>{% if e.result == "DENIED" %}<span style="color:var(--err)">⚠ {{ e.get_result_display }}</span>{% else %}{{ e.get_result_display }}{% endif %}</td>
+        <td class="muted">{{ e.detail|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Brak zdarzeń.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "warehouse/_pagination.html" with count_label="zdarzeń" prev_label="Nowsze" next_label="Starsze" %}
+{% endblock %}

@@ -46,7 +46,7 @@
     // nie został zablokowany (przycisk disabled, brak komunikatu).
     _parse: function (r) {
       // fetch śledzi 302 na /login/ przy wygasłej sesji — zostaje HTML
-      // logowania zamiast JSON (pułapka auth.md #9). Wykryj to po
+      // logowania zamiast JSON (pułapka auth.md #10). Wykryj to po
       // `r.redirected` i przekieruj, zamiast pokazywać "Błąd serwera (200)".
       if (r.redirected && r.url.indexOf("/login/") !== -1) {
         window.location.href = "/login/?next=" + encodeURIComponent(window.location.pathname);

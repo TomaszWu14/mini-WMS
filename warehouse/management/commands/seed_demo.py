@@ -74,11 +74,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, reset=False, keep_users=False, **options):
-        if reset:
-            # Bezpiecznik: --reset kasuje WSZYSTKIE dane magazynowe.
-            if not settings.DEMO_MODE:
-                raise CommandError("--reset działa tylko przy DEMO_MODE=1.")
-        elif Material.objects.filter(index__startswith="DEMO-").exists():
+        # Bezpiecznik (US-003 / R2): konta demo mają publiczne hasło, więc na
+        # instancji bez DEMO_MODE nie mogą powstać; --reset kasuje dane magazynowe.
+        if not settings.DEMO_MODE:
+            raise CommandError(
+                "seed_demo wymaga DEMO_MODE=1 — konta demo mają publiczne hasło."
+            )
+        if not reset and Material.objects.filter(index__startswith="DEMO-").exists():
             self.stdout.write("Dane demo już istnieją — pomijam (użyj --reset).")
             return
         # Reset i zasiew razem: równoległe żądania nie zobaczą pustego magazynu.
@@ -90,10 +92,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Dane demo zasiane."))
 
     def _lock_tables(self):
-        """PostgreSQL: reset z /demo/przywroc/ idzie przy działającej aplikacji.
+        """PostgreSQL: reset z harmonogramu (03:00) idzie przy działającej aplikacji.
 
-        Bez blokady równoległe przyjęcie/wydanie (albo drugi reset z innego
-        workera) wstawia ruch między DELETE-ami → ProtectedError albo deadlock
+        Bez blokady równoległe przyjęcie/wydanie (albo ręczny reset z terminala)
+        wstawia ruch między DELETE-ami → ProtectedError albo deadlock
         z blokadą HUNumberingConfig. EXCLUSIVE wstrzymuje zapisy do końca
         transakcji (poniżej 1–2 s), odczyty działają dalej. SQLite i tak
         szereguje zapisy całej bazy.
@@ -113,7 +115,9 @@ class Command(BaseCommand):
         ]
         tables = ", ".join(connection.ops.quote_name(m._meta.db_table) for m in models)
         with connection.cursor() as cur:
-            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608 (nazwy z modeli)
+            # Nazwy tabel pochodzą z _meta.db_table i przechodzą przez quote_name —
+            # żadnych danych od użytkownika, więc wyjątek dla skanerów SQL injection.
+            cur.execute(f"LOCK TABLE {tables} IN EXCLUSIVE MODE")  # noqa: S608  # nosemgrep
 
     def _reset(self, keep_users=False):
         StockMovement.objects.all().delete()

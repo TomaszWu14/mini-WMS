@@ -1,0 +1,79 @@
+# Dependabot: aktualizacje zależności Pythona (locki pip-compile z hashami — US-020), akcji GitHub
+# i obrazów Dockera (Dockerfile i docker-compose, przypięte digestem).
+# Uzasadnienie: docs/architektura/adr/0001-narzedzia-jakosci-i-bezpieczenstwa.md (R10).
+# Każdy PR Dependabota przechodzi pełne CI (testy, SAST, SCA, skan obrazu).
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dev-tools:
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "django-stubs*"
+          - "pytest*"
+          - "coverage"
+          - "bandit"
+          - "pip-audit"
+          - "semgrep"
+          - "mutmut"
+          - "playwright"
+    ignore:
+      # Django: tylko łatki w ramach 5.2 LTS (pyproject: >=5.2,<5.3); nowa gałąź to decyzja PO.
+      - dependency-name: "Django"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "chore(ci)"
+
+  - package-ecosystem: "docker"
+    directories: ["/", "/docker"]
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(docker)"
+    ignore:
+      # Obraz bazowy: tylko łatki 3.11.x (zgodność z pyproject / CI).
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # backup.Dockerfile: pg_dump musi mieć tę samą główną wersję co serwer w compose (pg_upgrade — decyzja PO).
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+
+  # US-020: obrazy w docker-compose*.yml są przypięte digestem — Dependabot podbija tag i digest.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(docker)"
+    ignore:
+      # PostgreSQL: zmiana głównej wersji wymaga migracji danych (pg_upgrade) — decyzja PO.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]

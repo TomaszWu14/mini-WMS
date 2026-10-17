@@ -73,7 +73,8 @@ Kontekst i skutki odczytane z kodu; rozważane opcje i powody wyboru potwierdzon
   przeglądarce telefonu.
 - **Dlaczego ta:** szybkość wdrożenia — telefon jest pod ręką, nie trzeba niczego kupować ani
   instalować; ten sam serwer i te same reguły co panel; kamera telefonu czyta kod QR.
-- **Skutki:** kamera wymaga HTTPS; przy wygaśnięciu sesji skaner pokazuje mylący komunikat
+- **Skutki:** kamera wymaga HTTPS; przy wygaśnięciu sesji skaner pokazywał mylący komunikat
+  (naprawione: przekierowanie na logowanie, patrz [07](07-ograniczenia.md))
   (patrz [07](07-ograniczenia.md)).
 
 ## D-09. Import stanów z ilością 0 zostaje — z ostrzeżeniem

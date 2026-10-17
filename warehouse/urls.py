@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import scanner_views, views
+from . import scanner_views, two_factor, views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
@@ -109,6 +109,9 @@ urlpatterns = [
     # Użytkownicy (Admin)
     path("uzytkownicy/", views.user_list, name="user_list"),
     path("uzytkownicy/dziennik/", views.login_log, name="login_log"),
+    path("uzytkownicy/audyt/", views.audit_log, name="audit_log"),
+    path("2fa/", two_factor.two_factor_setup, name="two_factor_setup"),
+    path("2fa/weryfikacja/", two_factor.two_factor_verify, name="two_factor_verify"),
     path("uzytkownicy/nowy/", views.user_create, name="user_create"),
     path("uzytkownicy/<int:pk>/", views.user_edit, name="user_edit"),
 ]

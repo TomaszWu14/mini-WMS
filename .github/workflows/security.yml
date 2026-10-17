@@ -1,73 +1,125 @@
 name: security
 
-# Cotygodniowe skany bezpieczeństwa (doradcze): Bandit (SAST Pythona),
-# gitleaks (sekrety w kodzie i historii), Trivy (CVE w zależnościach
-# i konfiguracji), pip-audit (CVE w requirements). Tylko harmonogram
-# + ręczne odpalenie — oszczędza minuty Actions na prywatnym repo.
+# Cotygodniowy, szerszy i DORADCZY skan bezpieczeństwa (ADR-0001). Blokujące wersje
+# tych samych kontroli działają przy każdym pushu i PR w ci.yml. Tu: pełna historia gita
+# (gitleaks), system plików i konfiguracja (trivy — wszystkie poziomy), semgrep z szerszym
+# zestawem reguł, pip-audit także dla zależności deweloperskich, bandit na wszystkich
+# poziomach. Wyniki jako artefakty (30 dni). Repozytorium jest publiczne — minuty Actions
+# są bezpłatne, więc harmonogram tygodniowy zamiast miesięcznego.
 
 on:
   schedule:
-    - cron: "0 6 1 * *"   # 1. dnia miesiaca
+    - cron: "0 6 * * 1"   # poniedziałek 06:00 UTC
   workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  bandit:
-    name: Bandit (SAST)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Instalacja Bandit
-        run: pip install "bandit[toml]"
-      - name: Skan (błąd przy problemach ≥ średnie)
-        run: bandit -r . -ll -x ./.venv,./venv,./node_modules,./.git
+env:
+  PYTHON_VERSION: "3.11"
 
+jobs:
   gitleaks:
-    name: gitleaks (sekrety)
+    name: gitleaks (sekrety, pełna historia)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          fetch-depth: 0   # pełna historia — skan także starych commitów
-      - uses: gitleaks/gitleaks-action@v3
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  trivy:
-    name: Trivy (zależności + konfiguracja)
+  trivy-fs:
+    name: trivy (zależności, sekrety, konfiguracja — raport)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - name: Instalacja Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Skan repozytorium (raport HIGH/CRITICAL w logu)
-        run: trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --exit-code 0 .
-
-  pip-audit:
-    name: pip-audit (CVE w zależnościach)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: mkdir -p reports
+      - name: Skan repozytorium (tabela w logu, wszystkie poziomy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          python-version: "3.12"
-      - name: Instalacja pip-audit
-        run: pip install pip-audit
-      - name: Audyt plików requirements (doradczy)
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          exit-code: "0"
+          format: table
+      - name: Skan repozytorium (SARIF do artefaktu)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          exit-code: "0"
+          format: sarif
+          output: reports/trivy-fs.sarif
+          skip-setup-trivy: true
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: weekly-trivy
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  semgrep:
+    name: semgrep (szerszy zestaw reguł — raport)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalacja semgrep (lock z hashami, osobny venv — US-020)
         run: |
-          found=0
-          for f in requirements*.txt; do
-            [ -f "$f" ] || continue
-            found=1
+          python -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --require-hashes -r requirements-semgrep.txt
+          echo "$RUNNER_TEMP/semgrep/bin" >> "$GITHUB_PATH"
+      - name: Semgrep (python, django, owasp, security-audit, secrets — wszystkie poziomy)
+        env:
+          SEMGREP_SEND_METRICS: "off"
+        run: |
+          mkdir -p reports
+          semgrep scan --config p/python --config p/django --config p/owasp-top-ten \
+            --config p/security-audit --config p/secrets \
+            --exclude warehouse/static/warehouse/vendor \
+            --sarif --output reports/semgrep-weekly.sarif . || true
+          semgrep scan --config p/python --config p/django --config p/owasp-top-ten \
+            --config p/security-audit --config p/secrets \
+            --exclude warehouse/static/warehouse/vendor . || true
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: weekly-semgrep
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  deps-and-sast:
+    name: pip-audit (prod + dev) i bandit (wszystkie poziomy — raport)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install --require-hashes -r requirements-dev.txt
+      - name: pip-audit requirements*.txt
+        run: |
+          mkdir -p reports
+          for f in requirements.txt requirements-dev.txt requirements-mutation.txt requirements-semgrep.txt; do
             echo "── $f ──"
+            pip-audit -r "$f" --progress-spinner off --desc on -f json -o "reports/pip-audit-$(basename "$f" .txt).json" || true
             pip-audit -r "$f" --progress-spinner off || true
           done
-          [ "$found" = 1 ] || echo "Brak plików requirements*.txt — pomijam."
+      - name: bandit (wszystkie poziomy, raport)
+        run: |
+          bandit -c pyproject.toml -r warehouse config manage.py -f json -o reports/bandit-full.json || true
+          bandit -c pyproject.toml -r warehouse config manage.py -q || true
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: weekly-deps-sast
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30

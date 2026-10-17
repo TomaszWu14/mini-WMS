@@ -21,6 +21,7 @@ transakcji, więc historia zawsze zgadza się ze stanem.
 | **StocktakeSheet** | `number` unikalny | location FK (opc. = cały magazyn), status ∈ {OTWARTY, ZAMKNIETY}, created_at/by, closed_at | numer `SP<RRRRMMDD>-NNN` |
 | **StocktakeLine** | UNIQUE (sheet, handling_unit) | sheet FK, handling_unit FK (opc.), material FK, location_code (tekst — migawka), expected_qty (int), counted_qty (int, opc.) | `variance` liczone |
 | **LoginEvent** | id | user FK (opc.), username, kind ∈ {LOGIN, LOGOUT, FAILED}, ip, user_agent, created_at | dziennik logowań |
+| **AuditEvent** | id | created_at (indeks), actor FK (opc.) + actor_username, target FK (opc.) + target_username, action ∈ {USER_CREATE, ROLE_CHANGE, PASSWORD_CHANGE, ACTIVE_CHANGE, 2FA_ENABLE, 2FA_RESET, USER_DELETE, ACCESS_DENIED}, result ∈ {OK, DENIED}, detail | dziennik audytowy (US-022, ADR-0008) |
 
 ## Diagram
 

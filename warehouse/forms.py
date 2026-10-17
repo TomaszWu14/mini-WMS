@@ -1,5 +1,7 @@
 """Formularze ekranów operatora."""
 
+from typing import Any
+
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -15,12 +17,19 @@ from .models import (
     Role,
     Unit,
 )
+from .services import (
+    MAX_LOCATION_CAPACITY,
+    MAX_PALLETS_PER_RECEIPT,
+    MAX_QUANTITY,
+    MAX_RECEIPT_QUANTITY,
+)
 
 
 class _MaxSizeFileMixin:
     """Ogranicza rozmiar wgrywanego pliku importu (ochrona przed OOM/DoS)."""
 
     max_upload_mb = 5
+    cleaned_data: dict[str, Any]  # dostarcza forms.Form, z którym mixin jest łączony
 
     def clean_file(self):
         upload = self.cleaned_data.get("file")
@@ -36,6 +45,7 @@ class MaterialForm(forms.ModelForm):
         label="maks. ilość na palecie",
         required=False,
         min_value=1,
+        max_value=MAX_QUANTITY,
         help_text="Opcjonalny sztywny limit ilości na jednej palecie.",
     )
 
@@ -57,6 +67,7 @@ class LocationForm(forms.ModelForm):
     capacity = forms.IntegerField(
         label="pojemność (liczba HU)",
         min_value=0,
+        max_value=MAX_LOCATION_CAPACITY,
         initial=1,
         help_text="Maks. liczba HU. 0 = bez limitu.",
     )
@@ -108,7 +119,7 @@ class InventoryForm(forms.Form):
         initial=MODE_ADD,
         widget=forms.RadioSelect,
     )
-    quantity = forms.IntegerField(label="Ilość", min_value=1)
+    quantity = forms.IntegerField(label="Ilość", min_value=1, max_value=MAX_QUANTITY)
     reason = forms.ChoiceField(
         label="Powód",
         choices=[("", "— wybierz —")] + list(AdjustReason.choices),
@@ -129,7 +140,7 @@ class RepackForm(forms.Form):
         max_length=30,
         widget=forms.TextInput(attrs={"placeholder": "numer palety docelowej"}),
     )
-    quantity = forms.IntegerField(label="Ilość", min_value=1)
+    quantity = forms.IntegerField(label="Ilość", min_value=1, max_value=MAX_QUANTITY)
 
 
 class UserCreateForm(forms.Form):
@@ -205,12 +216,20 @@ class ReceiveForm(forms.Form):
         widget=forms.RadioSelect,
     )
     total_quantity = forms.IntegerField(
-        label="Ilość całkowita", min_value=1, required=False
+        label="Ilość całkowita",
+        min_value=1,
+        max_value=MAX_RECEIPT_QUANTITY,
+        required=False,
     )
     qty_per_pallet = forms.IntegerField(
-        label="Ilość na paletę", min_value=1, required=False
+        label="Ilość na paletę",
+        min_value=1,
+        max_value=MAX_RECEIPT_QUANTITY,
+        required=False,
     )
-    pallets = forms.IntegerField(label="Liczba palet", min_value=1)
+    pallets = forms.IntegerField(
+        label="Liczba palet", min_value=1, max_value=MAX_PALLETS_PER_RECEIPT
+    )
 
     lot = forms.CharField(label="Partia / LOT", max_length=50, required=False)
     expiry_date = forms.DateField(
@@ -221,7 +240,8 @@ class ReceiveForm(forms.Form):
     delivery_ref = forms.CharField(label="Numer dostawy", max_length=50, required=False)
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         mode = cleaned.get("mode")
         pallets = cleaned.get("pallets")
         total = cleaned.get("total_quantity")
@@ -241,6 +261,14 @@ class ReceiveForm(forms.Form):
                 self.add_error("qty_per_pallet", "Podaj ilość na paletę.")
                 return cleaned
             cleaned["computed_total"] = per_pallet * pallets
+
+        if cleaned["computed_total"] > MAX_RECEIPT_QUANTITY:
+            self.add_error(
+                None,
+                f"Ilość w jednym przyjęciu najwyżej {MAX_RECEIPT_QUANTITY} — "
+                "podziel dostawę na kilka przyjęć.",
+            )
+            return cleaned
 
         # Walidacja maks. ilości na palecie (sztywny limit z materiału).
         if material and material.max_per_pallet:
@@ -273,7 +301,9 @@ class DeliveryDateForm(forms.Form):
 
 
 class HUCorrectionForm(forms.Form):
-    new_quantity = forms.IntegerField(label="Nowa ilość", min_value=0)
+    new_quantity = forms.IntegerField(
+        label="Nowa ilość", min_value=0, max_value=MAX_QUANTITY
+    )
     reason = forms.ChoiceField(
         label="Powód",
         choices=[("", "— wybierz —")] + list(AdjustReason.choices),
@@ -329,10 +359,13 @@ class IssueLineForm(forms.Form):
         label="Konkretny HU",
         required=False,
     )
-    requested_qty = forms.IntegerField(label="Ilość", min_value=1)
+    requested_qty = forms.IntegerField(
+        label="Ilość", min_value=1, max_value=MAX_QUANTITY
+    )
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         mode = cleaned.get("mode")
         if mode == self.MODE_MATERIAL:
             if not cleaned.get("material"):

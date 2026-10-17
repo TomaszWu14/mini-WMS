@@ -3,6 +3,8 @@
 import csv
 import io
 
+from django.utils.http import content_disposition_header
+
 # Znaki, od których arkusz kalkulacyjny może zinterpretować komórkę jako formułę
 # (CSV/Formula Injection). Wartości tekstowe zaczynające się od nich poprzedzamy
 # apostrofem, by Excel/LibreOffice potraktował je jako zwykły tekst.
@@ -26,7 +28,9 @@ def rows_to_csv_response(filename: str, header, rows):
     for row in rows:
         writer.writerow([_safe_cell(v) for v in row])
     response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+    response["Content-Disposition"] = (
+        content_disposition_header(True, f"{filename}.csv") or "attachment"
+    )
     return response
 
 
@@ -54,5 +58,7 @@ def rows_to_xlsx_response(filename: str, header, rows, sheet_title="Dane"):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ),
     )
-    response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+    response["Content-Disposition"] = (
+        content_disposition_header(True, f"{filename}.xlsx") or "attachment"
+    )
     return response

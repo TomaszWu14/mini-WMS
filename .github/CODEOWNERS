@@ -1,0 +1,57 @@
+# CODEOWNERS — przypisanie obszarów do ról zespołu BA / DEV / SEC.
+#
+# GitHub wymaga tu kont użytkowników, nie ról. Repozytorium prowadzi jedna osoba
+# (Product Owner), więc każdy wiersz wskazuje @TomaszWu14, a komentarz mówi, która
+# rola zespołu odpowiada za przegląd danego obszaru (szczegóły: CONTRIBUTING.md).
+# Ostatni pasujący wiersz wygrywa.
+
+# [DEV] domyślnie cały kod i konfiguracja
+*                                   @TomaszWu14
+
+# [BA] analiza biznesowa: wymagania, historyjki, procesy, słownik, śledzenie
+/docs/analiza/                      @TomaszWu14
+/docs/01-problem-i-zakres.md        @TomaszWu14
+/docs/02-proces.md                  @TomaszWu14
+/docs/03-user-flow.md               @TomaszWu14
+/docs/05-wymagania.md               @TomaszWu14
+
+# [DEV] architektura, ADR, strategia testów, runbook
+/docs/architektura/                 @TomaszWu14
+/docs/testy/                        @TomaszWu14
+/docs/operacje/                     @TomaszWu14
+/docs/04-model-danych.md            @TomaszWu14
+/docs/06-decyzje.md                 @TomaszWu14
+
+# [SEC] bezpieczeństwo: threat model, ryzyka, RODO, ASVS, polityka zgłoszeń,
+# uwierzytelnianie i role, tryb demo, ustawienia, kontenery, CI
+/docs/bezpieczenstwo/               @TomaszWu14
+/SECURITY.md                        @TomaszWu14
+/warehouse/roles.py                 @TomaszWu14
+/warehouse/signals.py               @TomaszWu14
+/warehouse/demo.py                  @TomaszWu14
+/warehouse/forms.py                 @TomaszWu14
+/warehouse/imports.py               @TomaszWu14
+/warehouse/receipt_import.py        @TomaszWu14
+/warehouse/stock_import.py          @TomaszWu14
+/warehouse/issue_import.py          @TomaszWu14
+/warehouse/audit.py                 @TomaszWu14
+/warehouse/two_factor.py            @TomaszWu14
+/warehouse/login_limits.py          @TomaszWu14
+/warehouse/csp.py                   @TomaszWu14
+/warehouse/views/users.py           @TomaszWu14
+/warehouse/scanner_views.py         @TomaszWu14
+/config/log.py                      @TomaszWu14
+/scripts/                           @TomaszWu14
+/config/settings/                   @TomaszWu14
+/Dockerfile                         @TomaszWu14
+/entrypoint.sh                      @TomaszWu14
+/docker-compose.yml                 @TomaszWu14
+/docker-compose.coolify.yml         @TomaszWu14
+/Caddyfile                          @TomaszWu14
+/.github/                           @TomaszWu14
+/.pre-commit-config.yaml            @TomaszWu14
+
+# [PO] decyzje i akceptacje
+/docs/AUDYT.md                      @TomaszWu14
+/docs/analiza/ZALOZENIA.md          @TomaszWu14
+/CHANGELOG.md                       @TomaszWu14

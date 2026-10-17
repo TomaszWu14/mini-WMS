@@ -7,6 +7,7 @@ W CI uruchamia go job `test-postgres`.
 import threading
 import time
 import unittest
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.db import connection, connections, transaction
@@ -79,7 +80,8 @@ class ConcurrentIssueTests(TransactionTestCase):
         workers = [threading.Thread(target=worker, args=(d,)) for d in docs]
         for w in workers:
             w.start()
-        time.sleep(1)  # oba wątki czekają już na blokadę palety
+        # Celowe opóźnienie: oba wątki mają już czekać na blokadę palety (test wyścigu).
+        time.sleep(1)  # nosemgrep
         release.set()
         for t in [h, *workers]:
             t.join(15)
@@ -108,3 +110,267 @@ class ConcurrentIssueTests(TransactionTestCase):
         self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
         self.hu.refresh_from_db()
         self.assertEqual(self.hu.quantity, 6)
+
+    def test_scanner_pick_and_execute_on_same_document(self):
+        """US-018 kryterium 3: skaner (pobranie + domknięcie) i „Realizuj” równolegle."""
+        doc = self._doc("WZ-S", 4)
+        line = doc.lines.get()
+        locked, release = threading.Event(), threading.Event()
+        results: list[str] = []
+
+        def holder():
+            try:
+                with transaction.atomic():
+                    IssueDocument.objects.select_for_update().get(pk=doc.pk)
+                    IssueLine.objects.select_for_update().get(pk=line.pk)
+                    locked.set()
+                    release.wait(10)
+            finally:
+                connections.close_all()
+
+        def scanner():
+            try:
+                services.pick_from_hu(
+                    hu=self.hu, quantity=4, user=self.user, document=doc, line=line
+                )
+                services.complete_if_picked(doc)
+                results.append("scanner-ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            finally:
+                connections.close_all()
+
+        def panel():
+            try:
+                services.execute_issue_document(document=doc, user=self.user)
+                results.append("panel-ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            finally:
+                connections.close_all()
+
+        h = threading.Thread(target=holder)
+        h.start()
+        locked.wait(10)
+        workers = [threading.Thread(target=scanner), threading.Thread(target=panel)]
+        for w in workers:
+            w.start()
+        time.sleep(1)  # nosemgrep — oba wątki czekają na blokadę
+        release.set()
+        for t in [h, *workers]:
+            t.join(15)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        line.refresh_from_db()
+        doc.refresh_from_db()
+        self.assertEqual(line.picked_qty, 4, results)
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 6)
+        self.assertEqual(
+            sum(
+                m.quantity_delta
+                for m in StockMovement.objects.filter(issue_document=doc)
+            ),
+            -4,
+        )
+
+    def _race(self, holder_body, waiter_body):
+        """Wątek A trzyma blokadę dokumentu i wykonuje `holder_body`; B czeka na nią."""
+        locked, release = threading.Event(), threading.Event()
+        results: list[str] = []
+
+        waited: list[float] = []
+
+        def holder():
+            try:
+                with transaction.atomic():
+                    holder_body()
+                    locked.set()
+                    release.wait(10)
+            except Exception as exc:  # noqa: BLE001 — przyczyna widoczna w asercji
+                results.append(f"holder:{type(exc).__name__}:{exc}")
+                locked.set()
+            finally:
+                connections.close_all()
+
+        def waiter():
+            start = time.monotonic()
+            try:
+                waiter_body()
+                results.append("ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            except Exception as exc:  # noqa: BLE001 — test ma pokazać 500 jako porażkę
+                results.append(f"500:{type(exc).__name__}")
+            finally:
+                waited.append(time.monotonic() - start)
+                connections.close_all()
+
+        h = threading.Thread(target=holder)
+        h.start()
+        locked.wait(10)
+        w = threading.Thread(target=waiter)
+        w.start()
+        time.sleep(1)  # nosemgrep — B czeka na blokadę dokumentu
+        release.set()
+        for t in (h, w):
+            t.join(15)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+        # Przegląd [DB] US-052: B musiał czekać na blokadę A (inaczej test nie dowodzi wyścigu).
+        self.assertGreaterEqual(
+            waited[0], 0.9, f"wątek B nie czekał na blokadę: {results}"
+        )
+        return results
+
+    def test_add_line_while_document_is_being_closed(self):
+        """US-052 kryterium 1: dodanie pozycji w trakcie „Realizuj” → odmowa, bez nowej pozycji."""
+        doc = self._doc("WZ-AL", 2)
+        stale = IssueDocument.objects.get(pk=doc.pk)
+
+        def close():
+            services.execute_issue_document(document=doc, user=self.user)
+
+        def add():
+            services.add_issue_line(
+                document=stale, material=self.material, requested_qty=1
+            )
+
+        results = self._race(close, add)
+        self.assertEqual(len(results), 1)
+        self.assertIn("tylko w otwartym", results[0])
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertEqual(doc.lines.count(), 1)
+
+    def test_pick_while_line_is_being_deleted(self):
+        """US-052 kryterium 2: skaner czeka na usuwaną pozycję → komunikat, nie 500."""
+        doc = self._doc("WZ-DL", 2)
+        line = doc.lines.get()
+
+        def delete():
+            services.delete_issue_line(document=doc, line_id=line.pk)
+
+        def pick():
+            services.pick_from_hu(
+                hu=self.hu, quantity=1, user=self.user, document=doc, line=line
+            )
+
+        results = self._race(delete, pick)
+        self.assertEqual(len(results), 1)
+        self.assertIn("usunięta", results[0])
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 10)
+
+    def test_crossed_materials_do_not_deadlock(self):
+        """US-053 kryterium 1: „Realizuj” na WZ z X, Y i Y, X równolegle — bez deadlocku."""
+        unit = self.material.unit
+        y = Material.objects.create(index="MAT-Y", name="Y", unit=unit)
+        hu_y = HandlingUnit.objects.create(
+            number="HU-Y1", material=y, quantity=10, status=HUStatus.ZMAGAZYNOWANY
+        )
+        a = IssueDocument.objects.create(number="WZ-XY", created_by=self.user)
+        b = IssueDocument.objects.create(number="WZ-YX", created_by=self.user)
+        for doc, mats in ((a, (self.material, y)), (b, (y, self.material))):
+            for mat in mats:
+                IssueLine.objects.create(document=doc, material=mat, requested_qty=2)
+
+        real_pick = services.pick_from_hu
+
+        def slow_pick(**kwargs):
+            # Po pobraniu z pierwszej palety drugi wątek zdąży zablokować swoją
+            # (stary kod: A trzyma X, B trzyma Y → deadlock detected).
+            result = real_pick(**kwargs)
+            time.sleep(0.7)  # nosemgrep — wymusza przeplot transakcji
+            return result
+
+        results: list[str] = []
+        start = threading.Barrier(2)
+
+        def run(doc):
+            try:
+                start.wait(5)
+                services.execute_issue_document(document=doc, user=self.user)
+                results.append("ok")
+            except WMSError as exc:
+                results.append(str(exc))
+            except Exception as exc:  # noqa: BLE001 — deadlock = 500
+                results.append(f"500:{type(exc).__name__}:{exc}")
+            finally:
+                connections.close_all()
+
+        with mock.patch.object(services, "pick_from_hu", slow_pick):
+            threads = [threading.Thread(target=run, args=(d,)) for d in (a, b)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(20)
+                self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        self.assertEqual(results, ["ok", "ok"])
+        self.hu.refresh_from_db()
+        hu_y.refresh_from_db()
+        self.assertEqual((self.hu.quantity, hu_y.quantity), (6, 6))
+
+    def test_partial_execute_takes_what_is_left_after_concurrent_pick(self):
+        """US-053 kryterium 2: realizacja z brakami po równoległym pobraniu — bez „HU jest pusty”."""
+        doc = self._doc("WZ-PP", 8)
+
+        def pick():
+            services.pick_from_hu(hu=self.hu, quantity=5, user=self.user)
+
+        def execute():
+            services.execute_issue_document(
+                document=doc, user=self.user, allow_partial=True
+            )
+
+        results = self._race(pick, execute)
+        self.assertEqual(results, ["ok"])
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, IssueStatus.ZREALIZOWANY)
+        self.assertEqual(doc.lines.get().picked_qty, 5)
+        self.hu.refresh_from_db()
+        self.assertEqual(self.hu.quantity, 0)
+
+    def test_import_and_receipt_in_parallel_keep_numbers_unique_and_contiguous(self):
+        """US-050 kryterium 2: import i zwykłe przyjęcie równolegle — numery bez kolizji i dziur."""
+        from .receipt_import import import_receipts
+
+        data = "indeks;ilosc;palety\n" + "MAT-C;40;40\n" * 3
+        results: list[str] = []
+        start = threading.Barrier(3)
+
+        def run(body):
+            try:
+                start.wait(5)
+                with transaction.atomic():
+                    body()
+                results.append("ok")
+            except Exception as exc:  # noqa: BLE001 — przyczyna widoczna w asercji
+                results.append(f"{type(exc).__name__}:{exc}")
+            finally:
+                connections.close_all()
+
+        bodies = [
+            lambda: import_receipts("p.csv", data.encode(), self.user),
+            lambda: services.receive_material(
+                material=self.material, quantities=[1, 1, 1], user=self.user
+            ),
+            lambda: services.receive_material(
+                material=self.material, quantities=[2, 2], user=self.user
+            ),
+        ]
+        threads = [threading.Thread(target=run, args=(b,)) for b in bodies]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(20)
+            self.assertFalse(t.is_alive(), "wątek zawisł na blokadzie")
+
+        self.assertEqual(results, ["ok"] * 3)
+        numbers = list(
+            HandlingUnit.objects.exclude(pk=self.hu.pk).values_list("number", flat=True)
+        )
+        self.assertEqual(len(numbers), 125)
+        digits = sorted(int(n[2:]) for n in numbers)
+        self.assertEqual(digits, list(range(digits[0], digits[0] + 125)))

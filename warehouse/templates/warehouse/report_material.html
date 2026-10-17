@@ -5,7 +5,7 @@
 
 <div class="toolbar">
   <form method="get" class="inline" style="display:flex;gap:8px;flex-wrap:wrap">
-    <select name="material" onchange="this.form.submit()" style="min-width:280px">
+    <select name="material" data-autosubmit style="min-width:280px">
       <option value="">— wybierz materiał —</option>
       {% for m in materials %}
         <option value="{{ m.index }}" {% if m.index == selected %}selected{% endif %}>{{ m.index }} — {{ m.name }}</option>

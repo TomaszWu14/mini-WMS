@@ -7,4 +7,4 @@ class WarehouseConfig(AppConfig):
     verbose_name = "Magazyn (mini-WMS)"
 
     def ready(self):
-        from . import signals  # noqa: F401
+        from . import audit, signals  # noqa: F401

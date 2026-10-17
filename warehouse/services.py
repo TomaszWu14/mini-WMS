@@ -7,9 +7,12 @@ Wszystkie operacje zmieniające stan zapisują ruch w `StockMovement`
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Case, F, IntegerField, Sum, Value, When
+from django.db.models.functions import Upper
 from django.utils import timezone
 
 from .models import (
@@ -33,6 +36,20 @@ from .models import (
 
 class WMSError(Exception):
     """Błąd reguły biznesowej (np. brak stanu, zła ilość)."""
+
+
+# --- Limity wejścia (US-002 / R3; wartości startowe — założenia Z-23, Z-35) ---
+# Jedno przyjęcie ani jeden import nie mogą utworzyć tylu palet, by zająć workera
+# na minuty. Uwaga: blokada licznika HU trwa do końca transakcji wołającego (import
+# przyjęć = cały plik), więc limit skraca ją, ale nie usuwa — rezerwacja zakresu
+# numerów jednym UPDATE to osobna historyjka (US-050).
+MAX_PALLETS_PER_RECEIPT = 500
+MAX_RECEIPT_QUANTITY = 1_000_000
+# US-013 / L_QTY: ta sama granica dla każdej ilości wpisywanej przez użytkownika
+# (korekta, pozycja WZ, przepakowanie, spis, API skanera) — daleko poniżej 2^31−1.
+MAX_QUANTITY = MAX_RECEIPT_QUANTITY
+MAX_LOCATION_CAPACITY = 10_000  # palet w jednej lokalizacji
+MAX_HU_PER_IMPORT = 2_000
 
 
 def _lock_and_sync(obj):
@@ -72,17 +89,51 @@ def save_with_unique_number(instance, number_fn, *, field="number", attempts=6):
 # --- Numeracja HU ------------------------------------------------------------
 
 
-def generate_hu_number() -> str:
-    """Zwraca kolejny unikalny numer HU i zwiększa licznik (atomowo)."""
+def reserve_hu_numbers(count: int) -> list[str]:
+    """US-050: rezerwuje `count` kolejnych numerów HU jednym zapisem licznika.
+
+    Licznik blokowany raz; numery już zajęte (nadane ręcznie w imporcie stanów,
+    przegląd [DB] US-013) pomijane — jedno zapytanie na paczkę kandydatów, nie na
+    numer. Rezerwacja w transakcji wywołującego: wycofanie przyjęcia cofa też licznik
+    (bez dziur w numeracji), więc zapis palet po rezerwacji ma być krótki (`bulk_create`).
+    """
+    if count < 1:
+        return []
     with transaction.atomic():
         config = HUNumberingConfig.objects.select_for_update().order_by("pk").first()
         if config is None:
-            config = HUNumberingConfig.objects.create()
-            config = HUNumberingConfig.objects.select_for_update().get(pk=config.pk)
-        number = f"{config.prefix}{config.next_number:0{config.padding}d}"
-        config.next_number += 1
+            # Brak konfiguracji (usunięta w adminie): stały pk=1 — dwa równoległe
+            # przyjęcia nie założą dwóch liczników (drugie dostaje IntegrityError
+            # i czeka na blokadę wiersza pierwszego).
+            try:
+                with transaction.atomic():
+                    HUNumberingConfig.objects.create(pk=1)
+            except IntegrityError:
+                pass
+            config = HUNumberingConfig.objects.select_for_update().get(pk=1)
+        numbers: list[str] = []
+        while len(numbers) < count:
+            need = count - len(numbers)
+            start = config.next_number
+            candidates = [
+                f"{config.prefix}{n:0{config.padding}d}"
+                for n in range(start, start + need)
+            ]
+            taken = {
+                n.upper()
+                for n in HandlingUnit.objects.annotate(_u=Upper("number"))
+                .filter(_u__in=[c.upper() for c in candidates])
+                .values_list("number", flat=True)
+            }
+            numbers += [c for c in candidates if c.upper() not in taken]
+            config.next_number = start + need
         config.save(update_fields=["next_number"])
-    return number
+    return numbers
+
+
+def generate_hu_number() -> str:
+    """Zwraca kolejny unikalny numer HU i zwiększa licznik (atomowo)."""
+    return reserve_hu_numbers(1)[0]
 
 
 # --- Podział ilości na palety -------------------------------------------------
@@ -94,8 +145,12 @@ def split_quantity(total: int, pallets: int) -> list[int]:
     ceil(total/pallets) przy walidacji limitu na paletę."""
     if pallets < 1:
         raise WMSError("Liczba palet musi być dodatnia.")
+    if pallets > MAX_PALLETS_PER_RECEIPT:
+        raise WMSError(f"Najwyżej {MAX_PALLETS_PER_RECEIPT} palet w jednym przyjęciu.")
     if total < 1:
         raise WMSError("Ilość całkowita musi być dodatnia.")
+    if total > MAX_RECEIPT_QUANTITY:
+        raise WMSError(f"Ilość w jednym przyjęciu najwyżej {MAX_RECEIPT_QUANTITY}.")
     base = total // pallets
     remainder = total - base * pallets
     quantities = [base] * pallets
@@ -116,6 +171,62 @@ class ReceiveResult:
     handling_units: list[HandlingUnit]
 
 
+# US-016 / DEC-6: publiczne demo — łączna liczba obiektów (L_DEMO, decyzja PO 2026-10-16).
+DEMO_MAX_HANDLING_UNITS = 2000
+DEMO_MAX_LOCATIONS = 500
+DEMO_LIMIT_SUFFIX = "Dane demo wracają do stanu początkowego codziennie o 03:00."
+# RR-31 (decyzja PO 2026-10-17): w demo jedna operacja tworzy najwyżej 50 palet — jeden
+# odwiedzający potrzebuje ~40 operacji, by wyczerpać wspólny limit, a limiter POST go hamuje.
+DEMO_MAX_HU_PER_OPERATION = 50
+
+
+def hu_per_import_limit() -> int:
+    """Najwięcej palet z jednego pliku importu (US-002; w demo — RR-31)."""
+    return DEMO_MAX_HU_PER_OPERATION if settings.DEMO_MODE else MAX_HU_PER_IMPORT
+
+
+class DemoBudget:
+    """Ile palet (HU) i lokalizacji można jeszcze utworzyć w demo; poza demo bez limitu.
+
+    Każdy rodzaj liczony najwyżej raz na budżet i tylko gdy operacja go dotyczy
+    (import — jeden budżet na plik). COUNT nic nie blokuje: N równoległych operacji
+    może przekroczyć limit łącznie o N × rozmiar operacji — bezpiecznik na boty,
+    nie księgowość (przegląd [DB] US-016).
+    """
+
+    def __init__(self):
+        self.limited = bool(settings.DEMO_MODE)
+        self._left: dict[str, int] = {}
+
+    def _remaining(self, kind: str) -> int:
+        if kind not in self._left:
+            if kind == "hus":
+                self._left[kind] = (
+                    DEMO_MAX_HANDLING_UNITS - HandlingUnit.objects.count()
+                )
+            else:
+                self._left[kind] = DEMO_MAX_LOCATIONS - Location.objects.count()
+        return self._left[kind]
+
+    def take(self, *, hus: int = 0, locations: int = 0) -> None:
+        if not self.limited:
+            return
+        if hus and hus > self._remaining("hus"):
+            raise WMSError(
+                f"Limit demo: najwyżej {DEMO_MAX_HANDLING_UNITS} palet (HU). "
+                + DEMO_LIMIT_SUFFIX
+            )
+        if locations and locations > self._remaining("locations"):
+            raise WMSError(
+                f"Limit demo: najwyżej {DEMO_MAX_LOCATIONS} lokalizacji. "
+                + DEMO_LIMIT_SUFFIX
+            )
+        if hus:
+            self._left["hus"] -= hus
+        if locations:
+            self._left["locations"] -= locations
+
+
 @transaction.atomic
 def receive_material(
     *,
@@ -125,11 +236,41 @@ def receive_material(
     lot: str = "",
     expiry_date=None,
     delivery_ref: str = "",
+    budget: DemoBudget | None = None,
 ) -> ReceiveResult:
     """Tworzy HU dla zadanego materiału wg listy ilości na palety.
 
     Każda paleta = jeden HU ze statusem DO_ULOZENIA (czeka na alokację).
+    Limity sprawdzane przed pobraniem pierwszego numeru HU (US-002).
     """
+    plan = ReceiptPlan(material, quantities, lot, expiry_date, delivery_ref)
+    validate_receipt(plan, budget=budget)
+    return ReceiveResult(handling_units=create_received_hus([plan], user=user))
+
+
+@dataclass
+class ReceiptPlan:
+    material: Material
+    quantities: list[int]
+    lot: str = ""
+    expiry_date: date | None = None
+    delivery_ref: str = ""
+
+
+def validate_receipt(plan: ReceiptPlan, *, budget: DemoBudget | None = None) -> None:
+    """Limity jednego przyjęcia (US-002) i budżet demo (US-016) — bez zapisu."""
+    material, quantities = plan.material, plan.quantities
+    if not quantities or len(quantities) > MAX_PALLETS_PER_RECEIPT:
+        raise WMSError(f"Przyjęcie musi mieć od 1 do {MAX_PALLETS_PER_RECEIPT} palet.")
+    if settings.DEMO_MODE and len(quantities) > DEMO_MAX_HU_PER_OPERATION:
+        raise WMSError(
+            f"W wersji demo jedno przyjęcie tworzy najwyżej {DEMO_MAX_HU_PER_OPERATION} palet."
+        )
+    if any(q < 1 for q in quantities) or sum(quantities) > MAX_RECEIPT_QUANTITY:
+        raise WMSError(
+            "Ilość na palecie musi być dodatnia, a łącznie najwyżej "
+            f"{MAX_RECEIPT_QUANTITY}."
+        )
     if material.max_per_pallet:
         for qty in quantities:
             if qty > material.max_per_pallet:
@@ -137,29 +278,45 @@ def receive_material(
                     f"Ilość {qty} przekracza maks. {material.max_per_pallet} "
                     f"na palecie dla materiału {material.index}."
                 )
+    (budget or DemoBudget()).take(hus=len(quantities))
 
-    created: list[HandlingUnit] = []
-    for qty in quantities:
-        hu = HandlingUnit.objects.create(
-            number=generate_hu_number(),
-            material=material,
+
+@transaction.atomic
+def create_received_hus(plans: list[ReceiptPlan], *, user) -> list[HandlingUnit]:
+    """US-050: zapis zwalidowanych przyjęć — jedna rezerwacja numerów i `bulk_create`.
+
+    Liczba zapytań nie zależy od liczby palet (poza dzieleniem paczek przez bazę),
+    więc blokada licznika numerów trwa chwilę także przy imporcie 2 000 palet.
+    """
+    total = sum(len(p.quantities) for p in plans)
+    numbers = iter(reserve_hu_numbers(total))
+    hus = [
+        HandlingUnit(
+            number=next(numbers),
+            material=p.material,
             quantity=qty,
-            lot=lot,
-            expiry_date=expiry_date,
+            lot=p.lot,
+            expiry_date=p.expiry_date,
             status=HUStatus.DO_ULOZENIA,
-            delivery_ref=delivery_ref,
+            delivery_ref=p.delivery_ref,
             created_by=user,
         )
-        StockMovement.objects.create(
+        for p in plans
+        for qty in p.quantities
+    ]
+    HandlingUnit.objects.bulk_create(hus)
+    StockMovement.objects.bulk_create(
+        StockMovement(
             type=MovementType.PRZYJECIE,
             handling_unit=hu,
-            material=material,
-            quantity_delta=qty,
+            material=hu.material,
+            quantity_delta=hu.quantity,
             note=f"Przyjęcie HU {hu.number}",
             created_by=user,
         )
-        created.append(hu)
-    return ReceiveResult(handling_units=created)
+        for hu in hus
+    )
+    return hus
 
 
 # --- Alokacja / przesunięcie -------------------------------------------------
@@ -228,6 +385,8 @@ def correct_hu_quantity(
     _lock_and_sync(hu)
     if new_quantity < 0:
         raise WMSError("Ilość nie może być ujemna.")
+    if new_quantity > MAX_QUANTITY:  # US-013: stan palety, nie tylko pojedyncza zmiana
+        raise WMSError(f"Stan palety nie może przekroczyć {MAX_QUANTITY}.")
     delta = new_quantity - hu.quantity
     if delta == 0:
         raise WMSError("Nowa ilość jest taka sama jak obecna — brak korekty.")
@@ -315,6 +474,10 @@ def repack_hu(*, source: HandlingUnit, target: HandlingUnit, quantity: int, user
         raise WMSError(f"Paleta docelowa {target.number} jest pusta/zamknięta.")
     if quantity < 1:
         raise WMSError("Ilość do przepakowania musi być dodatnia.")
+    if target.quantity + quantity > MAX_QUANTITY:
+        raise WMSError(
+            f"Stan palety {target.number} przekroczyłby {MAX_QUANTITY} — przepakuj mniej."
+        )
     if quantity > source.quantity:
         raise WMSError(
             f"Brak stanu na palecie {source.number}: dostępne {source.quantity}."
@@ -356,6 +519,35 @@ def repack_hu(*, source: HandlingUnit, target: HandlingUnit, quantity: int, user
 
 
 # --- Picking / wydania -------------------------------------------------------
+
+
+def _lock_hus(pks) -> dict[int, HandlingUnit]:
+    """US-053: blokuje palety jednym zapytaniem, rosnąco po pk — ta sama kolejność we
+    wszystkich ścieżkach (realizacja WZ, przepakowanie, zamknięcie spisu), więc dwie
+    transakcje nie czekają na siebie nawzajem. Zwraca świeże obiekty po blokadzie."""
+    ids = sorted({pk for pk in pks if pk})
+    if not ids:
+        return {}
+    return {
+        hu.pk: hu
+        for hu in HandlingUnit.objects.select_for_update()
+        .filter(pk__in=ids)
+        .order_by("pk")
+    }
+
+
+def _fefo_prefix(material: Material, quantity: int) -> list[int]:
+    """US-053 (przegląd [DB]): pk palet z początku kolejki FEFO, które pokrywają
+    `quantity` wg odczytu bez blokady — blokujemy tylko je, nie wszystkie palety
+    materiału. Brak stanu → wszystkie aktywne palety."""
+    pks: list[int] = []
+    total = 0
+    for pk, qty in _pickable_hus(material).values_list("pk", "quantity"):
+        if total >= quantity:
+            break
+        pks.append(pk)
+        total += qty
+    return pks
 
 
 def _pickable_hus(material: Material):
@@ -406,13 +598,20 @@ def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=N
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
     if line is not None:
-        locked_line = (
-            IssueLine.objects.select_for_update()
-            .select_related("document")
-            .get(pk=line.pk)
+        # US-018: najpierw dokument, potem pozycja — osobnymi zapytaniami.
+        # `select_for_update().select_related("document")` blokował oba wiersze
+        # jednym zapytaniem w nieustalonej kolejności → deadlock z „Realizuj”.
+        locked_doc = (
+            IssueDocument.objects.select_for_update()
+            .filter(pk=line.document_id)
+            .first()
         )
-        if locked_line.document.status != IssueStatus.OTWARTY:
-            raise WMSError(f"Dokument {locked_line.document.number} nie jest otwarty.")
+        locked_line = IssueLine.objects.select_for_update().filter(pk=line.pk).first()
+        # US-052: pozycję mógł usunąć ktoś inny, gdy czekaliśmy na blokadę — komunikat, nie 500.
+        if locked_doc is None or locked_line is None:
+            raise WMSError("Pozycja została w międzyczasie usunięta z dokumentu.")
+        if locked_doc.status != IssueStatus.OTWARTY:
+            raise WMSError(f"Dokument {locked_doc.number} nie jest otwarty.")
         remaining = locked_line.requested_qty - locked_line.picked_qty
         if quantity > remaining:
             raise WMSError(f"Na pozycji pozostało {remaining}, żądane {quantity}.")
@@ -448,13 +647,50 @@ def pick_from_hu(*, hu: HandlingUnit, quantity: int, user, document=None, line=N
 
 @transaction.atomic
 def pick_by_material(
-    *, material: Material, quantity: int, user, document=None, line=None
+    *,
+    material: Material,
+    quantity: int,
+    user,
+    document=None,
+    line=None,
+    allow_partial: bool = False,
 ):
-    """Zdejmuje `quantity` materiału, dobierając HU wg reguły FEFO→FIFO."""
+    """Zdejmuje `quantity` materiału, dobierając HU wg reguły FEFO→FIFO.
+
+    US-053: palety blokowane rosnąco po pk, a ilości liczone z wierszy już pod
+    blokadą — równoległe pobranie nie wywróci realizacji („HU jest pusty”).
+    `allow_partial=True` — pobiera tyle, ile jest (może zero).
+    """
     if quantity < 1:
         raise WMSError("Ilość wydania musi być dodatnia.")
-    available = available_quantity(material)
-    if quantity > available:
+    if line is not None:
+        # Przegląd [DB] US-053: dokument → pozycja → HU także przy wywołaniu spoza
+        # `execute_issue_document` (w nim to ponowna blokada już trzymanych wierszy).
+        IssueDocument.objects.select_for_update().filter(pk=line.document_id).first()
+        IssueLine.objects.select_for_update().filter(pk=line.pk).first()
+
+    def locked_hus(pks: list[int]) -> list[HandlingUnit]:
+        locked = _lock_hus(pks)
+        return [
+            locked[pk]
+            for pk in pks
+            if pk in locked
+            and locked[pk].quantity > 0
+            and locked[pk].status != HUStatus.PUSTY
+        ]
+
+    order = _fefo_prefix(material, quantity)
+    hus = locked_hus(order)
+    available = sum(hu.quantity for hu in hus)
+    if available < quantity:
+        # Ktoś pobrał w międzyczasie — dobieramy kolejne palety (rzadkie; dokładamy
+        # blokady do już trzymanych, kolejność po pk tylko w obrębie tego zapytania).
+        order = list(_pickable_hus(material).values_list("pk", flat=True))
+        hus = locked_hus(order)
+        available = sum(hu.quantity for hu in hus)
+    if allow_partial:
+        quantity = min(quantity, available)
+    elif quantity > available:
         raise WMSError(
             f"Brak wystarczającego stanu materiału {material.index}: "
             f"dostępne {available}, żądane {quantity}."
@@ -462,7 +698,7 @@ def pick_by_material(
 
     remaining = quantity
     used: list[tuple[HandlingUnit, int]] = []
-    for hu in list(_pickable_hus(material)):
+    for hu in hus:
         if remaining <= 0:
             break
         take = min(hu.quantity, remaining)
@@ -492,18 +728,39 @@ def execute_issue_document(
     if not lines:
         raise WMSError("Dokument nie ma pozycji do wydania.")
 
-    for line in lines:
+    # US-053: palety, z których realizacja będzie pobierać, blokujemy od razu,
+    # rosnąco po pk — niezależnie od kolejności pozycji i FEFO. Dwa „Realizuj” na WZ
+    # z materiałami X, Y i Y, X nie zakleszczą się (`deadlock detected` = 500).
+    open_lines = [ln for ln in lines if ln.requested_qty - ln.picked_qty > 0]
+    needed: dict[int, int] = {}
+    by_id: dict[int, Material] = {}
+    for ln in open_lines:
+        if ln.specific_hu_id is None:
+            needed[ln.material_id] = (
+                needed.get(ln.material_id, 0) + ln.requested_qty - ln.picked_qty
+            )
+            by_id[ln.material_id] = ln.material
+    candidates = [ln.specific_hu_id for ln in open_lines if ln.specific_hu_id]
+    # Przegląd [DB]: tylko palety, które FEFO faktycznie użyje, nie wszystkie palety materiału.
+    for material_id, qty in needed.items():
+        candidates += _fefo_prefix(by_id[material_id], qty)
+    _lock_hus(candidates)
+
+    for line in open_lines:
         outstanding = line.requested_qty - line.picked_qty
-        if outstanding <= 0:
-            continue
-        specific = line.specific_hu
-        if specific is not None:
+        if line.specific_hu_id is not None:
+            # Paleta już zablokowana — świeży odczyt per pozycja (dwie pozycje na tym
+            # samym HU widzą stan po pobraniu pierwszej).
+            specific = HandlingUnit.objects.filter(pk=line.specific_hu_id).first()
+            if specific is None:
+                raise WMSError("Wskazany HU został w międzyczasie usunięty.")
             if specific.material_id != line.material_id:
                 raise WMSError(
                     f"Wskazany HU {specific.number} ma inny materiał "
                     f"niż pozycja ({line.material.index})."
                 )
-            available = specific.quantity
+            # Stan palety z wiersza pod blokadą, nie z obiektu wczytanego wcześniej.
+            available = specific.quantity if specific.status != HUStatus.PUSTY else 0
             take = min(outstanding, available) if allow_partial else outstanding
             if take > 0:
                 pick_from_hu(
@@ -514,21 +771,108 @@ def execute_issue_document(
                     line=line,
                 )
         else:
-            available = available_quantity(line.material)
-            take = min(outstanding, available) if allow_partial else outstanding
-            if take > 0:
-                pick_by_material(
-                    material=line.material,
-                    quantity=take,
-                    user=user,
-                    document=document,
-                    line=line,
-                )
+            pick_by_material(
+                material=line.material,
+                quantity=outstanding,
+                user=user,
+                document=document,
+                line=line,
+                allow_partial=allow_partial,
+            )
 
     document.status = IssueStatus.ZREALIZOWANY
     document.completed_at = timezone.now()
     document.save(update_fields=["status", "completed_at"])
     return document
+
+
+LINES_ONLY_IN_OPEN = "Pozycje można zmieniać tylko w otwartym dokumencie."
+
+
+@transaction.atomic
+def add_issue_line(
+    *, document: IssueDocument, material: Material, requested_qty: int, specific_hu=None
+) -> IssueLine:
+    """US-052: dodaje pozycję WZ pod blokadą dokumentu (kolejność: dokument → pozycja → HU).
+
+    Status i rezerwacja palety sprawdzane na świeżych danych pod blokadą — „Realizuj”
+    albo skaner domykający dokument równolegle nie zostawi zrealizowanego WZ
+    z niepobraną pozycją.
+    """
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        raise WMSError(LINES_ONLY_IN_OPEN)
+    if specific_hu is not None:
+        # Przegląd [DB] US-052: rezerwuje tylko niepobrana część pozycji (pobrana już zeszła
+        # z palety), a stan palety czytamy świeży — bez blokady HU (kolejność blokad bez zmian;
+        # przy pobraniu i tak sprawdza go `pick_from_hu` pod blokadą palety).
+        already = (
+            document.lines.filter(specific_hu=specific_hu).aggregate(
+                s=Sum(F("requested_qty") - F("picked_qty"))
+            )["s"]
+            or 0
+        )
+        on_hu = HandlingUnit.objects.values_list("quantity", flat=True).get(
+            pk=specific_hu.pk
+        )
+        if already + requested_qty > on_hu:
+            raise WMSError(
+                f"HU {specific_hu.number} ma tylko {on_hu} szt., a pozycje "
+                f"dokumentu wskazują już {already}."
+            )
+    return IssueLine.objects.create(
+        document=document,
+        material=material,
+        requested_qty=requested_qty,
+        specific_hu=specific_hu,
+    )
+
+
+@transaction.atomic
+def delete_issue_line(*, document: IssueDocument, line_id) -> None:
+    """US-052: usuwa pozycję otwartego WZ — dokument, potem pozycja pod blokadą."""
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        raise WMSError(LINES_ONLY_IN_OPEN)
+    line = (
+        IssueLine.objects.select_for_update()
+        .filter(pk=line_id, document=document)
+        .first()
+    )
+    if line is None:
+        raise WMSError("Pozycja nie istnieje albo została już usunięta.")
+    # Przegląd [DB] US-052: towar z tej pozycji fizycznie wyszedł (ruch WYDANIE) — usunięcie
+    # pozycji rozjechałoby dokument z historią ruchów.
+    if line.picked_qty > 0:
+        raise WMSError(
+            f"Z tej pozycji pobrano już {line.picked_qty} — nie można jej usunąć. "
+            "Zrealizuj dokument z brakami albo zwróć towar korektą."
+        )
+    line.delete()
+    # Pozostałe pozycje mogą być już w pełni pobrane — dokument zamyka się od razu
+    # (inaczej skaner nie miałby czego pobrać, by go domknąć).
+    complete_if_picked(document)
+
+
+@transaction.atomic
+def complete_if_picked(document: IssueDocument) -> bool:
+    """Zamyka WZ („Zrealizowany”), gdy wszystkie pozycje są w pełni pobrane (D-05, US-018).
+
+    Jedno miejsce zmiany stanu po pobraniu ze skanera: dokument blokowany jak w
+    `execute_issue_document`, warunek sprawdzany na świeżych danych pod blokadą.
+    Idempotentne — dokument już zamknięty (np. równolegle przez „Realizuj”) zostaje
+    bez zmian i bez błędu. Zwraca True tylko wtedy, gdy to wywołanie go zamknęło.
+    """
+    _lock_and_sync(document)
+    if document.status != IssueStatus.OTWARTY:
+        return False
+    lines = document.lines.all()
+    if not lines.exists() or lines.filter(picked_qty__lt=F("requested_qty")).exists():
+        return False
+    document.status = IssueStatus.ZREALIZOWANY
+    document.completed_at = timezone.now()
+    document.save(update_fields=["status", "completed_at"])
+    return True
 
 
 def picking_plan(material: Material, quantity: int) -> dict:
@@ -667,16 +1011,19 @@ def close_stocktake(*, sheet: StocktakeSheet, user) -> dict:
 
     adjusted = 0
     counted = 0
-    for line in sheet.lines.select_for_update(of=("self",)).select_related(
-        "handling_unit"
-    ):
+    lines = list(sheet.lines.select_for_update(of=("self",)))
+    # US-053: palety arkusza blokowane rosnąco po pk (nie w kolejności lokalizacji) —
+    # ta sama kolejność co realizacja WZ i przepakowanie.
+    locked = _lock_hus(
+        ln.handling_unit_id for ln in lines if ln.counted_qty is not None
+    )
+    for line in lines:
         if line.counted_qty is None:
             continue
         counted += 1
-        hu = line.handling_unit
+        hu = locked.get(line.handling_unit_id) if line.handling_unit_id else None
         if hu is None:
             continue
-        hu = HandlingUnit.objects.select_for_update().get(pk=hu.pk)
         if line.counted_qty != hu.quantity:
             correct_hu_quantity(
                 hu=hu,

@@ -14,7 +14,7 @@
       </div>
     {% endfor %}
     <button class="btn" type="submit">{{ submit|default:"Zapisz" }}</button>
-    <a class="btn btn-secondary" href="javascript:history.back()">Anuluj</a>
+    <a class="btn btn-secondary" href="{% url 'dashboard' %}" data-history-back>Anuluj</a>
   </form>
 </div>
 {% endblock %}
