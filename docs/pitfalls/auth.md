@@ -44,3 +44,9 @@
     (60 POST / 300 s / IP dla zalogowanych) i `services.DemoBudget` (2000 HU / 500 lokalizacji) — nowa ścieżka
     tworząca palety lub lokalizacje musi wołać `DemoBudget().take(...)` (import — jeden budżet na plik). Klucz
     limiterów: IPv4 = adres, IPv6 = prefiks /64 (`demo._limit_subject`).
+14. **Zmiany kont zapisuje dziennik audytowy (US-022, ADR-0008) — sygnałami w `warehouse/audit.py`.** Konto,
+    profil i urządzenie 2FA zmieniaj przez `save()` / `delete()` modelu; `QuerySet.update()` i `bulk_update`
+    omijają sygnały, więc nie zostawią śladu. W widoku zmiana konta w `transaction.atomic()` (wpis i zmiana
+    razem). Odmowy: `audit.record(..., result=Result.DENIED)` tylko przy POST. Do `detail` nigdy wartości hasła
+    ani kodu 2FA. Logi: `config/log.py` maskuje pola wrażliwe — nie loguj `request.POST` ręcznie mimo to.
+

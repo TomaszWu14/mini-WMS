@@ -451,7 +451,9 @@ Czego nie robić: `docker compose down -v`, `docker volume rm`; restartu `db` w 
    Typowi winowajcy: `django_session`, `warehouse_loginevent` (brak retencji — R5, R7), `warehouse_stockmovement`, wolumen `db_backups`.
 2. **Zwolnij miejsce poza danymi:** nieużywane obrazy (`docker image prune` — **nie** `volume prune`); logi kontenerów (rotacja `json-file` — konfiguracja Dockera do uzupełnienia przez INFRA).
 3. **Sesje i dziennik logowań:** `python manage.py clearsessions` (usuwa tylko wygasłe) i
-   `python manage.py purge_login_events` (wpisy starsze niż 90 dni; `--days N` jednorazowo) w kontenerze `web`.
+   `python manage.py purge_login_events` (dziennik logowań starszy niż 90 dni — `--days N` jednorazowo — i dziennik
+   audytowy starszy niż 365 dni) w kontenerze `web`. Kto zmienił konto: panel → Użytkownicy → „Dziennik audytowy”
+   (`/uzytkownicy/audyt/`); to samo w logu kontenera jako linie `"logger": "warehouse.audit"`.
    Codziennie robią to Scheduled Tasks (COOLIFY.md §10a) oraz start kontenera.
 4. **Dziennik logowań poza retencją:** `python manage.py purge_login_events --days N` (np. przy incydencie dyskowym krótsza retencja — decyzja PO). Najpierw zabezpiecz ślady, jeśli to incydent (8.3).
 5. **Miejsce po usunięciu:** zwykły `VACUUM` nie oddaje miejsca systemowi; `VACUUM FULL` blokuje tabelę — tylko w oknie serwisowym.

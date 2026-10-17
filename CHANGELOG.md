@@ -81,6 +81,9 @@ Wpisy dodaje autor PR w sekcji `[Unreleased]`; przy wydaniu PO nadaje numer i da
 - **US-020:** zależności z jednego źródła (`requirements*.in`) w lockach z hashami (`pip-compile`); obraz instaluje
   tylko z locka (`--require-hashes --no-deps`); obrazy `python`, `postgres`, `caddy` przypięte digestem; CI instaluje
   narzędzia z locka (ADR-0007).
+- **US-022:** dziennik audytowy zmian kont i odmów dostępu (`/uzytkownicy/audyt/`, tabela `AuditEvent`, migracja `0011`,
+  retencja 365 dni) — ślad zostawia panel, `/admin/` i komendy `manage.py`; logi JSON maskują hasła, tokeny i ciasteczka
+  (ADR-0008, Z-42).
 - Obraz runtime bez pip/setuptools/wheel (skan trivy wykazał podatności tylko w narzędziach instalacyjnych; ADR-0001).
 - Zidentyfikowano i opisano ryzyka R1–R10 (`docs/AUDYT.md` §3.3); poprawki zaplanowane jako US-001…US-006
   w `docs/analiza/HISTORYJKI.md` (US-001…US-005, US-008, US-009 zrobione).

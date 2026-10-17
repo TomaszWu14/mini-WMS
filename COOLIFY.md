@@ -193,7 +193,8 @@ kontenerze `web`, na produkcji **i** na demo:
 | `purge-login-events` | `python manage.py purge_login_events` | `15 3 * * *` (codziennie 03:15) |
 | `clearsessions` | `python manage.py clearsessions` | `20 3 * * *` (codziennie 03:20) |
 
-`purge_login_events` wypisuje liczbę usuniętych wpisów (podgląd w **Scheduled Tasks → Logs**);
+`purge_login_events` wypisuje liczbę usuniętych wpisów dziennika logowań (90 dni) i dziennika audytowego (365 dni)
+(podgląd w **Scheduled Tasks → Logs**);
 `--days N` zmienia retencję jednorazowo. Obie komendy uruchamiają się też przy każdym starcie
 kontenera (`entrypoint.sh`), więc instalacja bez harmonogramu sprząta przynajmniej przy deployu.
 

@@ -91,6 +91,7 @@ definiuje klas** — w razie rozbieżności wygrywa `KLASYFIKACJA_DANYCH.md`.
 | `auth_user` | User | DA-08, DA-09 | Dane osobowe; kolumna `password` (hash) — Poufne |
 | `warehouse_profile` | Profile | DA-08 | Dane osobowe (rola konta) |
 | `warehouse_loginevent` | LoginEvent | DA-10, DA-12 | Dane osobowe (IP, przeglądarka, wpisany login; w demo także osoby anonimowe) |
+| `warehouse_auditevent` | AuditEvent | DA-10 | Dane osobowe (loginy autora i konta, akcja, wynik; bez IP) — US-022 |
 | `warehouse_stockmovement` | StockMovement | DA-07, DA-11 | Wewnętrzne + Dane osobowe (`created_by`) |
 | `warehouse_material`, `warehouse_unit`, `warehouse_location`, `warehouse_handlingunit`, `warehouse_hunumberingconfig` | Material, Unit, Location, HandlingUnit, HUNumberingConfig | DA-05, DA-11 | Wewnętrzne (`created_by` → Dane osobowe) |
 | `warehouse_issuedocument`, `warehouse_issueline`, `warehouse_stocktakesheet`, `warehouse_stocktakeline` | IssueDocument, IssueLine, StocktakeSheet, StocktakeLine | DA-06, DA-11 | Wewnętrzne (+ osobowe, gdy odbiorca to osoba fizyczna; `created_by`) |

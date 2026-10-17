@@ -100,7 +100,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-017 | US-035 | n/d — test z użytkownikami | #23 |
 | NFR-018 | US-012 | `tests_backup_script.BackupScriptTests` (8); `shellcheck` w CI | #23 |
 | NFR-019 | US-012 | ćwiczenie odtworzenia w CI (job 3b); RUNBOOK §5.4 (miesięcznie, ręcznie) | #23 |
-| NFR-020 | US-022 | brak — do napisania (`config/log.py` pokryty w 29 %) | historyczny (przed procesem) |
+| NFR-020 | US-022 | `tests_audit_log.LogRedactionTests` | historyczny (przed procesem) |
 | NFR-021 | US-021 | brak — do napisania | #23 |
 | NFR-022 | US-019 | krok CI „Próg pokrycia”; `tests_tooling.MypyConfigTests.test_coverage_threshold` | #23 |
 | NFR-023 | US-019 | n/d — miara CI | #23 |
@@ -147,8 +147,8 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-029 | US-006, US-020 | n/d — CI (pip-audit, Dependabot) | #23 |
 | SEC-030 | US-037 | n/d — smoke test obrazu w CI | #23 |
 | SEC-031 | US-006, US-020 | n/d — CI | #23 |
-| SEC-032 | US-022, US-021 | brak — do napisania | #23 |
-| SEC-033 | US-022 | brak — do napisania | #23 |
+| SEC-032 | US-022, US-021 | `tests_audit_log.LogRedactionTests`, `TypedUsernameTests` | #23 |
+| SEC-033 | US-022 | `tests_audit_log.AuditLogTests` | #23 |
 | SEC-034 | — (PYT-11) | brak — do napisania (po decyzji PO) | #23 |
 | SEC-035 | US-005 | `tests_retention.LoginEventPrivacyTests`; `DemoEntryRateLimitTests.test_successful_entry_logs_no_ip` | #23 |
 | SEC-036 | US-005 | `tests_retention.PurgeLoginEventsTests` (5) | #23 |
@@ -188,7 +188,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | `tests_tooling.py` (3) + przebieg CI — zrobione, #23 |
 | US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | `tests_tooling.SupplyChainTests` (5) + CI — zrobione, #23 |
 | US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | `tests_alerts.py` |
-| US-022 | Should | FR-021, FR-024, NFR-020, SEC-032, SEC-033 | prompt PO sekcja 6, R1, R7 | `tests_audit_log.py` |
+| US-022 | Should | FR-021, FR-024, NFR-020, SEC-032, SEC-033 | prompt PO sekcja 6, R1, R7 | `tests_audit_log.py` (18 testów) — zrobione, #23 |
 | US-023 | Should | SEC-037, SEC-038 | R7 | n/d (dokument) |
 | US-024 | Should | SEC-042 | AUDYT §3.5 | n/d (dokument) |
 | US-025 | Should | — (proces) | AUDYT §1.2 | n/d (dokument) |

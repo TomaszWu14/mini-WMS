@@ -103,6 +103,7 @@ względem opcji odrzuconych.
 | ADR-0005 | Backup poza serwerem: age + rclone + heartbeat | zaakceptowany (PO, 2026-10-16) | 2026-10-16 | [0005-backup-off-site-age-rclone.md](0005-backup-off-site-age-rclone.md) |
 | ADR-0006 | Podział `views.py` na pakiet `warehouse/views/` | zaakceptowany ([DEV]) | 2026-10-16 | [0006-podzial-views-na-pakiet.md](0006-podzial-views-na-pakiet.md) |
 | ADR-0007 | Lock zależności z hashami (`pip-compile`) i obrazy przypięte digestem | zaakceptowany ([DEV]/[SEC]) | 2026-10-17 | [0007-lock-zaleznosci-pip-compile.md](0007-lock-zaleznosci-pip-compile.md) |
+| ADR-0008 | Dziennik audytowy: tabela `AuditEvent` zapisywana sygnałami modeli | zaakceptowany (PO, 2026-10-17) | 2026-10-17 | [0008-dziennik-audytowy.md](0008-dziennik-audytowy.md) |
 
 Powiązania ADR-0001: T4, T5, T6, R10, Z-08, Z-10 ([AUDYT](../../AUDYT.md)).
 

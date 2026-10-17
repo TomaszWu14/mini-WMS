@@ -485,7 +485,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **[SEC]** chcę, aby zmiany kont i odmowy dostępu zostawiały ślad (kto, co, kiedy, wynik), a logi nie zawierały haseł, aby dało się odtworzyć incydent bez ujawniania sekretów. |
 | MoSCoW · rozmiar | Should · M |
-| Status | do zrobienia |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | prompt PO sekcja 6 (logi bez haseł + audit log); AUDYT R1 (skutek: zniszczenie śladu), R7 (wpisany login), `config/log.py` (29 % pokrycia) |
 | Wymagania | SEC-032, SEC-033; NFR-020; także: FR-021, FR-024 |
 | Zależności | US-001 (źródło zdarzenia „odmowa”); miejsce zapisu (model czy log) → ADR; PYT-09 |
@@ -497,7 +497,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 3. **Given** nieudane logowanie z loginem nieistniejącym w `auth_user`; **When** zapis `LoginEvent`; **Then** pole „wpisany login” jest przycięte do ustalonej długości (PYT-09).
 4. **Given** żądanie z polami `password` i `csrfmiddlewaretoken`; **When** wyjątek jest logowany w JSON; **Then** log nie zawiera ich wartości.
 
-**Test do napisania:** `AuditLogTests`, `LogRedactionTests` w `warehouse/tests_audit_log.py` (nowy).
+**Testy:** `warehouse/tests_audit_log.py` — `AuditLogTests` (13: rola / status / hasło — osobne wpisy z aktorem, celem, czasem i wynikiem; wartość hasła nie trafia do tabeli ani logu JSON; brak wpisu bez zmiany; utworzenie konta; odmowa US-001 tylko przy POST; odmowy przy ochronie własnego konta; zmiany poza panelem — `set_password` / `is_staff` / `create_superuser` (ścieżki `/admin/` i `manage.py`); przeliczenie hasha i `last_login` bez wpisu; 2FA włączenie i `reset_2fa`; usunięcie konta i wpisy po usunięciu; strona tylko dla Administratora; retencja 365 dni; wycofanie zmiany, gdy zapis audytu się nie uda), `TypedUsernameTests` (1: 400 znaków → 150), `LogRedactionTests` (4: POST, wyjątek i `extra` bez hasła i CSRF; przypadki z przeglądu [SEC] — spacje, przecinki, cudzysłowy, listy, `Authorization`, `Cookie`, `%3D`; zwykłe zdania bez zmian). Implementacja: `warehouse/audit.py` (sygnały + `AuditActorMiddleware`), model `AuditEvent` (migracja `0011`), `/uzytkownicy/audyt/`, `config/log.py`. Decyzje PO: Z-42, ADR-0008. Przeglądy: [DB] — transakcja zmiany i wpisu, log po zatwierdzeniu; [SEC] — ścieżki `/admin/` i komend (sygnały zamiast wywołań w widokach), odmowa tylko przy POST, mocniejsze maskowanie. Odbiór [BA] 2026-10-17: kryteria 1–4 spełnione.
 
 ### US-023 — RODO.md v0.1: rejestr czynności, retencja, prawa osób
 

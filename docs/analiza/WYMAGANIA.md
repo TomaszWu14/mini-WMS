@@ -120,7 +120,7 @@ Wartości pochodzą z kodu, konfiguracji i audytu; „źródło” wskazuje, sk�
 | NFR-017 | użyteczność | Skaner użyteczny w warunkach hali (telefon, rękawice). | Niezweryfikowane z użytkownikami. | do potwierdzenia (PYT-04) | AUDYT §1.3 pkt 7 |
 | NFR-018 | utrzymanie (odtwarzalność) | Automatyczny backup bazy. | `pg_dump` → gzip co 24 h (`BACKUP_INTERVAL=86400`), retencja 7 dni (`BACKUP_KEEP_DAYS`), na tym samym hoście. | częściowo | `scripts/pg_backup.sh`, R9 |
 | NFR-019 | dostępność | Cele odtwarzania. | RPO ≤ 24 h wynika z interwału backupu; RTO nie określony; odtworzenie nieprzećwiczone. | do potwierdzenia (PYT-03) | R9, COOLIFY.md §10 |
-| NFR-020 | utrzymanie | Logi aplikacji. | JSON na stdout w produkcji, tekst w dev; zbiera je Coolify/Docker. | spełnione | `base.py:195`, `config/log.py` |
+| NFR-020 | utrzymanie | Logi aplikacji. | JSON na stdout w produkcji (wartości wrażliwe maskowane), tekst w dev; dziennik audytowy także jako linia logu `warehouse.audit`. | spełnione | `base.py:195`, `config/log.py` |
 | NFR-021 | utrzymanie | Powiadomienie o błędach 500. | Brak (`ADMINS` puste). | brak | T15 |
 | NFR-022 | utrzymanie | Pokrycie testami. | ≥ 80 % ogółem i ≥ 90 % dla `services.py` (Z-08); CI pilnuje progu (`fail_under`, `--include=warehouse/services.py --fail-under=90`), raport jako artefakt. Stan: 91 % / 92 %. | spełnione — US-019 | Z-08, DEC-3, T5 |
 | NFR-023 | utrzymanie | Szybki feedback z testów. | `pytest` ≈ 25 s (421 testów, SQLite); CI uruchamia `pytest -q` (SQLite + PostgreSQL 16) — kilka minut na cały pipeline. | spełnione — US-019 | AUDYT §2.2, T6 |
@@ -203,8 +203,8 @@ Kolumna „Status” = stan wg audytu.
 
 | SEC | Wymaganie | Kryterium (Given / When / Then) | Status (audyt) | US |
 |---|---|---|---|---|
-| SEC-032 | Logi bez haseł i tokenów. | **Given** żądanie POST z polem `password` lub tokenem; **When** błąd 500 jest logowany; **Then** log JSON nie zawiera ich wartości; **Given** nieudane logowanie z nieistniejącym loginem; **Then** pole „wpisany login” jest przycięte (PYT-09). | częściowo — `LoginEvent` zapisuje dowolny wpisany tekst (R7); `config/log.py` pokryty w 29 % | US-022 |
-| SEC-033 | Dziennik audytowy akcji administracyjnych i odmów. | **Given** Administrator zmienia rolę, hasło lub status konta; **When** zapis lub odmowa (np. 403 z SEC-009); **Then** wpis: aktor, cel, akcja, czas, wynik — bez wartości haseł. | częściowo — ruchy i logowania są, zmian kont brak (R1) | US-022 |
+| SEC-032 | Logi bez haseł i tokenów. | **Given** żądanie POST z polem `password` lub tokenem; **When** błąd 500 jest logowany; **Then** log JSON nie zawiera ich wartości; **Given** nieudane logowanie z nieistniejącym loginem; **Then** pole „wpisany login” jest przycięte (PYT-09). | spełnione — US-022 (`config/log.py`, `LogRedactionTests`) | US-022 |
+| SEC-033 | Dziennik audytowy akcji administracyjnych i odmów. | **Given** Administrator zmienia rolę, hasło lub status konta; **When** zapis lub odmowa (np. 403 z SEC-009); **Then** wpis: aktor, cel, akcja, czas, wynik — bez wartości haseł. | spełnione — US-022 (`AuditEvent`, ADR-0008) | US-022 |
 | SEC-034 | Niezmienność śladu audytowego (ruchy, dziennik logowań). | **Given** superuser w `/admin/`; **When** próba edycji lub usunięcia `StockMovement` / `LoginEvent`; **Then** niemożliwa (tylko odczyt). | do potwierdzenia (PYT-11) — dziś superuser może (R1) | — |
 | SEC-035 | RODO — minimalizacja danych w dzienniku logowań. | **Given** `DEMO_MODE`; **When** wejście `/demo/`; **Then** `LoginEvent.ip` pusty; **Given** user-agent dłuższy niż ustalony limit lub polityka „bez UA”; **Then** zgodnie z decyzją PO (PYT-09). | brak (R7) | US-005 |
 | SEC-036 | RODO — retencja: dziennik logowań 90 dni (Z-09, DEC-5). | **Given** `LoginEvent` starsze niż 90 dni i nowsze; **When** `manage.py purge_login_events`; **Then** starsze usunięte, nowsze zostają. | brak (R7) | US-005 |

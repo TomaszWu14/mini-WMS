@@ -67,6 +67,9 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Dziennik audytowy (US-022):** Użytkownicy → „🗂 Dziennik audytowy” pokazuje, kto komu zmienił rolę, hasło,
+  status lub 2FA i kiedy odmówiono zmiany (także zmiany przez `/admin/` i `manage.py`). Wpisy starsze niż rok usuwa
+  istniejący Scheduled Task `purge-login-events`. Logi kontenera nie zawierają haseł ani tokenów. Migracja `0011`.
 - **Zależności i obrazy (US-020):** obraz `web` instaluje pakiety wyłącznie z locka z hashami; obrazy `postgres`
   i `caddy` w compose są przypięte digestem (te same wersje co dotąd: `16-alpine`, `2-alpine`). Coolify zbuduje
   obraz jak zwykle. Aktualizacje obrazów i pakietów przychodzą wyłącznie przez PR Dependabota. Bez migracji i zmiennych.
@@ -145,6 +148,8 @@
 | 27 | admin infrastruktury | Coolify (demo) → Scheduled Tasks → `reset-demo` | zmienić Command na `python manage.py seed_demo --reset --keep-users`, uruchomić ręcznie (Execute) przy zalogowanym demo w drugiej karcie | log „Dane demo zasiane.”; w drugiej karcie po odświeżeniu sesja trwa, dane w stanie początkowym |
 | 28 | `demo_operator` | demo: baner | spojrzeć na żółty baner | brak przycisku „Przywróć dane demo” |
 | 29 | `demo_operator` / Operator | skaner → Kompletacja zlecenia | pobrać całą ilość ostatniej pozycji | komunikat o wydaniu, zlecenie oznaczone jako zrealizowane; w panelu WZ „Zrealizowany” |
+| 30 | Administrator | `/uzytkownicy/` → edycja konta Operatora | zmienić rolę i hasło, zapisać; otworzyć „Dziennik audytowy” | dwa wpisy (zmiana roli, zmiana hasła) z Twoim loginem; hasła nigdzie nie widać |
+| 31 | admin infrastruktury | kontener `web` → Terminal | `python manage.py changepassword <login>` | w „Dzienniku audytowym” wpis „Zmiana hasła”, kto: `manage.py changepassword` |
 | 17 | dowolne konto | `/login/` po deployu | zalogować się dotychczasowym hasłem | logowanie działa; w `/admin/` → Users hash zaczyna się od `argon2` |
 | 11 | admin infrastruktury | instalacja LAN | przed aktualizacją zalogować się jako superuser hasłem `admin` | jeśli się da — zmienić hasło przed deployem (inaczej kontener nie wstanie, patrz §1) |
 
@@ -153,14 +158,16 @@
 ### Migracje — na KAŻDEJ bazie
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
-| dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (426 passed, 3 skipped lokalnie; CI na PR) |
-| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
-| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010` zastosowane; tabela `miniwms_cache` istnieje |
+| dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011` |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (445 passed, 3 skipped lokalnie; CI na PR) |
+| demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
+| prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`, `0010`, `0011` zastosowane; tabela `miniwms_cache` istnieje |
 
 Nowe migracje w tym branchu: biblioteki `otp_totp` 0001–0003 (US-010, nowa tabela urządzeń 2FA) oraz
 `warehouse/migrations/0009_loginevent_blocked_kind.py` i `0010_loginfailurecounter.py` (US-009; `0010` dodaje tabelę liczników) — tylko lista wyborów
 `LoginEvent.kind`, bez zmian w danych. Odwracalna: tak (`python manage.py migrate warehouse 0008`).
+`warehouse/migrations/0011_auditevent.py` (US-022) — nowa tabela dziennika audytowego, bez zmian w istniejących danych;
+odwracalna (`python manage.py migrate warehouse 0010` — **usuwa wpisy audytu**, przed cofnięciem backup).
 Poza migracjami: tabela cache `miniwms_cache` (`createcachetable`, idempotentne, w `entrypoint.sh`).
 Sprawdzenie: `python manage.py showmigrations warehouse` — wszystkie `[X]`.
 
@@ -187,7 +194,8 @@ wszystkie trzy zmienne), `COOLIFY.md` — nie dotyczy (wariant Coolify już wyma
 1. Kod: Coolify → zasób → **Deployments** → poprzedni deployment → **Redeploy**
    (albo revert PR na `main`). Poprzedni obraz zawiera pip — bez wpływu na działanie.
 2. Migracje: przed redeployem poprzedniej wersji `python manage.py migrate otp_totp zero` (usuwa urządzenia 2FA)
-   i `python manage.py migrate warehouse 0008` (cofa `0010` i `0009`) w kontenerze `web`
+   i `python manage.py migrate warehouse 0008` (cofa `0011`, `0010` i `0009`; `0011` usuwa dziennik audytowy —
+   wcześniej backup) w kontenerze `web`
    (wpisy „Zablokowana próba” zostaną w tabeli z kodem `BLOCKED` — stara wersja pokaże sam kod). Tabelę
    `miniwms_cache` można zostawić.
 3. Zmienne środowiskowe: nic do cofania. Jeśli po deployu kontener nie wstaje z
