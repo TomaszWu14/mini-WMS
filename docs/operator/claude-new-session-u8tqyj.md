@@ -67,6 +67,7 @@
   gunicorn i `manage.py` ich nie używają, a skan trivy wykazał podatności tylko w tych
   narzędziach. Skutek operacyjny: w kontenerze nie zadziała `pip install`; pakiety wchodzą
   wyłącznie przez rebuild.
+- **Macierz śledzenia (US-025):** dokumentacja i test w CI — dla operatora nie dotyczy (bez migracji, zmiennych, UI).
 - **Indeks dziennika logowań (US-051):** migracja `0012` przy deployu (automatycznie w `entrypoint.sh`) — **wymaga
   zgody PO przed wdrożeniem na produkcję**. Bez zmiennych i zmian w interfejsie.
 - **Numeracja palet (US-050):** import przyjęć/stanów zapisuje się hurtem — inne przyjęcia nie czekają na koniec pliku.
@@ -168,7 +169,7 @@
 | Baza | Polecenie | Wykonano (kto, kiedy) |
 |---|---|---|
 | dev (lokalny SQLite) | `python manage.py migrate` | ☐ migracje `0009`, `0010`, `0011`, `0012` |
-| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (465 passed, 9 skipped lokalnie; CI na PR) |
+| test (baza testów) | tworzona automatycznie przez `pytest` / `manage.py test` | ☐ testy zielone (468 passed, 9 skipped lokalnie; CI na PR) |
 | demo (jeśli wdrożone) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
 | prod (PostgreSQL, Coolify) | automatycznie w `entrypoint.sh` przy deployu (+ `createcachetable`) | ☐ `0009`–`0012` zastosowane; tabela `miniwms_cache` istnieje |
 

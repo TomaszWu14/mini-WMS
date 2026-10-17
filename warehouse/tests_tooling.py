@@ -141,3 +141,100 @@ class SupplyChainTests(SimpleTestCase):
         text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("--require-hashes", text)
         self.assertNotIn("--upgrade pip", text)
+
+
+class TraceabilityMatrixTests(SimpleTestCase):
+    """US-025: macierz SLEDZENIE.md kompletna i z istniejącymi nazwami testów."""
+
+    DOCS = ROOT / "docs" / "analiza"
+
+    def _matrix(self) -> str:
+        text = (self.DOCS / "SLEDZENIE.md").read_text(encoding="utf-8")
+        return text.split("\n## 6.", 1)[0]  # §6–§7 to opis i luki, nie macierz
+
+    def _tests_index(self) -> tuple[dict[str, dict[str, set[str]]], set[str]]:
+        """{moduł: {klasa: {metody}}} oraz wszystkie nazwy funkcji testowych."""
+        import ast
+
+        modules: dict[str, dict[str, set[str]]] = {}
+        functions: set[str] = set()
+        for path in sorted((ROOT / "warehouse").glob("tests*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            classes: dict[str, set[str]] = {}
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    classes[node.name] = {
+                        n.name for n in node.body if isinstance(n, ast.FunctionDef)
+                    }
+                elif isinstance(node, ast.FunctionDef) and node.name.startswith(
+                    "test_"
+                ):
+                    functions.add(node.name)
+            modules[path.stem] = classes
+        return modules, functions
+
+    def test_every_requirement_has_a_row(self):
+        import re
+
+        wanted = set(
+            re.findall(
+                r"^\| \*\*((?:FR|NFR|SEC)-\d{3})\*\*|^\| ((?:FR|NFR|SEC)-\d{3}) \|",
+                (self.DOCS / "WYMAGANIA.md").read_text(encoding="utf-8"),
+                re.M,
+            )
+        )
+        ids = {a or b for a, b in wanted}
+        rows = set(re.findall(r"^\| ((?:FR|NFR|SEC)-\d{3}) \|", self._matrix(), re.M))
+        self.assertGreater(len(ids), 50)
+        self.assertEqual(sorted(ids - rows), [], "wymagania bez wiersza w SLEDZENIE.md")
+        self.assertEqual(sorted(rows - ids), [], "wiersze bez wymagania w WYMAGANIA.md")
+
+    def test_test_names_in_matrix_exist(self):
+        import re
+
+        modules, functions = self._tests_index()
+        all_classes = {c: m for mod in modules.values() for c, m in mod.items()}
+        missing = []
+        for name in sorted(set(re.findall(r"`([A-Za-z_][\w.]*)`", self._matrix()))):
+            parts = name.split(".")
+            if name.endswith(".py"):
+                ok = (ROOT / "warehouse" / name).exists()
+            elif parts[0].startswith("tests"):
+                mod = modules.get(parts[0], {})
+                ok = (len(parts) == 1) or (
+                    parts[1] in mod and (len(parts) == 2 or parts[2] in mod[parts[1]])
+                )
+            elif parts[0].endswith("Tests"):
+                ok = parts[0] in all_classes and (
+                    len(parts) == 1 or parts[1] in all_classes[parts[0]]
+                )
+            elif name.startswith("test_") and len(parts) == 1:
+                ok = name in functions
+            else:
+                continue  # kod, ustawienie albo komenda — nie nazwa testu
+            if not ok:
+                missing.append(name)
+        self.assertEqual(
+            missing, [], "nazwy testów w SLEDZENIE.md, których nie ma w kodzie"
+        )
+
+    def test_done_stories_are_in_reverse_index(self):
+        """Kryterium 2: odbiór historyjki (status „zrobione”) = wiersz §5 z numerem PR."""
+        import re
+
+        stories = (self.DOCS / "HISTORYJKI.md").read_text(encoding="utf-8")
+        done = {
+            us
+            for us, body in re.findall(
+                r"^### (US-\d{3})(.*?)(?=^### |\Z)", stories, re.M | re.S
+            )
+            if re.search(r"^\| Status \| zrobione", body, re.M)
+        }
+        index = self._matrix().split("## 5.", 1)[1]
+        recorded = set(
+            re.findall(r"^\| (US-\d{3}) \|[^\n]*zrobione, #\d+", index, re.M)
+        )
+        self.assertGreater(len(done), 10)
+        self.assertEqual(
+            sorted(done - recorded), [], "zrobione historyjki bez wpisu w §5"
+        )

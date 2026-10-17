@@ -541,7 +541,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 |---|---|
 | Historyjka | Jako **PO** chcę macierzy śledzenia, aby widzieć dla każdego wymagania, kto je realizuje, czym jest testowane i w którym PR weszło. |
 | MoSCoW · rozmiar | Should · S |
-| Status | **w toku** ([BA]; szkic [SLEDZENIE.md](SLEDZENIE.md)) |
+| Status | zrobione — do akceptacji PO (PR #23, gałąź sesji) |
 | Źródło | AUDYT §1.2 (SLEDZENIE: brak powiązania wymaganie → historyjka → PR) |
 | Wymagania | — |
 | Zależności | WYMAGANIA.md, HISTORYJKI.md |
@@ -551,7 +551,7 @@ Kolejność zgodna z AUDYT §3.4. Wszystkie wymagają potwierdzenia parametrów 
 1. **Given** każde FR, NFR i SEC; **Then** ma wiersz z historyjką, testem (istniejącym albo „brak — do napisania”) i PR.
 2. **Given** wdrożenie historyjki; **When** odbiór [BA] (krok 6 procesu); **Then** macierz zaktualizowana w tym samym PR.
 
-**Test do napisania:** n/d (dokument).
+**Testy:** `warehouse/tests_tooling.py` — `TraceabilityMatrixTests` (3: każde FR / NFR / SEC ma wiersz i odwrotnie; każda nazwa testu w macierzy istnieje — `ast`, metoda w tej klasie; historyjka „zrobione” ma wpis w §5 z numerem PR). Sprawdzone na zepsutej macierzy (usunięty wiersz, nieistniejąca klasa) — 3/3 czerwone. Macierz v0.2: stan po US-001…US-053, poprawione 4 nieaktualne nazwy (`SharedCacheTests` → `SharedCounterTests`, `DemoResetTests` usunięte w US-016, plik testów US-021 jeszcze nie istnieje), zamknięte LT-04 i większość LT-05. Kryterium 2 egzekwuje CI: odbiór bez aktualizacji §5 daje czerwony test. Przegląd: nie dotyczy (dokument i test narzędziowy). Odbiór [BA] 2026-10-17: kryteria 1–2 spełnione.
 
 ### US-026 — CONTRIBUTING, szablony PR / issue, CODEOWNERS
 

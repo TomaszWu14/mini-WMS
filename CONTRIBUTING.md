@@ -35,7 +35,8 @@ Gdy PO nie odpowiada, [BA] przyjmuje bezpieczne, minimalne założenie i zapisuj
    („rola X bez dostępu dostaje 403”).
 5. **[SEC] Przegląd** — checklista z szablonu PR; wynik ✅ / ⚠️ / ❌ z uzasadnieniem; wyniki skanów CI
    ocenione — fałszywe alarmy oznaczone z uzasadnieniem (np. `# nosec` z komentarzem), nie wyciszane hurtowo.
-6. **[BA] Odbiór** — kryteria sprawdzone punkt po punkcie, komunikaty i UX, aktualizacja `docs/analiza/SLEDZENIE.md`.
+6. **[BA] Odbiór** — kryteria sprawdzone punkt po punkcie, komunikaty i UX, aktualizacja `docs/analiza/SLEDZENIE.md` (kompletność i nazwy testów sprawdza CI —
+   `tests_tooling.TraceabilityMatrixTests`).
 7. **PR i podsumowanie** — opis wg szablonu, wpis w `CHANGELOG.md` (`[Unreleased]`), dokument operatora
    `docs/operator/<branch>.md` wg `docs/operator/TEMPLATE.md`. **Merge tylko po akceptacji PO.**
 

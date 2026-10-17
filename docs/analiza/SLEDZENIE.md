@@ -2,37 +2,41 @@
 
 | | |
 |---|---|
-| Wersja | 0.1 |
-| Data | 2026-10-16 |
+| Wersja | 0.2 |
+| Data | 2026-10-17 |
 | Status | szkic — do akceptacji Product Ownera |
 | Właściciel | [BA] |
 
 Macierz łączy **wymaganie** ([WYMAGANIA.md](WYMAGANIA.md): FR, NFR, SEC) → **historyjkę**
 ([HISTORYJKI.md](HISTORYJKI.md): US) → **test** (`warehouse/tests*.py`) → **PR**. Jest odpowiedzią na lukę
 z [AUDYTU §1.2](../AUDYT.md): brak powiązania wymaganie → historyjka → PR. Stan odniesienia testów:
-226 funkcji testowych w 12 plikach `warehouse/tests*.py` (AUDYT §2.2).
+226 funkcji testowych w 12 plikach `warehouse/tests*.py` (AUDYT §2.2); po PR #23 — 477 funkcji w 30 plikach.
+Kompletność macierzy i nazwy testów sprawdza CI: `tests_tooling.TraceabilityMatrixTests` (§6).
 
 ## 1. Legenda
 
 | Kolumna / wartość | Znaczenie |
 |---|---|
 | **US** | Historyjka, która **zmienia lub domyka** wymaganie. `—` = brak historyjki (wymaganie spełnione, bez planowanej zmiany). W tabeli FR: historyjki, które wpłyną na zachowanie wdrożonego wymagania. |
-| **Test (istniejący)** | Nazwa w formacie Klasa.test_metoda albo sama klasa (wszystkie jej testy), w odwrotnych apostrofach, z `warehouse/tests*.py`; nazwy sprawdzono automatycznie 2026-10-16 (§6). Plik wynika z klasy — tabela w §2.1. |
+| **Test (istniejący)** | Nazwa w formacie Klasa.test_metoda albo sama klasa (wszystkie jej testy), w odwrotnych apostrofach, z `warehouse/tests*.py`; nazwy sprawdza automatycznie `TraceabilityMatrixTests` przy każdym przebiegu CI (§6). Plik wynika z klasy — tabela w §2.1. |
 | `brak — do napisania` | Wymaganie bez testu automatycznego; trafia do §7 (luki). |
 | `n/d` | Wymaganie weryfikowane inaczej niż testem jednostkowym (CI, przegląd dokumentu, test ręczny). |
-| **PR** | `historyczny (przed procesem)` — wdrożone przed wprowadzeniem procesu (PR-y #1–#22 bez śladu wymagań). `#23` — PR audytu, w którym wykryto lukę; PR z naprawą: `—` do czasu realizacji US. `—` — brak. |
+| **PR** | `historyczny (przed procesem)` — wdrożone przed wprowadzeniem procesu (PR-y #1–#22 bez śladu wymagań). `#23` — PR audytu i historyjek US-001…US-053 (luka wykryta i naprawiona w tym samym PR; w nawiasie historyjka). `—` — brak. |
 
 ### 1.1 Gdzie leżą klasy testowe użyte w macierzy
 
 | Plik | Klasy |
 |---|---|
 | `tests.py` | `SplitQuantityTests`, `HUNumberingTests`, `ReceiveTests`, `AllocationTests`, `PickingTests`, `CorrectionTests`, `PickingProTests`, `ReceiptImportTests`, `StockImportTests`, `ScannerTests`, `RepackTests`, `WebInventoryTests`, `StocktakeTests`, `WebRepackTests`, `PdfAndViewTests`, `UserManagementTests`, `RoleTests`, `ViewAccessTests`, `SecurityTests`, `HardeningTests`, `AuditFixTests`, `ViewLayerTests` |
-| `tests_services_fixes.py` | `SplitQuantityRemainderTests`, `ReceiveFormMatchesSplitTests`, `LocationOverCapacityTests`, `ExecuteIssueDocumentDoubleClickTests`, `AdjustHuQuantityTests`, `FirstPickableHuTests`, `CorrectionReasonRequiredTests` |
+| `tests_services_fixes.py` | `SplitQuantityRemainderTests`, `ReceiveFormMatchesSplitTests`, `LocationOverCapacityTests`, `ExecuteIssueDocumentDoubleClickTests`, `AdjustHuQuantityTests`, `FirstPickableHuTests`, `CorrectionReasonRequiredTests`, `CompleteIfPickedTests`, `IssueLineLockTests`, `PalletLockOrderTests` |
 | `tests_views_fixes.py` | `HUCorrectionReasonTests`, `WebInventoryReasonTests`, `AllocateCapacityWarningTests`, `PermissionDeniedPageTests` |
 | `tests_scanner_fixes.py` | `ApiPickSpecificHuTests`, `ApiPickFefoWarningTests`, `ApiInventoryReasonTests`, `ApiAllocateCapacityWarningTests` |
 | `tests_open_decisions.py` | `StockImportWarningsTests`, `HULabelsLimitTests`, `ClientIPTests`, `StocktakeOverlapTests`, `HUNumberCaseTests` |
 | `tests_demo.py` | `SeedDemoTests`, `DemoModeViewTests`, `AdminHiddenInDemoTests` |
-| `tests_demo_entry.py` | `DemoStartTests`, `DemoResetTests`, `DemoEntryOffTests` |
+| `tests_demo_entry.py` | `DemoStartTests`, `DemoEntryOffTests`, `DemoEntryRateLimitTests` |
+| `tests_input_limits.py` | `HUNumberReservationTests` (pozostałe klasy z prefiksem modułu) |
+| `tests_tooling.py` | `TraceabilityMatrixTests` (pozostałe klasy z prefiksem modułu) |
+| pozostałe pliki z PR #23 | w macierzy zawsze z prefiksem modułu, np. `tests_audit_log.AuditLogTests` |
 | `tests_recruiter.py` | `DemoLoginTests`, `DemoImportLimitTests`, `DemoAccountPermissionTests` |
 | `tests_concurrency_pg.py` | `ConcurrentIssueTests` (tylko PostgreSQL) |
 
@@ -60,12 +64,12 @@ FR-008, FR-011, FR-025, FR-026 (domknięte po wdrożeniu pierwotnym).
 | FR-013 | W-13 | — | `PickingProTests.test_full_execution_raises_on_shortage`; `PickingProTests.test_partial_execution_closes_with_shortage` | historyczny (przed procesem) |
 | FR-014 | W-14 | — | `AuditFixTests.test_execute_rejects_specific_hu_wrong_material` | historyczny (przed procesem) |
 | FR-015 | W-15 | — | `PickingTests.test_pick_to_zero_marks_empty_and_frees_location` | historyczny (przed procesem) |
-| FR-016 | W-16 | — | `PickingProTests.test_pack_and_ship_flow`; `PickingProTests.test_pack_requires_realized`; `AuditFixTests.test_cannot_add_line_to_packed_document` | historyczny (przed procesem) |
-| FR-017 | W-17 | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `ConcurrentIssueTests` (PostgreSQL); `CompleteIfPickedTests` (US-018) | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `ConcurrentIssueTests` (PostgreSQL) | historyczny (przed procesem) |
+| FR-016 | W-16 | US-052 | `PickingProTests.test_pack_and_ship_flow`; `PickingProTests.test_pack_requires_realized`; `AuditFixTests.test_cannot_add_line_to_packed_document`; `IssueLineLockTests` | historyczny (przed procesem); #23 (US-052) |
+| FR-017 | W-17 | US-018 | `ScannerTests.test_document_pick_completes_order`; `ScannerTests.test_document_pick_rejects_wrong_material`; `CompleteIfPickedTests`; `ConcurrentIssueTests` (PostgreSQL) | historyczny (przed procesem); #23 (US-018) |
 | FR-018 | W-18 | US-013 | `CorrectionTests.test_correction_logs_movement`; `WebInventoryTests.test_web_inventory_add`; `AdjustHuQuantityTests`; `AuditFixTests.test_correct_reactivates_emptied_hu` | historyczny (przed procesem) |
 | FR-019 | W-19 | — | `RepackTests`; `WebRepackTests` | historyczny (przed procesem) |
 | FR-020 | W-20 | US-030, US-038, US-042 | `StocktakeTests`; `StocktakeOverlapTests` | historyczny (przed procesem) |
-| FR-021 | W-21 | US-022 (powiązane) | `ReceiveTests.test_receive_creates_hus_and_movements` | historyczny (przed procesem) |
+| FR-021 | W-21 | US-022 (powiązane), US-050 | `ReceiveTests.test_receive_creates_hus_and_movements`; `HUNumberReservationTests.test_numbers_are_consecutive_and_counter_advances_once` | historyczny (przed procesem); #23 (US-050) |
 | FR-022 | W-22 | US-028 | `AuditFixTests.test_movement_export_respects_type_filter`; `HardeningTests.test_csv_export_neutralizes_formula_injection`; `HardeningTests.test_export_rejects_unknown_format` | historyczny (przed procesem) |
 | FR-023 | W-23 | US-001, US-007 | `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `RoleTests.test_new_user_default_viewer`; `PermissionDeniedPageTests.test_viewer_gets_403_with_menu` | historyczny (przed procesem) |
 | FR-024 | W-24 | US-001, US-005, US-022 | `SecurityTests`; `UserManagementTests.test_cannot_deactivate_self` | historyczny (przed procesem) |
@@ -83,7 +87,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 |---|---|---|---|
 | NFR-001 | US-040 | brak — do napisania (brak testu obciążeniowego; PYT-01) | #23 |
 | NFR-002 | US-040, US-039 | brak — do napisania (brak pomiarów; PYT-03) | #23 |
-| NFR-003 | US-002, US-004, US-015 | brak — do napisania (limit czasu to konfiguracja gunicorna) | #23 |
+| NFR-003 | US-002, US-004, US-015, US-050, US-051 | `HUNumberReservationTests` (liczba zapytań stała względem palet); `tests_db_indexes.LoginEventIndexPlanTests`; limit czasu gunicorna — konfiguracja, bez testu | #23 |
 | NFR-004 | US-028 | brak — do napisania (`ViewLayerTests.test_movement_list_renders_and_filters` nie sprawdza limitu 500) | historyczny (przed procesem) |
 | NFR-005 | — | `HULabelsLimitTests` | historyczny (przed procesem; #13) |
 | NFR-006 | US-015 | `tests_pagination.LocationLabelsLimitTests` | #23 |
@@ -100,13 +104,13 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | NFR-017 | US-035 | n/d — test z użytkownikami | #23 |
 | NFR-018 | US-012 | `tests_backup_script.BackupScriptTests` (8); `shellcheck` w CI | #23 |
 | NFR-019 | US-012 | ćwiczenie odtworzenia w CI (job 3b); RUNBOOK §5.4 (miesięcznie, ręcznie) | #23 |
-| NFR-020 | US-022 | `tests_audit_log.LogRedactionTests` | historyczny (przed procesem) |
+| NFR-020 | US-022 | `tests_audit_log.LogRedactionTests` | historyczny (przed procesem); #23 (US-022 — maskowanie) |
 | NFR-021 | US-021 | brak — do napisania | #23 |
 | NFR-022 | US-019 | krok CI „Próg pokrycia”; `tests_tooling.MypyConfigTests.test_coverage_threshold` | #23 |
 | NFR-023 | US-019 | n/d — miara CI | #23 |
 | NFR-024 | US-019 | kroki CI (ruff, mypy, bandit); `tests_tooling.MypyConfigTests` (2) | #23 |
 | NFR-025 | US-020 | `tests_tooling.SupplyChainTests`; build obrazu w CI (job 7) | #23 |
-| NFR-026 | US-018, US-030, US-038 | `ConcurrentIssueTests` (PostgreSQL, +1 US-018); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests`; `CompleteIfPickedTests` | historyczny (przed procesem; #13) |
+| NFR-026 | US-018, US-030, US-038, US-052, US-053 | `ConcurrentIssueTests` (PostgreSQL: US-018, US-050, US-052, US-053); `AuditFixTests.test_hu_quantity_check_constraint`; `AuditFixTests.test_stocktake_line_unique_per_hu`; `ExecuteIssueDocumentDoubleClickTests`; `CompleteIfPickedTests`; `IssueLineLockTests`; `PalletLockOrderTests` | historyczny (przed procesem; #13); #23 (US-018, US-052, US-053) |
 | NFR-027 | US-017, US-029 | `tests_urls.UrlSnapshotTests`; porównanie AST przy podziale (ADR-0006) | #23 |
 | NFR-028 | — | n/d — kroki CI (`check`, build obrazu) | historyczny (przed procesem) |
 
@@ -118,11 +122,11 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 |---|---|---|---|
 | SEC-001 | US-008 | `tests_passwords.PasswordHasherTests` (3), `HasherConfigTests` (3); smoke test obrazu w CI | #23 |
 | SEC-002 | — (powiązane: US-041) | `SecurityTests.test_weak_password_rejected_on_create`; `SecurityTests.test_password_similar_to_username_rejected`; `SecurityTests.test_strong_password_accepted_on_create` | historyczny (przed procesem) |
-| SEC-003 | US-009 | `tests_login_limits.SharedCacheTests` (3); `DemoModeViewTests.test_rate_limit_also_without_demo_mode` | #23 |
+| SEC-003 | US-009 | `tests_login_limits.SharedCounterTests`; `DemoModeViewTests.test_rate_limit_also_without_demo_mode` | #23 |
 | SEC-004 | US-009 | `tests_login_limits.AccountLockoutTests` (8) | #23 |
 | SEC-005 | US-005, US-043 | brak — do napisania (cookie, bezczynność, `clearsessions`) | #23 |
 | SEC-006 | US-010 | `tests_2fa.py` (13 testów) | #23 |
-| SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `DemoResetTests.test_viewer_forbidden`; `tests_access_matrix.AccessMatrixTests.test_role_matrix` | historyczny (przed procesem) |
+| SEC-007 | US-007, US-017 | `ViewAccessTests.test_login_required_redirects`; `ViewAccessTests.test_viewer_cannot_receive`; `ViewAccessTests.test_viewer_role_forbidden_on_receive`; `ScannerTests.test_scanner_home_requires_operator`; `WebInventoryTests.test_web_inventory_requires_operator`; `PdfAndViewTests.test_delivery_edit_admin_only`; `UserManagementTests.test_user_list_admin_only`; `SecurityTests.test_login_log_view_admin_only`; `tests_access_matrix.AccessMatrixTests.test_role_matrix` | historyczny (przed procesem) |
 | SEC-008 | US-007 | `tests_access_matrix.AccessMatrixTests` (kompletność + 560 sprawdzeń), `DemoAccessMatrixTests`, `AdminSiteAccessTests` | #23 |
 | SEC-009 | US-001 | `tests_security.SuperuserProtectionTests` (9 testów) | #23 |
 | SEC-010 | — (powiązane: US-041) | `DemoModeViewTests.test_demo_account_cannot_change_password`; `AdminHiddenInDemoTests.test_admin_404_in_demo`; `DemoAccountPermissionTests.test_demo_operator_gets_403_on_admin_pages`; `DemoLoginTests.test_only_demo_accounts_can_be_entered` | historyczny (przed procesem) |
@@ -136,7 +140,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-018 | US-043 | brak — do napisania | historyczny (przed procesem) |
 | SEC-019 | US-004 | `tests_imports_hardening.BrokenXlsxViewTests`, `LibraryErrorTests`, `DefusedXmlTests` | #23 |
 | SEC-020 | — | n/d — brak trwałego zapisu plików (brak `MEDIA_ROOT` i pól plikowych w modelach) | historyczny (przed procesem) |
-| SEC-021 | US-002, US-004, US-015 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook`; `tests_pagination.LocationLabelsLimitTests` | #23 |
+| SEC-021 | US-002, US-004, US-015, US-050 | `HULabelsLimitTests`; `DemoImportLimitTests`; `tests_imports_hardening.RowLimitTests`, `test_zip_bomb_rejected_before_load_workbook`; `tests_pagination.LocationLabelsLimitTests`; `HUNumberReservationTests` | #23 |
 | SEC-022 | US-011 | `tests_security_headers.SecurityHeadersTests`, `TemplateScanTests`; `check --deploy` w CI | #23 |
 | SEC-023 | US-043 | brak — do napisania (`check --deploy` w CI nie jest testem odpowiedzi) | historyczny (przed procesem) |
 | SEC-024 | US-011 | `SecurityHeadersTests.test_permissions_policy` | #23 |
@@ -151,7 +155,7 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | SEC-033 | US-022 | `tests_audit_log.AuditLogTests` | #23 |
 | SEC-034 | — (PYT-11) | brak — do napisania (po decyzji PO) | #23 |
 | SEC-035 | US-005 | `tests_retention.LoginEventPrivacyTests`; `DemoEntryRateLimitTests.test_successful_entry_logs_no_ip` | #23 |
-| SEC-036 | US-005 | `tests_retention.PurgeLoginEventsTests` (5) | #23 |
+| SEC-036 | US-005, US-051 | `tests_retention.PurgeLoginEventsTests` (5); `tests_db_indexes.LoginEventIndexMigrationTests`, `LoginEventIndexPlanTests` | #23 |
 | SEC-037 | US-023 | n/d — przegląd dokumentu | #23 |
 | SEC-038 | US-023, US-027 | brak — do napisania | #23 |
 | SEC-039 | US-012 | `BackupScriptTests.test_encrypted_copy_decrypts_only_with_private_key`, `test_refuses_unencrypted_offsite`; CI job 3b | #23 |
@@ -183,17 +187,13 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-016 | Should | SEC-040 | R5, DEC-6 | `tests_demo_limits.py` (15 testów) — zrobione, #23 |
 | US-017 | Should | NFR-027, SEC-007 | T2 | `tests_urls.py` (migawka tras) + macierz US-007 — zrobione, #23 |
 | US-018 | Should | NFR-026, FR-017 | T3 | `CompleteIfPickedTests` (6), `test_scanner_pick_and_execute_on_same_document` (PG) — zrobione, #23 |
-| US-050 | Could | NFR-003, SEC-021 | przegląd [DB] US-002 | `HUNumberReservationTests` (6) + PG (1) — zrobione, #23 |
-| US-051 | Could | SEC-036, NFR-003 | przegląd [DB] US-005 | `tests_db_indexes.py` (1) + PG (1) — zrobione, #23 |
-| US-052 | Should | NFR-026, FR-016 | przegląd [DB] US-018 | `IssueLineLockTests` (9) + PG (2) — zrobione, #23 |
-| US-053 | Could | NFR-026 | przegląd [DB] US-018 | `PalletLockOrderTests` (4) + PG (2) — zrobione, #23 |
 | US-019 | Should | NFR-022, NFR-023, NFR-024 | T4, T5, T6 | `tests_tooling.py` (3) + przebieg CI — zrobione, #23 |
 | US-020 | Should | NFR-025, SEC-029, SEC-031 | T7, R10 | `tests_tooling.SupplyChainTests` (5) + CI — zrobione, #23 |
-| US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | `tests_alerts.py` |
+| US-021 | Should | NFR-014, NFR-021, SEC-032 | T15 | nowy plik testów alertów (do napisania, po PYT-15) |
 | US-022 | Should | FR-021, FR-024, NFR-020, SEC-032, SEC-033 | prompt PO sekcja 6, R1, R7 | `tests_audit_log.py` (18 testów) — zrobione, #23 |
 | US-023 | Should | SEC-037, SEC-038 | R7 | n/d (dokument) |
 | US-024 | Should | SEC-042 | AUDYT §3.5 | n/d (dokument) |
-| US-025 | Should | — (proces) | AUDYT §1.2 | n/d (dokument) |
+| US-025 | Should | — (proces) | AUDYT §1.2 | `tests_tooling.TraceabilityMatrixTests` (3) — zrobione, #23 |
 | US-026 | Should | — (proces) | AUDYT §1.2 | n/d (dokument) |
 | US-027 | Could | SEC-038 | R7 | do ustalenia |
 | US-028 | Could | NFR-011, NFR-004, FR-022 | T9 | do ustalenia |
@@ -212,6 +212,10 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | US-041 | Could | SEC-002, SEC-010 | PROCESY L-01 | do ustalenia |
 | US-042 | Could | FR-020 (BR-007) | PROCESY L-02 | do ustalenia |
 | US-043 | Could | FR-007, FR-009, SEC-005, SEC-013, SEC-014, SEC-016, SEC-018, SEC-023, NFR-007, NFR-012 | AUDYT §2.3 | `tests.py`, `tests_security_headers.py` |
+| US-050 | Could | NFR-003, SEC-021 | przegląd [DB] US-002 | `HUNumberReservationTests` (6) + PG (1) — zrobione, #23 |
+| US-051 | Could | SEC-036, NFR-003 | przegląd [DB] US-005 | `tests_db_indexes.py` (1) + PG (1) — zrobione, #23 |
+| US-052 | Should | NFR-026, FR-016 | przegląd [DB] US-018 | `IssueLineLockTests` (9) + PG (2) — zrobione, #23 |
+| US-053 | Could | NFR-026 | przegląd [DB] US-018 | `PalletLockOrderTests` (4) + PG (2) — zrobione, #23 |
 | US-044…US-049 | Won't | — (poza zakresem) | docs/01, docs/07 | — |
 
 ---
@@ -227,22 +231,16 @@ PR `#23` = luka lub wymaganie wykryte w audycie (naprawa: `—`). `historyczny` 
 | Przy wydaniu (wpis w CHANGELOG) | [BA] | Przegląd §7: luki zamknięte lub świadomie otwarte; weryfikacja nazw testów. |
 | Zmiana nazwy lub usunięcie testu | [DEV] | Aktualizacja tej macierzy w tym samym PR (inaczej nazwa „wisi”). |
 
-**Weryfikacja nazw testów** (tylko odczyt, z korzenia repozytorium; wynik pusty = wszystkie istnieją):
+**Weryfikacja automatyczna (US-025)** — `warehouse/tests_tooling.py::TraceabilityMatrixTests`, w każdym przebiegu CI:
 
-```bash
-grep -oE '`[A-Za-z_]+(\.test_[a-z0-9_]+)?`' docs/analiza/SLEDZENIE.md | tr -d '`' | sort -u |
-while IFS= read -r n; do
-  case "$n" in
-    *.test_*) c="${n%%.*}"; m="${n#*.}"
-              grep -qE "^class $c\b" warehouse/tests*.py && grep -qE "def $m\b" warehouse/tests*.py || echo "BRAK: $n" ;;
-    *Tests)   grep -qE "^class $n\b" warehouse/tests*.py || echo "BRAK: $n" ;;
-  esac
-done
-```
+| Test | Sprawdza | Gdy czerwony |
+|---|---|---|
+| `test_every_requirement_has_a_row` | każde FR / NFR / SEC z WYMAGAŃ ma wiersz w §2–§4 i odwrotnie | dopisz wiersz (US, test albo `brak — do napisania`, PR) |
+| `test_test_names_in_matrix_exist` | każda nazwa testu w odwrotnych apostrofach w §1–§5 istnieje (`ast`: klasa, metoda w tej klasie, moduł) | popraw nazwę po zmianie testu; test planowany zapisuj bez apostrofów |
+| `test_done_stories_are_in_reverse_index` | historyjka ze statusem „zrobione” w HISTORYJKACH ma w §5 wpis „zrobione, #PR” | uzupełnij §5 przy odbiorze [BA] — w tym samym PR |
 
-Skrypt jest przybliżeniem (klasa i metoda istnieją gdzieś w `warehouse/tests*.py`). Nazwy w §2–§4 sprawdzono
-2026-10-16 dokładniej, przez `ast` (metoda w tej klasie). Automatyczne sprawdzanie w CI to propozycja dla [DEV],
-nie część żadnej historyjki.
+Kod, ustawienia i komendy w apostrofach (np. `_safe_cell`, `check --deploy`) są pomijane — sprawdzane są tylko
+nazwy wyglądające na testy (`…Tests`, `tests_…`, `test_…`).
 
 ---
 
@@ -255,8 +253,8 @@ nie część żadnej historyjki.
 | LT-01 | FR-007 (ruch PRZESUNIĘCIE), FR-009 (odmowa alokacji palety „Pusty”) | wdrożone wymagania FR bez dedykowanego testu | US-043 |
 | LT-02 | SEC-005 (cookie i bezczynność sesji), SEC-013 (escapowanie), SEC-014 (CSRF), SEC-016 (eksport XLSX), SEC-018 (limit 5 MB), SEC-023 (nagłówki) | wymagania `spełnione` bez testu regresji; zmiana ustawień mogłaby je zepsuć bez śladu | US-043 |
 | LT-03 | NFR-004, NFR-007, NFR-012, NFR-016, NFR-020 | wartości (500 wierszy, 5 MB, 30 min, PL / strefa, logi JSON) zapisane tylko w konfiguracji | US-043 (007, 012), reszta — do decyzji |
-| LT-04 | SEC-008 | brak systematycznej macierzy rola × trasa | US-007 |
-| LT-05 | SEC/NFR o statusie `brak` lub `częściowo` (m.in. SEC-001, 004, 006, 009, 015, 017, 019, 024–027, 032–036, 038, 040; NFR-006, 009, 011, 021) | testy powstaną razem z historyjkami (kolumna US) | US-001…US-022 |
+| LT-04 | SEC-008 | brak systematycznej macierzy rola × trasa | **zamknięte** — US-007 (`tests_access_matrix.AccessMatrixTests`), #23 |
+| LT-05 | SEC/NFR o statusie `brak` lub `częściowo` (m.in. SEC-001, 004, 006, 009, 015, 017, 019, 024–027, 032–036, 038, 040; NFR-006, 009, 011, 021) | testy powstaną razem z historyjkami (kolumna US) | **zamknięte w #23** (US-001…US-022) poza NFR-011 (US-028), NFR-021 (US-021, PYT-15), SEC-034 (PYT-11), SEC-038 (US-027) |
 | LT-06 | NFR-001, NFR-002, NFR-014 | brak pomiarów i definicji (PYT-01, PYT-03) | US-040 |
 
 ### 7.2 Testy bez wymagania
@@ -281,14 +279,16 @@ Audyt (§2.3, Załącznik A) wskazuje ≈ 35 asercji o 403 lub przekierowaniu i 
 w sekcji 6 promptu PO. Wg przeglądu nazw testów jawne 403 sprawdzają m.in. `ScannerTests.test_scanner_home_requires_operator`,
 `WebInventoryTests.test_web_inventory_requires_operator`, `PdfAndViewTests.test_delivery_edit_admin_only`,
 `UserManagementTests.test_user_list_admin_only`, `ViewAccessTests.test_viewer_role_forbidden_on_receive`,
-`SecurityTests.test_login_log_view_admin_only`, `DemoResetTests.test_viewer_forbidden`,
+`SecurityTests.test_login_log_view_admin_only`,
 `DemoAccountPermissionTests.test_demo_operator_gets_403_on_admin_pages`, `PermissionDeniedPageTests.test_viewer_gets_403_with_menu`.
 Nie widać testów roli Podgląd na pozostałych endpointach skanera (8 JSON), importach, akcjach WZ (realizuj, spakuj,
-wyślij), spisie i przepakowaniu — do potwierdzenia macierzą z **US-007**.
+wyślij), spisie i przepakowaniu — do potwierdzenia macierzą z **US-007**. **Zamknięte w #23:** macierz rola × trasa
+(`tests_access_matrix.AccessMatrixTests`) sprawdza każdą trasę dla każdej roli; nowa trasa bez wpisu = czerwony CI.
 
 ### 7.4 Luki procesu śledzenia
 
-- PR z naprawami nie istnieją, dopóki historyjki nie zostaną zrealizowane — kolumna PR przy US pozostaje `—`.
+- Historyjki zrealizowane w #23 mają w kolumnie PR `#23`; kolejne PR dopisują swój numer przy odbiorze [BA]
+  (sprawdza `test_done_stories_are_in_reverse_index`).
 - Numery PR dla wymagań wdrożonych przed procesem nie są odtwarzane (poza #10 dla FR-008, FR-011, FR-025, FR-026
   i #13 dla pozycji D-09…D-13), bo historia PR #1–#22 nie wskazuje wymagań.
 - Macierz nie śledzi reguł biznesowych BR-nnn osobno — wskazują one FR w WYMAGANIACH §4.
@@ -298,3 +298,4 @@ wyślij), spisie i przepakowaniu — do potwierdzenia macierzą z **US-007**.
 | Wersja | Data | Zmiana |
 |---|---|---|
 | 0.1 | 2026-10-16 | Pierwszy szkic: macierz FR / NFR / SEC → US → test → PR, indeks odwrotny, luki. |
+| 0.2 | 2026-10-17 | US-025: stan po US-001…US-053 (testy i PR w §2–§5), zamknięte LT-04 i większość LT-05, nazwy testów po zmianach (US-009, US-016), sprawdzanie w CI (`TraceabilityMatrixTests`). |
