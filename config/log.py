@@ -27,18 +27,29 @@ SENSITIVE = (
     "cookie",
     "api_key",
 )
-_KEY_RE = re.compile("|".join(SENSITIVE), re.IGNORECASE)
-# klucz=wartość (formularz, querystring) oraz 'klucz': 'wartość' / "klucz": "wartość" (repr, JSON)
-_TEXT_RE = re.compile(
-    r"(?P<key>[\w-]*(?:" + "|".join(SENSITIVE) + r")[\w-]*)"
-    r"(?P<sep>['\"]?\s*[:=]\s*\[?['\"]?)"
-    r"(?P<value>[^'\"&\s,\]}]+)",
+_WORDS = "|".join(SENSITIVE)
+_KEY_RE = re.compile(_WORDS, re.IGNORECASE)
+_KEY = rf"[\w-]*(?:{_WORDS})[\w-]*"
+# Wartość: w cudzysłowie (z obsługą \"), lista w nawiasach albo goły ciąg do separatora.
+_VALUE = r"""(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|\[[^\]]*\]|[^\s&,;)}\]]+)"""
+# 'klucz': wartość / "klucz": wartość (repr słownika, JSON) — tylko klucz w cudzysłowie,
+# żeby zwykłe zdanie „tokens: 5 usuniętych” nie traciło wartości (przegląd [SEC] US-022).
+_QUOTED_KEY_RE = re.compile(
+    rf"""(?P<k>(?P<q>['"]){_KEY}(?P=q)\s*:\s*){_VALUE}""", re.IGNORECASE
+)
+# klucz=wartość (formularz, querystring; także zakodowane %3D).
+_ASSIGN_RE = re.compile(rf"(?P<k>\b{_KEY}\s*(?:=|%3D)\s*){_VALUE}", re.IGNORECASE)
+# Nagłówki w treści (np. zrzut żądania): wszystko do końca linii.
+_HEADER_RE = re.compile(
+    r"(?P<k>\b(?:Authorization|Proxy-Authorization|Cookie|Set-Cookie)\s*:\s*)[^\r\n]*",
     re.IGNORECASE,
 )
 
 
 def redact_text(text: str) -> str:
-    return _TEXT_RE.sub(lambda m: f"{m['key']}{m['sep']}{REDACTED}", text)
+    text = _HEADER_RE.sub(lambda m: m["k"] + REDACTED, text)
+    text = _QUOTED_KEY_RE.sub(lambda m: m["k"] + repr(REDACTED), text)
+    return _ASSIGN_RE.sub(lambda m: m["k"] + REDACTED, text)
 
 
 def _redact(value, key: str = ""):

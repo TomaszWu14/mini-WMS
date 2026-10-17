@@ -2,9 +2,8 @@
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django_otp.plugins.otp_totp.models import TOTPDevice
-
-from warehouse.audit import Action, record
 
 
 class Command(BaseCommand):
@@ -17,13 +16,10 @@ class Command(BaseCommand):
         user = get_user_model().objects.filter(username=username).first()
         if user is None:
             raise CommandError(f"Nie ma konta „{username}”.")
-        deleted, _ = TOTPDevice.objects.filter(user=user).delete()
-        record(
-            Action.TWO_FACTOR_RESET,
-            target=user,
-            actor_name="manage.py reset_2fa",
-            detail=f"usunięto urządzeń: {deleted}",
-        )
+        # Wpis audytowy na każde potwierdzone urządzenie (sygnał post_delete) — w tej
+        # samej transakcji co usunięcie (US-022).
+        with transaction.atomic():
+            deleted, _ = TOTPDevice.objects.filter(user=user).delete()
         self.stdout.write(
             f"Usunięto {deleted} urządzeń 2FA konta {username}. Przy następnym logowaniu "
             "wystarczy hasło; nowe urządzenie rejestruje się na /2fa/."

@@ -553,6 +553,7 @@ class AuditEvent(models.Model):
         ACTIVE_CHANGE = "ACTIVE_CHANGE", "Zmiana statusu konta"
         TWO_FACTOR_ENABLE = "2FA_ENABLE", "Włączenie 2FA"
         TWO_FACTOR_RESET = "2FA_RESET", "Reset 2FA"
+        USER_DELETE = "USER_DELETE", "Usunięcie konta"
         ACCESS_DENIED = "ACCESS_DENIED", "Odmowa dostępu"
 
     class Result(models.TextChoices):

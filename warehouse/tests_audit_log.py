@@ -25,6 +25,7 @@ class _Base(TestCase):
         Profile.objects.filter(user=self.admin).update(role=Role.ADMIN)
         self.user = User.objects.create_user("magazynier", password="MagPass123!")
         Profile.objects.filter(user=self.user).update(role=Role.OPERATOR)
+        AuditEvent.objects.all().delete()  # wpisy z przygotowania danych
         self.client.force_login(self.admin)
 
     def _edit(self, user, **data):
@@ -33,19 +34,18 @@ class _Base(TestCase):
             payload.pop("is_active")
         return self.client.post(f"/uzytkownicy/{user.pk}/", payload)
 
+    def _actions(self):
+        return sorted(AuditEvent.objects.values_list("action", flat=True))
+
 
 class AuditLogTests(_Base):
     """Kryteria 1–2: aktor, cel, akcja, czas, wynik; bez wartości hasła."""
 
     def test_role_password_status_changes_each_logged(self):
         resp = self._edit(
-            self.user,
-            role=Role.ADMIN,
-            is_active=False,
-            new_password=SECRET,
-            new_password2=SECRET,
+            self.user, role=Role.ADMIN, is_active=False, new_password=SECRET
         )
-        self.assertEqual(resp.status_code, 302, getattr(resp, "context", None))
+        self.assertEqual(resp.status_code, 302)
         events = {e.action: e for e in AuditEvent.objects.all()}
         self.assertEqual(
             set(events),
@@ -67,16 +67,29 @@ class AuditLogTests(_Base):
 
     def test_password_value_never_stored_or_logged(self):
         with self.assertLogs("warehouse.audit", level="INFO") as logs:
-            self._edit(self.user, new_password=SECRET, new_password2=SECRET)
-        rows = AuditEvent.objects.values_list(
-            "detail", "actor_username", "target_username", "action"
+            with self.captureOnCommitCallbacks(execute=True):
+                self._edit(self.user, new_password=SECRET)
+        rows = list(
+            AuditEvent.objects.values_list(
+                "detail", "actor_username", "target_username"
+            )
         )
         self.assertTrue(rows)
-        self.assertNotIn(SECRET, json.dumps(list(rows)))
-        self.assertNotIn(SECRET, "\n".join(logs.output))
+        self.assertNotIn(SECRET, json.dumps(rows))
         formatted = [JsonFormatter().format(r) for r in logs.records]
-        self.assertNotIn(SECRET, "\n".join(formatted))
+        self.assertNotIn(SECRET, "\n".join(logs.output + formatted))
         self.assertEqual(json.loads(formatted[0])["audit_target"], "magazynier")
+
+    def test_log_line_only_after_commit(self):
+        """Przegląd [DB]: wycofana zmiana nie zostawia linii w logu ani wpisu."""
+        from unittest.mock import patch
+
+        with patch(
+            "warehouse.audit.AuditEvent.objects.create", side_effect=RuntimeError("db")
+        ):
+            with self.assertRaises(RuntimeError):
+                self._edit(self.user, role=Role.VIEWER)
+        self.assertEqual(Profile.objects.get(user=self.user).role, Role.OPERATOR)
 
     def test_no_change_no_entry(self):
         self._edit(self.user)
@@ -88,20 +101,27 @@ class AuditLogTests(_Base):
             {
                 "username": "nowy",
                 "email": "",
-                "role": Role.VIEWER,
+                "role": Role.OPERATOR,
                 "password": SECRET,
-                "password2": SECRET,
             },
         )
-        event = AuditEvent.objects.get(action=AuditEvent.Action.USER_CREATE)
-        self.assertEqual(event.target_username, "nowy")
-        self.assertIn("Podgląd", event.detail)
-        self.assertNotIn(SECRET, event.detail)
+        create = AuditEvent.objects.get(action=AuditEvent.Action.USER_CREATE)
+        self.assertEqual(
+            (create.actor_username, create.target_username), ("szef", "nowy")
+        )
+        role = AuditEvent.objects.get(action=AuditEvent.Action.ROLE_CHANGE)
+        self.assertEqual(role.detail, "Podgląd → Operator")
+        self.assertNotIn(
+            SECRET, json.dumps(list(AuditEvent.objects.values_list("detail")))
+        )
 
-    def test_us001_denial_logged(self):
-        """Kryterium 2: Administrator (nie superuser) próbuje edytować superusera."""
+    def test_us001_denial_logged_on_post_only(self):
+        """Kryterium 2; GET nie tworzy wpisu (przegląd [SEC]: <img src> z obcej strony)."""
         root = User.objects.create_superuser("root", password="RootPass123!")
-        resp = self._edit(root, new_password=SECRET, new_password2=SECRET)
+        AuditEvent.objects.all().delete()
+        self.assertEqual(self.client.get(f"/uzytkownicy/{root.pk}/").status_code, 403)
+        self.assertFalse(AuditEvent.objects.exists())
+        resp = self._edit(root, new_password=SECRET)
         self.assertEqual(resp.status_code, 403)
         event = AuditEvent.objects.get()
         self.assertEqual(event.action, AuditEvent.Action.ACCESS_DENIED)
@@ -123,19 +143,59 @@ class AuditLogTests(_Base):
             (AuditEvent.Action.ROLE_CHANGE, AuditEvent.Result.DENIED), results
         )
 
-    def test_reset_2fa_command_logged(self):
-        call_command("reset_2fa", "magazynier", stdout=io.StringIO())
-        event = AuditEvent.objects.get()
-        self.assertEqual(event.action, AuditEvent.Action.TWO_FACTOR_RESET)
-        self.assertEqual(event.actor_username, "manage.py reset_2fa")
+    def test_changes_outside_the_panel_logged(self):
+        """Przegląd [SEC]: /admin/, manage.py changepassword, createsuperuser — sygnały."""
+        self.user.set_password(SECRET)
+        self.user.is_staff = True
+        self.user.save()
+        self.assertEqual(
+            self._actions(),
+            [AuditEvent.Action.PASSWORD_CHANGE, AuditEvent.Action.ROLE_CHANGE],
+        )
+        event = AuditEvent.objects.first()
         self.assertIsNone(event.actor)
+        self.assertTrue(
+            event.actor_username
+        )  # nazwa procesu, np. „manage.py changepassword”
+        User.objects.create_superuser("drugi", password="DrugiPass123!")
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action=AuditEvent.Action.USER_CREATE, detail__contains="is_superuser"
+            ).exists()
+        )
 
-    def test_entry_survives_user_deletion(self):
+    def test_hash_upgrade_and_last_login_not_logged(self):
+        """Przelicznie hasha przy logowaniu (setter Django) i last_login to nie zmiany."""
+        self.user.set_password("MagPass123!")
+        self.user._password = None  # tak robi setter w check_password()
+        self.user.save(update_fields=["password"])
+        self.client.force_login(self.user)  # aktualizuje last_login
+        self.assertFalse(AuditEvent.objects.exists())
+
+    def test_2fa_enable_and_reset_logged(self):
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        pending = TOTPDevice.objects.create(user=self.user, confirmed=False, name="x")
+        pending.delete()  # ekran /2fa/ kasuje niepotwierdzone — to nie zdarzenie
+        self.assertFalse(AuditEvent.objects.exists())
+        device = TOTPDevice.objects.create(user=self.user, confirmed=False, name="a")
+        device.confirmed = True
+        device.save()
+        call_command("reset_2fa", "magazynier", stdout=io.StringIO())
+        self.assertEqual(
+            self._actions(),
+            [AuditEvent.Action.TWO_FACTOR_ENABLE, AuditEvent.Action.TWO_FACTOR_RESET],
+        )
+
+    def test_delete_logged_and_entry_survives(self):
         self._edit(self.user, role=Role.VIEWER)
         self.user.delete()
-        event = AuditEvent.objects.get()
-        self.assertIsNone(event.target)
-        self.assertEqual(event.target_username, "magazynier")
+        self.assertTrue(
+            AuditEvent.objects.filter(action=AuditEvent.Action.USER_DELETE).exists()
+        )
+        for event in AuditEvent.objects.all():
+            self.assertIsNone(event.target)
+            self.assertEqual(event.target_username, "magazynier")
 
     def test_audit_page_admin_only(self):
         self._edit(self.user, role=Role.VIEWER)
@@ -231,3 +291,31 @@ class LogRedactionTests(TestCase):
         self.assertEqual(
             json.loads(JsonFormatter().format(record))["msg"], "Przyjęto 5 palet"
         )
+
+    def test_review_cases_fully_redacted(self):
+        """Przegląd [SEC] US-022: spacje, przecinki, cudzysłowy, listy, nagłówki, %3D."""
+        from config.log import redact_text
+
+        cases = {
+            '{"password": "ab cd ef"}': "ab cd ef",
+            "{'new_password': ['p@ss w0rd']}": "w0rd",
+            '"password":"a\\"bc"': "bc",
+            "password='a,b}c'": "b}c",
+            "Authorization: Bearer abcdef": "abcdef",
+            "{'token': ['12','34']}": "34",
+            "next=%2F&password%3Dsecret123": "secret123",
+            "Cookie: sessionid=xyz; csrftoken=qwe": "xyz",
+        }
+        for text, leaked in cases.items():
+            with self.subTest(text=text):
+                self.assertNotIn(leaked, redact_text(text))
+
+    def test_no_false_positive_on_plain_sentences(self):
+        from config.log import redact_text
+
+        for text in (
+            "Password reset tokens: 5 deleted",
+            "secret_key_fallbacks: 2",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(redact_text(text), text)

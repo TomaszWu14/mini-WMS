@@ -88,6 +88,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # US-022: kto zmienia konto — dla sygnałów dziennika audytowego.
+    "warehouse.audit.AuditActorMiddleware",
     # US-010: sesja zna stan 2FA; konto z TOTP po samym haśle → ekran kodu.
     "django_otp.middleware.OTPMiddleware",
     "warehouse.two_factor.TwoFactorRequiredMiddleware",
