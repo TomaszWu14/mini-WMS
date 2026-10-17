@@ -83,11 +83,12 @@ def import_receipts(filename: str, data: bytes, user):
         planned.append((i, ref, material, quantities, lot, expiry, delivery))
 
     pallets_total = sum(len(p[3]) for p in planned)
-    if pallets_total > services.MAX_HU_PER_IMPORT:
+    limit = services.hu_per_import_limit()
+    if pallets_total > limit:
         errors.insert(
             0,
             f"Plik tworzyłby {pallets_total} palet — limit jednego importu to "
-            f"{services.MAX_HU_PER_IMPORT}. Podziel plik; nic nie zapisano.",
+            f"{limit}. Podziel plik; nic nie zapisano.",
         )
         return {"created_hus": 0, "pallets": 0, "errors": errors}
 

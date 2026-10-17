@@ -48,7 +48,7 @@ if DEMO_MODE:
 # by hasło i konto „Wejdź jako demo” dało się zmienić bez zmiany kodu.
 DEMO_USER = os.environ.get("DEMO_USER", "demo_operator")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
-DEMO_IMPORT_MAX_ROWS = 500
+DEMO_IMPORT_MAX_ROWS = 100  # RR-31: mniejsze operacje w demo
 # US-005 / SEC-036: dziennik logowań starszy niż tyle dni usuwa `purge_login_events`
 # (decyzja PO 2026-10-16, Z-09).
 LOGIN_EVENT_RETENTION_DAYS = 90
@@ -249,16 +249,26 @@ LOGGING = {
         "json": {"()": "config.log.JsonFormatter"},
         "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
     },
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "plain" if DEBUG else "json",
-        }
+        },
+        # US-021: e-mail do ADMINS przy błędzie 500 (bez HTML, filtr `SafeReporterFilter`).
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "include_html": False,
+        },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django.request": {
-            "handlers": ["console"],
+            "handlers": ["console", "mail_admins"],
             "level": "ERROR",
             "propagate": False,
         },
@@ -270,3 +280,24 @@ LOGGING = {
         },
     },
 }
+
+
+# --- Alerty o błędach 500 (US-021, decyzja PO PYT-15: e-mail `mail_admins`) ---------
+# Bez DJANGO_ADMINS alert jest wyłączony (Django nie wysyła), błąd zostaje w logu JSON.
+# DJANGO_ADMINS: adresy rozdzielone przecinkami. SMTP z DJANGO_EMAIL_*; w demo maile
+# idą do konsoli (wyżej).
+ADMINS = [
+    (addr.strip(), addr.strip())
+    for addr in os.environ.get("DJANGO_ADMINS", "").split(",")
+    if addr.strip()
+]
+DEFAULT_EXCEPTION_REPORTER_FILTER = "config.log.SafeReporterFilter"
+SERVER_EMAIL = os.environ.get("DJANGO_SERVER_EMAIL", "mini-wms@localhost")
+EMAIL_SUBJECT_PREFIX = "[mini-WMS] "
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
+# Wysyłka idzie w wątku żądania — krótki timeout, żeby awaria SMTP nie wieszała workera.
+EMAIL_TIMEOUT = 10

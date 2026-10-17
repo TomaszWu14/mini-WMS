@@ -92,6 +92,9 @@ Zakładka **Environment Variables** zasobu → dodaj (Twoje własne wartości!):
 | `POSTGRES_USER` | `wms` |
 | `POSTGRES_PASSWORD` | mocne hasło bazy |
 | `DJANGO_TRUSTED_PROXY_COUNT` | `1` (domyślnie w compose; liczba proxy przed aplikacją) |
+| `DJANGO_ADMINS` | `ops@example.com` — adresy (po przecinku) dostające e-mail o błędzie 500 (US-021); puste = alert wyłączony |
+| `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS` | serwer SMTP do alertów (np. port `587`, TLS `1`) |
+| `DJANGO_SERVER_EMAIL` | nadawca alertów, np. `mini-wms@example.com` |
 
 > Wygenerowanie klucza (lokalnie): `python -c "import secrets;print(secrets.token_urlsafe(64))"`.
 

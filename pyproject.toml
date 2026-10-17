@@ -64,6 +64,7 @@ module = [
     "warehouse.tests",
     "warehouse.tests_2fa",
     "warehouse.tests_access_matrix",
+    "warehouse.tests_alerts",
     "warehouse.tests_audit_log",
     "warehouse.tests_backup_script",
     "warehouse.tests_concurrency_pg",

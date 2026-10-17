@@ -175,6 +175,14 @@ class ReceiveResult:
 DEMO_MAX_HANDLING_UNITS = 2000
 DEMO_MAX_LOCATIONS = 500
 DEMO_LIMIT_SUFFIX = "Dane demo wracają do stanu początkowego codziennie o 03:00."
+# RR-31 (decyzja PO 2026-10-17): w demo jedna operacja tworzy najwyżej 50 palet — jeden
+# odwiedzający potrzebuje ~40 operacji, by wyczerpać wspólny limit, a limiter POST go hamuje.
+DEMO_MAX_HU_PER_OPERATION = 50
+
+
+def hu_per_import_limit() -> int:
+    """Najwięcej palet z jednego pliku importu (US-002; w demo — RR-31)."""
+    return DEMO_MAX_HU_PER_OPERATION if settings.DEMO_MODE else MAX_HU_PER_IMPORT
 
 
 class DemoBudget:
@@ -254,6 +262,10 @@ def validate_receipt(plan: ReceiptPlan, *, budget: DemoBudget | None = None) -> 
     material, quantities = plan.material, plan.quantities
     if not quantities or len(quantities) > MAX_PALLETS_PER_RECEIPT:
         raise WMSError(f"Przyjęcie musi mieć od 1 do {MAX_PALLETS_PER_RECEIPT} palet.")
+    if settings.DEMO_MODE and len(quantities) > DEMO_MAX_HU_PER_OPERATION:
+        raise WMSError(
+            f"W wersji demo jedno przyjęcie tworzy najwyżej {DEMO_MAX_HU_PER_OPERATION} palet."
+        )
     if any(q < 1 for q in quantities) or sum(quantities) > MAX_RECEIPT_QUANTITY:
         raise WMSError(
             "Ilość na palecie musi być dodatnia, a łącznie najwyżej "

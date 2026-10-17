@@ -214,3 +214,46 @@ class DemoReviewFixTests(_DemoBase):
             q["sql"] for q in ctx.captured_queries if "COUNT(*)" in q["sql"].upper()
         ]
         self.assertEqual(len(counts), 1, counts)  # tylko HU, raz na plik
+
+
+class DemoSmallOperationsTests(_DemoBase):
+    """RR-31 (decyzja PO 2026-10-17): w demo jedna operacja tworzy najwyżej 50 palet."""
+
+    def test_receipt_over_50_pallets_refused_in_demo(self):
+        with self.assertRaisesMessage(services.WMSError, "najwyżej 50 palet"):
+            services.receive_material(
+                material=self.material, quantities=[1] * 51, user=self.operator
+            )
+        services.receive_material(
+            material=self.material, quantities=[1] * 50, user=self.operator
+        )
+        self.assertEqual(HandlingUnit.objects.count(), self.hus + 50)
+
+    def test_receipt_import_over_50_pallets_refused_whole_file(self):
+        data = _csv(
+            ("indeks", "ilosc", "palety"),
+            (self.material.index, 30, 30),
+            (self.material.index, 21, 21),
+        )
+        result = import_receipts("p.csv", data, self.operator)
+        self.assertEqual(result["created_hus"], 0)
+        self.assertIn("limit jednego importu to 50", result["errors"][0])
+        self.assertEqual(HandlingUnit.objects.count(), self.hus)
+
+    def test_stock_import_over_50_rows_refused(self):
+        data = _csv(("REF", "ilosc"), *[(self.material.index, 1)] * 51)
+        result = import_stock("s.csv", data, self.operator)
+        self.assertEqual(result["created"], 0)
+        self.assertIn("50 palet", result["errors"][0])
+
+    def test_import_file_row_limit_is_100_in_demo(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.DEMO_IMPORT_MAX_ROWS, 100)
+
+    @override_settings(DEMO_MODE=False)
+    def test_outside_demo_limits_unchanged(self):
+        self.assertEqual(services.hu_per_import_limit(), services.MAX_HU_PER_IMPORT)
+        services.receive_material(
+            material=self.material, quantities=[1] * 51, user=self.operator
+        )

@@ -130,7 +130,8 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
     rows = parse_locations_file(filename, data)
     # US-002 / R3: każdy wiersz tworzy jedną paletę — plik ponad limit odrzucamy
     # w całości, zanim powstanie pierwszy HU (blokada licznika numeracji).
-    if len(rows) > services.MAX_HU_PER_IMPORT:
+    limit = services.hu_per_import_limit()
+    if len(rows) > limit:
         return {
             "created": 0,
             "materials_created": 0,
@@ -139,7 +140,7 @@ def import_stock(filename: str, data: bytes, user, default_unit_code: str = "PCS
             "over_capacity": [],
             "errors": [
                 f"Plik ma {len(rows)} wierszy — limit jednego importu stanów to "
-                f"{services.MAX_HU_PER_IMPORT} palet. Podziel plik; nic nie zapisano."
+                f"{limit} palet. Podziel plik; nic nie zapisano."
             ],
         }
     unit, _ = Unit.objects.get_or_create(code=default_unit_code)

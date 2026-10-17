@@ -14,6 +14,8 @@ import json
 import logging
 import re
 
+from django.views.debug import SafeExceptionReporterFilter
+
 REDACTED = "[REDACTED]"
 SENSITIVE = (
     "password",
@@ -98,3 +100,29 @@ class JsonFormatter(logging.Formatter):
             except (TypeError, ValueError):
                 payload[key] = redact_text(str(value))
         return json.dumps(payload, ensure_ascii=False)
+
+
+class SafeReporterFilter(SafeExceptionReporterFilter):
+    """US-021 / SEC-032: raport błędu 500 (e-mail `mail_admins`) bez sekretów.
+
+    Domyślny filtr Django maskuje POST tylko w widokach z `@sensitive_post_parameters`
+    i nie maskuje ciasteczka sesji. Tu maskujemy zawsze: pola formularza, nagłówki
+    (META) i ustawienia o nazwach jak hasła/tokeny/sesja oraz wszystkie ciasteczka.
+    """
+
+    hidden_settings = re.compile(
+        rf"API|AUTH|TOKEN|KEY|SECRET|PASS|SIGNATURE|COOKIE|SESSION|CSRF|OTP|{_WORDS}",
+        flags=re.IGNORECASE,
+    )
+
+    def get_post_parameters(self, request):
+        if request is None:
+            return {}
+        cleansed = request.POST.copy()
+        for key in cleansed:
+            if self.hidden_settings.search(key):
+                cleansed[key] = self.cleansed_substitute
+        return cleansed
+
+    def get_safe_cookies(self, request):
+        return dict.fromkeys(getattr(request, "COOKIES", {}), self.cleansed_substitute)
